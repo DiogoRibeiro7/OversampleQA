@@ -31,6 +31,30 @@ from .validator import (
     validate_multiclass_oversampling,
     extract_synthetic_samples,
 )
+from .memory_efficient_validator import MemoryEfficientValidator
+from .optimized_distance import OptimizedDistanceMatrix
+from .advanced_benchmark import (
+    StatisticalBenchmark,
+    DatasetRepository,
+    create_benchmark_report,
+)
+from .types import (
+    ValidationConfig,
+    BenchmarkConfig,
+    ValidationMode,
+    ValidationResult,
+    OversampleQAError,
+    ValidationError,
+    ConfigurationError,
+    MetricError,
+)
+from .typed_validator import (
+    TypedValidator,
+    PydanticValidationConfig,
+    validation_session,
+    registry,
+)
+from .plugin_system import plugin_manager, register_metric, register_validator
 from .metrics import (
     calculate_error_rate,
     confidence_ratio,
@@ -60,6 +84,7 @@ from .report import generate_report
 from .clustering import cluster_based_diagnostics
 from .surrogate import evaluate_surrogate_models
 from .cli import main as cli_main
+from .caching import ValidationCache
 
 __all__ = [
     "hassanat_distance",
@@ -79,6 +104,27 @@ __all__ = [
     "validate_oversampling",
     "validate_multiclass_oversampling",
     "extract_synthetic_samples",
+    "MemoryEfficientValidator",
+    "OptimizedDistanceMatrix",
+    "ValidationCache",
+    "StatisticalBenchmark",
+    "DatasetRepository",
+    "create_benchmark_report",
+    "ValidationConfig",
+    "BenchmarkConfig",
+    "ValidationMode",
+    "ValidationResult",
+    "OversampleQAError",
+    "ValidationError",
+    "ConfigurationError",
+    "MetricError",
+    "TypedValidator",
+    "PydanticValidationConfig",
+    "validation_session",
+    "registry",
+    "plugin_manager",
+    "register_metric",
+    "register_validator",
     "calculate_error_rate",
     "confidence_ratio",
     "local_density_divergence",

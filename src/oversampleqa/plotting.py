@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import logging
+
+import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -81,8 +86,7 @@ def plot_sample_distribution(
     plt.legend()
     if save_path:
         plt.savefig(save_path)
-    else:
-        plt.close()
+    plt.close()
 
 
 def plot_error_comparison(
@@ -94,8 +98,7 @@ def plot_error_comparison(
     plt.ylabel("Mean error rate")
     if save_path:
         plt.savefig(save_path)
-    else:
-        plt.close()
+    plt.close()
 
 
 def plot_error_boxplot(
@@ -109,8 +112,7 @@ def plot_error_boxplot(
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
-    else:
-        plt.close()
+    plt.close()
 
 
 def plot_error_heatmap(
@@ -142,8 +144,7 @@ def plot_error_heatmap(
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
-    else:
-        plt.close()
+    plt.close()
 
 
 def plot_error_ranking(
@@ -161,8 +162,7 @@ def plot_error_ranking(
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
-    else:
-        plt.close()
+    plt.close()
 
 
 def plot_noise_sensitivity(
@@ -187,8 +187,7 @@ def plot_noise_sensitivity(
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
-    else:
-        plt.close()
+    plt.close()
 
 
 def plot_distance_histogram(

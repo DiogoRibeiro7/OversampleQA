@@ -19,22 +19,49 @@ matplotlib = "^3.5.0"
 seaborn = "^0.13.2"
 umap-learn = "^0.5.0"
 jinja2 = "^3.0.0"
+click = "^8.1.7"
+rich = "^13.9.4"
+pyyaml = "^6.0.2"
+pydantic = "^2.9.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
 pytest-cov = "^7.0.0"
-black = "^25.9.0"
-flake8 = "^7.3.0"
+black = "^24.10.0"
+isort = "^5.13.2"
+ruff = "^0.6.8"
+bandit = "^1.7.9"
 mypy = "^1.18"
+pre-commit = "^3.6.0"
+safety = "^3.2.7"
+commitizen = "^3.25.0"
+python-semantic-release = "^8.7.0"
+flake8 = "^7.3.0"
 sphinx = "^8.1.3"
 myst-parser = "^4.0.1"
 
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
+strict = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
+update_changelog_on_bump = true
+
+[tool.semantic_release]
+version_variable = ["pyproject.toml:version"]
+branch = "main"
+build_command = "poetry build"
+changelog_file = "CHANGELOG.md"
+commit_parser = "conventional"
+upload_to_pypi = false
 
 [tool.poetry.scripts]
 oversampleqa-validate = "oversampleqa.cli:main"
+oversampleqa = "oversampleqa.cli_enhanced:main"
 
 [build-system]
 requires = ["poetry-core"]
