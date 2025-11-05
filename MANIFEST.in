@@ -1,0 +1,11 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CITATION.cff
+include pyproject.toml
+recursive-include src/oversampleqa *.py
+recursive-include tests *.py
+recursive-include examples *.py
+recursive-include docs *.rst *.md *.py
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
