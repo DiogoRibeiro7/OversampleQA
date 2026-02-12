@@ -89,7 +89,11 @@ class CLIConfig:
         self.data = self.load_config()
 
     def load_config(self) -> Dict[str, Any]:
-        """Load configuration from disk and merge with defaults."""
+        """Load configuration from disk and merge with defaults.
+
+        Returns:
+            Merged configuration dictionary.
+        """
 
         if not self.config_file.exists():
             return copy.deepcopy(DEFAULT_CONFIG)
@@ -114,7 +118,11 @@ class CLIConfig:
         return merged
 
     def save_config(self, config: Optional[Dict[str, Any]] = None) -> None:
-        """Persist configuration to disk."""
+        """Persist configuration to disk.
+
+        Args:
+            config: Optional config data to persist, defaults to current data.
+        """
 
         payload = copy.deepcopy(config or self.data)
         self.config_file.parent.mkdir(parents=True, exist_ok=True)
@@ -122,7 +130,11 @@ class CLIConfig:
             yaml.safe_dump(payload, handle, sort_keys=False)
 
     def _validate_keys(self, config: Dict[str, Any]) -> None:
-        """Validate configuration keys and provide suggestions."""
+        """Validate configuration keys and provide suggestions.
+
+        Args:
+            config: Configuration dictionary to validate.
+        """
 
         def check_section(section: str, allowed: Iterable[str]) -> None:
             block = config.get(section, {})
@@ -152,7 +164,14 @@ class CLIConfig:
                         raise ConfigValidationError(message)
 
     def resolve_defaults(self, profile: Optional[str] = None) -> Dict[str, Any]:
-        """Return default parameters merged with optional profile."""
+        """Return default parameters merged with optional profile.
+
+        Args:
+            profile: Optional profile name to apply.
+
+        Returns:
+            Merged defaults dictionary.
+        """
 
         defaults = copy.deepcopy(DEFAULT_CONFIG["defaults"])
         defaults.update(self.data.get("defaults", {}))
@@ -164,7 +183,14 @@ class CLIConfig:
         return defaults
 
     def get_profile(self, name: str) -> Dict[str, Any]:
-        """Return configuration profile parameters by name."""
+        """Return configuration profile parameters by name.
+
+        Args:
+            name: Profile name.
+
+        Returns:
+            Profile parameter mapping.
+        """
 
         profiles = {**DEFAULT_CONFIG["profiles"], **self.data.get("profiles", {})}
         if name not in profiles:
@@ -176,7 +202,11 @@ class CLIConfig:
         return dict(profiles[name])
 
     def list_profiles(self) -> List[Tuple[str, Dict[str, Any]]]:
-        """List all available profiles."""
+        """List all available profiles.
+
+        Returns:
+            List of ``(name, profile)`` pairs.
+        """
 
         profiles = {**DEFAULT_CONFIG["profiles"], **self.data.get("profiles", {})}
         return sorted(profiles.items())
@@ -186,7 +216,15 @@ def load_dataset(
     dataset_path: Path,
     target_column: str,
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """Load dataset from CSV/Parquet and split into features/target."""
+    """Load dataset from CSV/Parquet and split into features/target.
+
+    Args:
+        dataset_path: Dataset path.
+        target_column: Target column name.
+
+    Returns:
+        Tuple of feature DataFrame and target Series.
+    """
 
     if dataset_path.suffix.lower() in {".parquet"}:
         df = pd.read_parquet(dataset_path)
@@ -201,6 +239,14 @@ def load_dataset(
 
 
 def load_checkpoint(output_dir: Optional[Path]) -> Optional[Dict[str, Any]]:
+    """Load a saved run checkpoint from the output directory.
+
+    Args:
+        output_dir: Output directory that may contain a checkpoint file.
+
+    Returns:
+        Parsed checkpoint payload or ``None`` if unavailable.
+    """
     if not output_dir:
         return None
     checkpoint_path = output_dir / CHECKPOINT_FILE
@@ -213,6 +259,12 @@ def load_checkpoint(output_dir: Optional[Path]) -> Optional[Dict[str, Any]]:
 
 
 def save_checkpoint(output_dir: Optional[Path], payload: Dict[str, Any]) -> None:
+    """Save a run checkpoint to the output directory.
+
+    Args:
+        output_dir: Directory to write the checkpoint into.
+        payload: Serializable results payload.
+    """
     if not output_dir:
         return
     checkpoint_path = output_dir / CHECKPOINT_FILE
@@ -221,7 +273,14 @@ def save_checkpoint(output_dir: Optional[Path], payload: Dict[str, Any]) -> None
 
 
 def estimate_runtime(seconds: float) -> str:
-    """Return a human-friendly runtime estimate."""
+    """Return a human-friendly runtime estimate.
+
+    Args:
+        seconds: Seconds to format.
+
+    Returns:
+        Formatted estimate string.
+    """
 
     minutes, sec = divmod(int(round(seconds)), 60)
     hours, minutes = divmod(minutes, 60)
@@ -249,7 +308,25 @@ def run_validation_with_progress(
     mlflow_config: Optional[Dict[str, Any]],
     verbose: bool,
 ) -> Dict[str, Any]:
-    """Run validation with rich progress feedback."""
+    """Run validation with rich progress feedback.
+
+    Args:
+        dataset_path: Dataset path.
+        target: Target column name.
+        minority_label: Minority class label.
+        oversampler_name: Oversampler class name.
+        metric: Distance metric name.
+        hidden_ratio: Fraction of majority to hide.
+        export_formats: Formats to export.
+        resume: Whether to reuse cached results.
+        output_dir: Output directory for artifacts.
+        mlflow_override: Force MLflow logging.
+        mlflow_config: MLflow configuration dict.
+        verbose: Whether to print results.
+
+    Returns:
+        Results dictionary.
+    """
 
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -363,7 +440,13 @@ def run_validation_with_progress(
 
 
 def export_results(results: Dict[str, Any], formats: Iterable[str], output_dir: Optional[Path]) -> None:
-    """Export results to requested formats."""
+    """Export results to requested formats.
+
+    Args:
+        results: Results dictionary.
+        formats: Output formats.
+        output_dir: Output directory, if any.
+    """
 
     if not output_dir:
         return
@@ -405,7 +488,12 @@ def export_results(results: Dict[str, Any], formats: Iterable[str], output_dir: 
 
 
 def integrate_with_mlflow(results: Dict[str, Any], settings: Dict[str, Any]) -> None:
-    """Log results to MLflow if available."""
+    """Log results to MLflow if available.
+
+    Args:
+        results: Results dictionary.
+        settings: MLflow settings dictionary.
+    """
 
     try:
         import mlflow
@@ -429,7 +517,11 @@ def integrate_with_mlflow(results: Dict[str, Any], settings: Dict[str, Any]) -> 
 
 
 def display_results(results: Dict[str, Any]) -> None:
-    """Pretty-print validation results."""
+    """Pretty-print validation results.
+
+    Args:
+        results: Results dictionary.
+    """
 
     table = Table(title="Validation Summary", show_header=True, header_style="bold magenta")
     table.add_column("Metric", style="cyan")
@@ -454,6 +546,14 @@ def display_results(results: Dict[str, Any]) -> None:
 
 
 def interpret_error_rate(error_rate: float) -> str:
+    """Return a qualitative interpretation for the error rate.
+
+    Args:
+        error_rate: Validation error rate.
+
+    Returns:
+        Human-friendly interpretation string.
+    """
     if error_rate < 0.1:
         return "Excellent result - synthetic samples closely match the minority distribution."
     if error_rate < 0.3:
@@ -462,6 +562,14 @@ def interpret_error_rate(error_rate: float) -> str:
 
 
 def explain_ratio(ratio: float) -> str:
+    """Return a qualitative explanation of the imbalance ratio.
+
+    Args:
+        ratio: Minority-to-majority ratio.
+
+    Returns:
+        Human-friendly explanation string.
+    """
     if ratio < 0.1:
         return "Highly imbalanced - oversampling essential."
     if ratio < 0.3:
@@ -470,6 +578,15 @@ def explain_ratio(ratio: float) -> str:
 
 
 def generate_recommendations(error_rate: float, imbalance_ratio: float) -> List[str]:
+    """Return actionable recommendations based on diagnostics.
+
+    Args:
+        error_rate: Validation error rate.
+        imbalance_ratio: Minority-to-majority ratio.
+
+    Returns:
+        List of recommendation strings.
+    """
     tips = []
     if error_rate > 0.3:
         tips.append("Evaluate advanced oversamplers such as BorderlineSMOTE or ADASYN.")
@@ -482,6 +599,16 @@ def generate_recommendations(error_rate: float, imbalance_ratio: float) -> List[
 
 
 def analyze_dataset(dataset_path: Path, target: str, minority_label: int) -> Dict[str, Any]:
+    """Analyze dataset size, feature count, and class imbalance.
+
+    Args:
+        dataset_path: Dataset path.
+        target: Target column name.
+        minority_label: Minority class label.
+
+    Returns:
+        Summary statistics dict.
+    """
     X, y = load_dataset(dataset_path, target)
     minority = int((y == minority_label).sum())
     majority = len(y) - minority
@@ -496,6 +623,14 @@ def analyze_dataset(dataset_path: Path, target: str, minority_label: int) -> Dic
 
 
 def suggest_parameters(dataset_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Suggest parameters based on dataset scale and imbalance.
+
+    Args:
+        dataset_info: Summary statistics dict.
+
+    Returns:
+        Suggested parameters for validation.
+    """
     n_samples = dataset_info["n_samples"]
     n_features = dataset_info["n_features"]
     ratio = dataset_info["imbalance_ratio"]
@@ -528,6 +663,11 @@ def suggest_parameters(dataset_info: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def show_dataset_table(info: Dict[str, Any]) -> None:
+    """Render a dataset summary table to the console.
+
+    Args:
+        info: Summary statistics dict.
+    """
     table = Table(title="Dataset Overview")
     table.add_column("Statistic", style="cyan")
     table.add_column("Value", style="green")
@@ -540,6 +680,13 @@ def show_dataset_table(info: Dict[str, Any]) -> None:
 
 
 def guided_validation(dataset: Path, config: CLIConfig, profile: Optional[str]) -> None:
+    """Run an interactive validation workflow.
+
+    Args:
+        dataset: Dataset path.
+        config: CLI configuration instance.
+        profile: Optional profile name to apply.
+    """
     console.print(Panel.fit("Interactive Validation Setup", style="bold blue"))
     defaults = config.resolve_defaults(profile)
 
@@ -595,7 +742,14 @@ def guided_validation(dataset: Path, config: CLIConfig, profile: Optional[str]) 
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.")
 @click.pass_context
 def cli(ctx: click.Context, config_path: Optional[Path], profile: Optional[str], verbose: bool) -> None:
-    """OversampleQA: Validate your oversampling methods with confidence!"""
+    """OversampleQA: Validate your oversampling methods with confidence!
+
+    Args:
+        ctx: Click context.
+        config_path: Optional config path.
+        profile: Optional profile name.
+        verbose: Enable verbose output.
+    """
 
     ctx.ensure_object(dict)
     config = CLIConfig(config_path, console=console)
@@ -638,7 +792,22 @@ def validate(
     interactive: bool,
     mlflow_enabled: bool,
 ) -> None:
-    """Validate oversampling on your dataset."""
+    """Validate oversampling on your dataset.
+
+    Args:
+        ctx: Click context.
+        dataset: Dataset path.
+        target: Target column name.
+        minority_label: Minority class label.
+        oversampler: Oversampler class name.
+        metric: Distance metric name.
+        hidden_ratio: Fraction of majority to hide.
+        export: Export formats.
+        output: Output directory.
+        resume: Resume from cached results.
+        interactive: Run interactive wizard.
+        mlflow_enabled: Log results to MLflow if available.
+    """
 
     config: CLIConfig = ctx.obj["config"]
     profile: Optional[str] = ctx.obj.get("profile")
@@ -679,7 +848,12 @@ def validate(
 @click.option("--template", type=click.Choice(sorted(CONFIG_TEMPLATES)), default="production")
 @click.option("--output", "-o", type=click.Path(path_type=Path), required=True, help="Output file path.")
 def template(template: str, output: Path) -> None:
-    """puzzle Generate configuration file from template."""
+    """Generate a configuration file from a named template.
+
+    Args:
+        template: Template name.
+        output: Output file path.
+    """
 
     destination = generate_config_file(template, str(output))
     console.print(f"[green]Template '{template}' written to {destination}[/green]")
@@ -688,7 +862,11 @@ def template(template: str, output: Path) -> None:
 @cli.command()
 @click.pass_context
 def profiles(ctx: click.Context) -> None:
-    """List available configuration profiles."""
+    """List available configuration profiles.
+
+    Args:
+        ctx: Click context.
+    """
 
     config: CLIConfig = ctx.obj["config"]
     rows = config.list_profiles()
@@ -704,7 +882,11 @@ def profiles(ctx: click.Context) -> None:
 @cli.command()
 @click.argument("shell", required=False, type=click.Choice(["bash", "zsh", "fish", "powershell"]))
 def completion(shell: Optional[str]) -> None:
-    """Provide shell completion installation instructions."""
+    """Provide shell completion installation instructions.
+
+    Args:
+        shell: Optional shell name.
+    """
 
     shell = shell or "bash"
     script_name = "oversampleqa"
@@ -726,7 +908,13 @@ def completion(shell: Optional[str]) -> None:
 @click.option("--output", "-o", type=click.Path(path_type=Path), default=Path("benchmark_results"))
 @click.pass_context
 def benchmark(ctx: click.Context, include_openml: bool, output: Path) -> None:
-    """Run comprehensive benchmarking across datasets."""
+    """Run comprehensive benchmarking across datasets.
+
+    Args:
+        ctx: Click context.
+        include_openml: Whether to include OpenML datasets.
+        output: Output directory.
+    """
 
     console.print(Panel.fit("Running comprehensive benchmark", style="bold green"))
 
@@ -786,7 +974,11 @@ def benchmark(ctx: click.Context, include_openml: bool, output: Path) -> None:
 @cli.command()
 @click.pass_context
 def setup(ctx: click.Context) -> None:
-    """Initial setup and configuration wizard."""
+    """Initial setup and configuration wizard.
+
+    Args:
+        ctx: Click context.
+    """
 
     config: CLIConfig = ctx.obj["config"]
     console.print(Panel.fit("OversampleQA setup wizard", style="bold blue"))
@@ -816,7 +1008,10 @@ def setup(ctx: click.Context) -> None:
 
 @cli.command()
 def doctor() -> None:
-    """Diagnose installation and configuration issues."""
+    """Diagnose installation and configuration issues.
+
+    Runs a minimal dependency check and reports status to the console.
+    """
 
     console.print(Panel.fit("System diagnostics", style="bold yellow"))
 
@@ -842,6 +1037,14 @@ def doctor() -> None:
 
 
 def _optional_import(module: str) -> bool:
+    """Return True when a module can be imported.
+
+    Args:
+        module: Module name to import.
+
+    Returns:
+        ``True`` if import succeeds, otherwise ``False``.
+    """
     try:
         __import__(module)
         return True
@@ -850,6 +1053,10 @@ def _optional_import(module: str) -> bool:
 
 
 def main() -> None:
+    """Entry point for the enhanced CLI.
+
+    Initializes logging and delegates to the Click CLI.
+    """
     logging.basicConfig(level=logging.INFO)
     cli()
 

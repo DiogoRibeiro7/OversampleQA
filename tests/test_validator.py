@@ -24,6 +24,23 @@ def test_validate_oversampling_runs():
     assert 0.0 <= rate <= 1.0
 
 
+def test_validate_oversampling_minority_label_zero():
+    X, y = make_classification(
+        n_samples=200,
+        n_features=5,
+        weights=[0.1, 0.9],
+        random_state=42,
+    )
+    rate = validate_oversampling(
+        X=X,
+        y=y,
+        minority_label=0,
+        oversampler=SMOTE(random_state=42),
+        hidden_ratio=0.2,
+    )
+    assert 0.0 <= rate <= 1.0
+
+
 def test_validate_return_details():
     X, y = make_classification(
         n_samples=100,

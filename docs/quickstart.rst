@@ -51,9 +51,9 @@ Interpreting Results
 
 The error rate tells you what fraction of synthetic samples are more similar to hidden majority samples than to real minority samples:
 
-* **< 0.1**: ?? Excellent - Low risk, synthetic data looks realistic
-* **0.1 - 0.3**: ?? Moderate - Use with caution
-* **> 0.3**: ?? High risk - Consider alternative methods
+* **< 0.1**: Excellent - Low risk, synthetic data looks realistic
+* **0.1 - 0.3**: Moderate - Use with caution
+* **> 0.3**: High risk - Consider alternative methods
 
 Next Steps
 ----------

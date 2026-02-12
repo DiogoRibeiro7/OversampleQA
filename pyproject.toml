@@ -63,6 +63,12 @@ upload_to_pypi = false
 oversampleqa-validate = "oversampleqa.cli:main"
 oversampleqa = "oversampleqa.cli_enhanced:main"
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:importing 'Const' from 'astroid' is deprecated.*:DeprecationWarning:asttokens.util",
+    "ignore:.*The `disp` and `iprint` options of the L-BFGS-B solver are deprecated.*:DeprecationWarning",
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

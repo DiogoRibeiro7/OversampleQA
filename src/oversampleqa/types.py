@@ -67,14 +67,33 @@ class OversamplerProtocol(Protocol):
     """Protocol for oversampler-like objects."""
 
     def fit_resample(self, X: FloatArray, y: IntArray) -> Tuple[FloatArray, IntArray]:
+        """Fit and resample the dataset, returning resampled arrays.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+
+        Returns:
+            Tuple of resampled ``(X, y)`` arrays.
+        """
         ...
 
     @property
     def random_state(self) -> Optional[int]:
+        """Return the random state, if supported.
+
+        Returns:
+            Random state value or ``None``.
+        """
         ...
 
     @random_state.setter
     def random_state(self, value: Optional[int]) -> None:
+        """Set the random state, if supported.
+
+        Args:
+            value: Random state to set.
+        """
         ...
 
 
@@ -89,6 +108,18 @@ class ValidatorProtocol(Protocol):
         oversampler: OversamplerProtocol,
         **kwargs: Any,
     ) -> float:
+        """Validate an oversampler and return an error rate.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            **kwargs: Implementation-specific options.
+
+        Returns:
+            Error rate.
+        """
         ...
 
 
@@ -150,6 +181,18 @@ class BaseValidator(ABC, Generic[T]):
         oversampler: OversamplerProtocol,
         config: ValidationConfig,
     ) -> T:
+        """Run validation and return a result.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            config: ValidationConfig.
+
+        Returns:
+            Validation result.
+        """
         ...
 
     @abstractmethod
@@ -161,6 +204,18 @@ class BaseValidator(ABC, Generic[T]):
         oversampler: OversamplerProtocol,
         config: ValidationConfig,
     ) -> T:
+        """Run validation asynchronously and return a result.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            config: ValidationConfig.
+
+        Returns:
+            Validation result.
+        """
         ...
 
 
@@ -170,21 +225,41 @@ class Dataset(ABC):
     @property
     @abstractmethod
     def X(self) -> FloatArray:
+        """Return feature matrix.
+
+        Returns:
+            Feature matrix.
+        """
         ...
 
     @property
     @abstractmethod
     def y(self) -> IntArray:
+        """Return target labels.
+
+        Returns:
+            Target labels.
+        """
         ...
 
     @property
     @abstractmethod
     def name(self) -> str:
+        """Return dataset name.
+
+        Returns:
+            Dataset name.
+        """
         ...
 
     @property
     @abstractmethod
     def minority_label(self) -> int:
+        """Return the minority class label.
+
+        Returns:
+            Minority class label.
+        """
         ...
 
 
@@ -208,6 +283,15 @@ class ValidatorFactory(Protocol):
     """Factory for validators."""
 
     def create_validator(self, mode: ValidationMode, **kwargs: Any) -> BaseValidator[Any]:
+        """Create a validator instance for the given mode.
+
+        Args:
+            mode: Validation execution mode.
+            **kwargs: Implementation-specific options.
+
+        Returns:
+            Validator instance.
+        """
         ...
 
 
@@ -215,4 +299,13 @@ class MetricFactory(Protocol):
     """Factory for distance metrics."""
 
     def create_metric(self, name: str, **kwargs: Any) -> DistanceMetricProtocol:
+        """Create a distance metric by name.
+
+        Args:
+            name: Metric identifier.
+            **kwargs: Metric-specific parameters.
+
+        Returns:
+            Distance metric callable.
+        """
         ...
