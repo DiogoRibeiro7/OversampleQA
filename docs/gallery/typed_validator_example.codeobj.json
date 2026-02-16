@@ -1,0 +1,47 @@
+{
+ "SMOTE": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "imblearn.over_sampling",
+   "module_short": "imblearn.over_sampling",
+   "name": "SMOTE"
+  }
+ ],
+ "TypedValidator": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "oversampleqa.typed_validator",
+   "module_short": "oversampleqa.typed_validator",
+   "name": "TypedValidator"
+  }
+ ],
+ "ValidationConfig": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "oversampleqa.types",
+   "module_short": "oversampleqa.types",
+   "name": "ValidationConfig"
+  }
+ ],
+ "__name__": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "str"
+  }
+ ],
+ "make_classification": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "sklearn.datasets",
+   "module_short": "sklearn.datasets",
+   "name": "make_classification"
+  }
+ ]
+}

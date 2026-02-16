@@ -258,7 +258,15 @@ def energy_distance(x1: np.ndarray, x2: np.ndarray) -> float:
 
 
 def wasserstein_1d_distance(x1: np.ndarray, x2: np.ndarray) -> float:
-    """Compute the 1D Wasserstein distance between two empirical distributions."""
+    """Compute the 1D Wasserstein distance between two empirical distributions.
+
+    Args:
+        x1: Samples from distribution 1.
+        x2: Samples from distribution 2.
+
+    Returns:
+        Wasserstein distance.
+    """
     x1 = np.sort(np.asarray(x1, dtype=float).ravel())
     x2 = np.sort(np.asarray(x2, dtype=float).ravel())
 

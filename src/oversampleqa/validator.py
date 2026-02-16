@@ -17,6 +17,16 @@ from .metrics import calculate_error_rate
 
 
 def _split_classes(X: NDArray[np.floating], y: NDArray[np.integer], minority_label: int):
+    """Split features into minority and majority subsets.
+
+    Args:
+        X: Feature matrix aligned with ``y``.
+        y: Target labels.
+        minority_label: Label value identifying the minority class.
+
+    Returns:
+        Tuple of ``(minority, majority)`` feature arrays.
+    """
     minority_mask = y == minority_label
     minority = X[minority_mask]
     majority = X[~minority_mask]
@@ -90,6 +100,15 @@ def validate_oversampling(
         Error rate by default. If ``return_details`` is ``True`` a tuple
         ``(error_rate, n_errors, dist_hidden, dist_min)`` is returned.
     """
+    labels = np.unique(y)
+    if minority_label not in labels:
+        raise ValueError(f"minority_label {minority_label} not found in y")
+    if len(labels) != 2:
+        raise ValueError(
+            "validate_oversampling expects binary labels; use validate_multiclass_oversampling for multi-class data"
+        )
+    majority_label = int(labels[labels != minority_label][0])
+
     minority, majority = _split_classes(X, y, minority_label)
 
     vis_majority, hid_majority = train_test_split(
@@ -99,8 +118,8 @@ def validate_oversampling(
     X_train = np.vstack([vis_majority, minority])
     y_train = np.hstack(
         [
-            np.zeros(len(vis_majority), dtype=int),
-            np.full(len(minority), minority_label, dtype=int),
+            np.full(len(vis_majority), majority_label, dtype=y.dtype),
+            np.full(len(minority), minority_label, dtype=y.dtype),
         ]
     )
 

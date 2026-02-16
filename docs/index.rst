@@ -45,10 +45,22 @@ Contents
    installation
    quickstart
    user_guide
+   algorithms
+   distances
+   metrics
+   benchmarking
+   plotting
+   visual_examples
+   cli
+   configuration
+   api_landing
    api_reference
    tutorials
    examples
+   gallery/index
    contributing
+   bibliography
+   faq
 
 Indices and tables
 ==================

@@ -46,7 +46,15 @@ __all__ = [
 
 
 def hassanat_distance(x1: np.ndarray, x2: np.ndarray) -> float:
-    """Compute the Hassanat distance between two vectors."""
+    """Compute the Hassanat distance between two vectors.
+
+    Args:
+        x1: First vector.
+        x2: Second vector.
+
+    Returns:
+        Hassanat distance.
+    """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
@@ -60,7 +68,15 @@ def hassanat_distance(x1: np.ndarray, x2: np.ndarray) -> float:
 
 
 def euclidean_distance(x1: np.ndarray, x2: np.ndarray) -> float:
-    """Compute Euclidean distance between two vectors."""
+    """Compute Euclidean distance between two vectors.
+
+    Args:
+        x1: First vector.
+        x2: Second vector.
+
+    Returns:
+        Euclidean distance.
+    """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
@@ -69,7 +85,15 @@ def euclidean_distance(x1: np.ndarray, x2: np.ndarray) -> float:
 
 
 def manhattan_distance(x1: np.ndarray, x2: np.ndarray) -> float:
-    """Compute Manhattan distance between two vectors."""
+    """Compute Manhattan distance between two vectors.
+
+    Args:
+        x1: First vector.
+        x2: Second vector.
+
+    Returns:
+        Manhattan distance.
+    """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
@@ -78,7 +102,15 @@ def manhattan_distance(x1: np.ndarray, x2: np.ndarray) -> float:
 
 
 def cosine_distance(x1: np.ndarray, x2: np.ndarray) -> float:
-    """Compute Cosine distance between two vectors."""
+    """Compute Cosine distance between two vectors.
+
+    Args:
+        x1: First vector.
+        x2: Second vector.
+
+    Returns:
+        Cosine distance.
+    """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
