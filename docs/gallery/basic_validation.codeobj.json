@@ -1,0 +1,29 @@
+{
+ "SMOTE": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "imblearn.over_sampling",
+   "module_short": "imblearn.over_sampling",
+   "name": "SMOTE"
+  }
+ ],
+ "make_classification": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "sklearn.datasets",
+   "module_short": "sklearn.datasets",
+   "name": "make_classification"
+  }
+ ],
+ "validate_oversampling": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "oversampleqa.validator",
+   "module_short": "oversampleqa.validator",
+   "name": "validate_oversampling"
+  }
+ ]
+}

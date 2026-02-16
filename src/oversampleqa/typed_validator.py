@@ -35,6 +35,14 @@ class PydanticValidationConfig(BaseModel):
 
     @field_validator("metric")
     def validate_metric(cls, value: str) -> str:
+        """Validate that the metric is supported.
+
+        Args:
+            value: Metric name.
+
+        Returns:
+            The validated metric name.
+        """
         allowed = set(_METRICS.keys())
         if value not in allowed:
             raise ValueError(f"metric must be one of {sorted(allowed)}")
@@ -42,6 +50,14 @@ class PydanticValidationConfig(BaseModel):
 
     @field_validator("random_state")
     def validate_random_state(cls, value: Optional[int]) -> Optional[int]:
+        """Validate random_state bounds when provided.
+
+        Args:
+            value: Optional random state.
+
+        Returns:
+            The validated random state.
+        """
         if value is not None and not (0 <= value < 2**31):
             raise ValueError("random_state must be between 0 and 2**31 - 1")
         return value
@@ -62,6 +78,18 @@ class TypedValidator(BaseValidator[ValidationResult]):
         oversampler: OversamplerProtocol,
         config: ValidationConfig,
     ) -> ValidationResult:
+        """Validate using a prebuilt ValidationConfig.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            config: ValidationConfig.
+
+        Returns:
+            ValidationResult.
+        """
         ...
 
     @overload
@@ -77,6 +105,21 @@ class TypedValidator(BaseValidator[ValidationResult]):
         return_details: bool = False,
         random_state: Optional[int] = None,
     ) -> ValidationResult:
+        """Validate using keyword configuration parameters.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            hidden_ratio: Fraction of majority to hide.
+            metric: Distance metric name.
+            return_details: Whether to include distance matrices.
+            random_state: Optional random seed.
+
+        Returns:
+            ValidationResult.
+        """
         ...
 
     def validate(
@@ -88,6 +131,19 @@ class TypedValidator(BaseValidator[ValidationResult]):
         config: Optional[ValidationConfig] = None,
         **kwargs: Any,
     ) -> ValidationResult:
+        """Validate oversampling with typed configuration.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            config: ValidationConfig, or None to build from kwargs.
+            **kwargs: ValidationConfig fields when ``config`` is None.
+
+        Returns:
+            ValidationResult with error rate and optional details.
+        """
         if config is None:
             parsed = PydanticValidationConfig(**kwargs)
             metric_name = cast(MetricName, parsed.metric)
@@ -119,6 +175,18 @@ class TypedValidator(BaseValidator[ValidationResult]):
         oversampler: OversamplerProtocol,
         config: ValidationConfig,
     ) -> ValidationResult:
+        """Async wrapper around validate using an executor.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            config: ValidationConfig.
+
+        Returns:
+            ValidationResult.
+        """
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, self.validate, X, y, minority_label, oversampler, config
@@ -132,6 +200,15 @@ class TypedValidator(BaseValidator[ValidationResult]):
         oversampler: OversamplerProtocol,
         config: ValidationConfig,
     ) -> None:
+        """Validate input arrays and configuration.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            config: ValidationConfig.
+        """
         if not isinstance(X, np.ndarray) or not np.issubdtype(X.dtype, np.floating):
             raise ValidationError("X must be a floating-point numpy array")
         if not isinstance(y, np.ndarray) or not np.issubdtype(y.dtype, np.integer):
@@ -153,6 +230,18 @@ class TypedValidator(BaseValidator[ValidationResult]):
         oversampler: OversamplerProtocol,
         config: ValidationConfig,
     ) -> ValidationResult:
+        """Execute the standard validation pipeline.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            config: ValidationConfig.
+
+        Returns:
+            ValidationResult.
+        """
         from .validator import validate_oversampling
 
         try:
@@ -199,6 +288,16 @@ class TypedValidator(BaseValidator[ValidationResult]):
 
     @staticmethod
     def _wald_confidence_interval(rate: float, n: int, z: float = 1.96) -> Tuple[float, float]:
+        """Compute a Wald confidence interval for a binomial proportion.
+
+        Args:
+            rate: Estimated proportion.
+            n: Sample size.
+            z: Z-score for the confidence level.
+
+        Returns:
+            Lower and upper confidence bounds.
+        """
         if n <= 0:
             return (0.0, 1.0)
         se = math.sqrt(rate * (1 - rate) / n)
@@ -209,6 +308,14 @@ class TypedValidator(BaseValidator[ValidationResult]):
 
 @asynccontextmanager
 async def validation_session(config: ValidationConfig) -> AsyncIterator[TypedValidator]:
+    """Async context manager that yields a TypedValidator.
+
+    Args:
+        config: ValidationConfig (reserved for future use).
+
+    Yields:
+        TypedValidator instance.
+    """
     validator = TypedValidator()
     try:
         yield validator
@@ -223,9 +330,23 @@ class ServiceRegistry:
         self._services: Dict[type, Any] = {}
 
     def register(self, service_type: type, implementation: Any) -> None:
+        """Register a service implementation by type.
+
+        Args:
+            service_type: Key type.
+            implementation: Service implementation instance.
+        """
         self._services[service_type] = implementation
 
     def get(self, service_type: type) -> Any:
+        """Retrieve a registered service implementation.
+
+        Args:
+            service_type: Key type.
+
+        Returns:
+            Registered service implementation.
+        """
         if service_type not in self._services:
             raise ConfigurationError(f"Service {service_type} not registered")
         return self._services[service_type]

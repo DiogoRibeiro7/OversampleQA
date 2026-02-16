@@ -14,7 +14,17 @@ def generate_report(
     output_path: str | None = None,
     include_plots: bool = True,
 ) -> str:
-    """Generate a basic text report from benchmark results."""
+    """Generate a basic text report from benchmark results.
+
+    Args:
+        benchmark_results: Benchmark results dataframe.
+        output_format: Output format (markdown or html).
+        output_path: Optional output file path.
+        include_plots: Whether to include plot artifacts.
+
+    Returns:
+        Rendered report content as a string.
+    """
     if output_format not in {"markdown", "html"}:
         raise ValueError("output_format must be 'markdown' or 'html'")
 

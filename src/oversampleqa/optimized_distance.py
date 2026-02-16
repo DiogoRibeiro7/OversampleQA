@@ -21,7 +21,11 @@ DistanceCallable = Callable[[NDArray[np.floating], NDArray[np.floating]], float]
 
 
 def get_available_memory_gb() -> float:
-    """Return currently available system memory in gigabytes."""
+    """Return currently available system memory in gigabytes.
+
+    Returns:
+        Available memory in GB.
+    """
     return psutil.virtual_memory().available / (1024**3)
 
 
@@ -123,6 +127,18 @@ class OptimizedDistanceMatrix:
         batch_size: Union[int, str] = "auto",
         **kwargs: Any,
     ) -> NDArray[np.floating]:
+        """Compute distances without using the cache.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            metric: Distance metric name.
+            batch_size: Batch size or mode.
+            **kwargs: Metric keyword arguments.
+
+        Returns:
+            Distance matrix.
+        """
         vectorized = self._vectorized_dispatch.get(metric)
         n1, n2 = len(X1), len(X2)
         dtype = X1.dtype
@@ -167,6 +183,15 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **_: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized Euclidean distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
         x1_norm = np.einsum("ij,ij->i", X1, X1)
         x2_norm = np.einsum("ij,ij->i", X2, X2)
         distances = x1_norm[:, None] + x2_norm[None, :] - 2.0 * (X1 @ X2.T)
@@ -179,6 +204,15 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **_: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized Manhattan distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
         diff = np.abs(X1[:, None, :] - X2[None, :, :])
         return diff.sum(axis=2)
 
@@ -188,6 +222,15 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **_: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized cosine distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
         dot = X1 @ X2.T
         norm1 = np.linalg.norm(X1, axis=1)
         norm2 = np.linalg.norm(X2, axis=1)
@@ -202,6 +245,15 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **_: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized Chebyshev distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
         diff = np.abs(X1[:, None, :] - X2[None, :, :])
         return diff.max(axis=2)
 
@@ -211,6 +263,15 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **_: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized Canberra distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
         numerator = np.abs(X1[:, None, :] - X2[None, :, :])
         denominator = np.abs(X1[:, None, :]) + np.abs(X2[None, :, :])
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -223,6 +284,15 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **_: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized Bray-Curtis distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
         num = np.abs(X1[:, None, :] - X2[None, :, :]).sum(axis=2)
         denom = np.abs(X1[:, None, :] + X2[None, :, :]).sum(axis=2)
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -235,6 +305,15 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **_: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized correlation distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
         X1_c = X1 - X1.mean(axis=1, keepdims=True)
         X2_c = X2 - X2.mean(axis=1, keepdims=True)
         dot = X1_c @ X2_c.T
@@ -252,6 +331,16 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **kwargs: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized Minkowski distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            **kwargs: Metric keyword arguments (e.g., ``p``).
+
+        Returns:
+            Distance matrix.
+        """
         p = kwargs.get("p", 3.0)
         diff = np.abs(X1[:, None, :] - X2[None, :, :]) ** p
         return np.sum(diff, axis=2) ** (1.0 / p)
@@ -262,6 +351,16 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         **kwargs: Any,
     ) -> NDArray[np.floating]:
+        """Vectorized Mahalanobis distance matrix.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            **kwargs: Metric keyword arguments (e.g., ``cov_inv``).
+
+        Returns:
+            Distance matrix.
+        """
         cov_inv = kwargs.get("cov_inv")
         if cov_inv is None:
             return self._vectorized_euclidean(X1, X2)
@@ -279,6 +378,19 @@ class OptimizedDistanceMatrix:
         vectorized: Optional[Callable[..., NDArray[np.floating]]] = None,
         **kwargs: Any,
     ) -> NDArray[np.floating]:
+        """Compute distances in batches to limit memory usage.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            metric: Distance metric name.
+            batch_size: Rows per batch.
+            vectorized: Optional vectorized kernel.
+            **kwargs: Metric keyword arguments.
+
+        Returns:
+            Distance matrix.
+        """
         result = np.empty((len(X1), len(X2)), dtype=X1.dtype)
         iterator = range(0, len(X1), batch_size)
         iterator = self._progress(iterator, total=len(X1))  # type: ignore[assignment]
@@ -300,6 +412,17 @@ class OptimizedDistanceMatrix:
         metric: str,
         **kwargs: Any,
     ) -> NDArray[np.floating]:
+        """Compute distances row-by-row to minimize memory usage.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            metric: Distance metric name.
+            **kwargs: Metric keyword arguments.
+
+        Returns:
+            Distance matrix.
+        """
         metric_func = self.metric_registry[metric]
         result = np.empty((len(X1), len(X2)), dtype=X1.dtype)
         iterator = self._progress(range(len(X1)), total=len(X1))
@@ -315,6 +438,17 @@ class OptimizedDistanceMatrix:
         metric_func: DistanceCallable,
         **kwargs: Any,
     ) -> NDArray[np.floating]:
+        """Compute pairwise distances using a Python loop.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            metric_func: Metric callable.
+            **kwargs: Metric keyword arguments.
+
+        Returns:
+            Distance matrix.
+        """
         dm = np.empty((len(X1), len(X2)), dtype=X1.dtype)
         for i, u in enumerate(X1):
             for j, v in enumerate(X2):
@@ -322,6 +456,15 @@ class OptimizedDistanceMatrix:
         return dm
 
     def _progress(self, iterable: Iterable[int], total: int) -> Iterable[int]:
+        """Wrap an iterable with a progress bar if enabled.
+
+        Args:
+            iterable: Base iterator.
+            total: Total size for progress display.
+
+        Returns:
+            Iterator wrapped with tqdm when enabled.
+        """
         if (
             not self.show_progress
             or tqdm is None
@@ -331,6 +474,15 @@ class OptimizedDistanceMatrix:
         return tqdm(iterable, total=math.ceil(total))  # pragma: no cover - requires tqdm
 
     def _auto_batch_size(self, n_cols: int, dtype: np.dtype) -> int:
+        """Estimate a safe batch size under the memory limit.
+
+        Args:
+            n_cols: Number of columns in distance matrix.
+            dtype: Data type of the distance matrix.
+
+        Returns:
+            Batch size in rows.
+        """
         limit_bytes = int(self.memory_limit_gb * (1024**3))
         row_bytes = max(1, n_cols * np.dtype(dtype).itemsize)
         batch = max(1, limit_bytes // max(row_bytes, 1))
@@ -342,6 +494,16 @@ class OptimizedDistanceMatrix:
         n_cols: int,
         dtype: np.dtype,
     ) -> float:
+        """Estimate memory usage (GB) for a dense distance matrix.
+
+        Args:
+            n_rows: Number of rows.
+            n_cols: Number of columns.
+            dtype: Data type of the distance matrix.
+
+        Returns:
+            Estimated memory usage in gigabytes.
+        """
         itemsize = np.dtype(dtype).itemsize
         result_bytes = n_rows * n_cols * itemsize
         overhead_bytes = (n_rows + n_cols) * itemsize
@@ -353,6 +515,15 @@ class OptimizedDistanceMatrix:
         n_cols: int,
         dtype: np.dtype | None = None,
     ) -> float:
-        """Public helper returning estimated memory footprint of a distance matrix."""
+        """Public helper returning estimated memory footprint of a distance matrix.
+
+        Args:
+            n_rows: Number of rows.
+            n_cols: Number of columns.
+            dtype: Data type of the distance matrix.
+
+        Returns:
+            Estimated memory usage in gigabytes.
+        """
         dtype = dtype or np.dtype(np.float64)
         return self._estimate_memory_usage(n_rows, n_cols, dtype)

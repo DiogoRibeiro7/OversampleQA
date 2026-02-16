@@ -21,7 +21,19 @@ def run_benchmark(
     distance_metric: str = "hassanat",
     random_state: int | None = None,
 ) -> pd.DataFrame:
-    """Run validation across datasets and oversampling methods."""
+    """Run validation across datasets and oversampling methods.
+
+    Args:
+        datasets: Dataset descriptors containing ``data`` and ``target``.
+        oversamplers: Oversampler instances.
+        hidden_ratios: Hidden ratios to evaluate.
+        n_runs: Number of repetitions per configuration.
+        distance_metric: Distance metric name.
+        random_state: RNG seed for reproducibility.
+
+    Returns:
+        DataFrame with per-run error rates.
+    """
     if hidden_ratios is None:
         hidden_ratios = [0.1, 0.25, 0.5]
 
@@ -207,7 +219,14 @@ def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
 
 
 def compute_ranking(results: pd.DataFrame) -> pd.DataFrame:
-    """Return mean, stddev and rank of oversamplers."""
+    """Return mean, stddev and rank of oversamplers.
+
+    Args:
+        results: Benchmark results dataframe.
+
+    Returns:
+        Summary dataframe with mean, std, and rank.
+    """
     summary = results.groupby("oversampler")["error_rate"].agg(["mean", "std"])
     summary["rank"] = summary["mean"].rank(method="min")
     return summary
@@ -216,7 +235,13 @@ def compute_ranking(results: pd.DataFrame) -> pd.DataFrame:
 def export_benchmark_results(
     results: pd.DataFrame, output_path: str, fmt: str = "csv"
 ) -> None:
-    """Export benchmark summary to CSV, JSON or Markdown."""
+    """Export benchmark summary to CSV, JSON or Markdown.
+
+    Args:
+        results: Benchmark results dataframe.
+        output_path: Destination path.
+        fmt: Output format (csv, json, markdown).
+    """
     summary = compute_ranking(results)
     fmt = fmt.lower()
     if fmt == "csv":
