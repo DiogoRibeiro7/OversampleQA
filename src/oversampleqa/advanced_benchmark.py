@@ -94,6 +94,16 @@ class StatisticalBenchmark:
         oversamplers: Sequence[Any],
         metrics: Sequence[str],
     ) -> List[BenchmarkResult]:
+        """Run benchmark for a single dataset across oversamplers and metrics.
+
+        Args:
+            dataset: Dataset descriptor with ``data`` and ``target`` arrays.
+            oversamplers: Oversamplers to evaluate.
+            metrics: Distance metrics to test.
+
+        Returns:
+            List of BenchmarkResult entries for the dataset.
+        """
         X, y = dataset["data"], dataset["target"]
         dataset_name = dataset.get("name", "dataset")
         minority_label = dataset.get("minority_label", 1)
@@ -141,6 +151,18 @@ class StatisticalBenchmark:
         oversampler: Any,
         metric: str,
     ) -> List[float]:
+        """Compute error rates across repeated stratified folds.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance to clone per fold.
+            metric: Distance metric name.
+
+        Returns:
+            List of error rates for each evaluated fold.
+        """
         errors: List[float] = []
         rng = np.random.default_rng(self.random_state)
 
@@ -175,6 +197,14 @@ class StatisticalBenchmark:
         return errors
 
     def _confidence_interval(self, values: Sequence[float]) -> Tuple[float, float]:
+        """Return a confidence interval for the provided values.
+
+        Args:
+            values: Sample values.
+
+        Returns:
+            Lower and upper bounds for the configured confidence level.
+        """
         if len(values) < 2:
             return (float(values[0]) if values else 0.0, float(values[0]) if values else 0.0)
         arr = np.asarray(values, dtype=float)
@@ -190,7 +220,15 @@ class StatisticalBenchmark:
         return lower, upper
 
     def _recommended_sample_size(self, values: Sequence[float], target_power: float = 0.8) -> Optional[int]:
-        """Rough sample size recommendation using Cohen's d approximation."""
+        """Estimate recommended sample size using a Cohen's d approximation.
+
+        Args:
+            values: Observed error rates.
+            target_power: Desired statistical power.
+
+        Returns:
+            Estimated required sample size or ``None`` if not computable.
+        """
 
         if len(values) < 2:
             return None
@@ -209,6 +247,14 @@ class StatisticalBenchmark:
         return int(math.ceil(n))
 
     def _add_statistical_analysis(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Add pairwise p-values and effect sizes per dataset.
+
+        Args:
+            frame: Benchmark results dataframe.
+
+        Returns:
+            Dataframe with pairwise statistics columns populated.
+        """
         frame = frame.copy()
         frame["pairwise_p_values"] = None
         frame["pairwise_effect_sizes"] = None
@@ -226,18 +272,41 @@ class StatisticalBenchmark:
         return frame
 
     def _pairwise_statistical_tests(self, dataset_slice: pd.DataFrame) -> Dict[str, float]:
+        """Compute pairwise Wilcoxon tests across oversamplers.
+
+        Args:
+            dataset_slice: Subset of results for a single dataset.
+
+        Returns:
+            Mapping of ``oversampler_a_vs_b`` to corrected p-values.
+        """
         p_values: Dict[str, float] = {}
         oversamplers = dataset_slice["oversampler_name"].unique()
         for i, os1 in enumerate(oversamplers):
             for os2 in oversamplers[i + 1 :]:
-                errors1 = dataset_slice.loc[
-                    dataset_slice["oversampler_name"] == os1, "error_rates"
-                ].iloc[0]
-                errors2 = dataset_slice.loc[
-                    dataset_slice["oversampler_name"] == os2, "error_rates"
-                ].iloc[0]
+                errors1 = np.asarray(
+                    dataset_slice.loc[
+                        dataset_slice["oversampler_name"] == os1, "error_rates"
+                    ].iloc[0],
+                    dtype=float,
+                )
+                errors2 = np.asarray(
+                    dataset_slice.loc[
+                        dataset_slice["oversampler_name"] == os2, "error_rates"
+                    ].iloc[0],
+                    dtype=float,
+                )
                 try:
-                    _, p_val = stats.wilcoxon(errors1, errors2)
+                    if len(errors1) == 0 or len(errors2) == 0:
+                        p_val = 1.0
+                    elif len(errors1) != len(errors2):
+                        p_val = 1.0
+                    elif np.allclose(errors1, errors2):
+                        p_val = 1.0
+                    else:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", RuntimeWarning)
+                            _, p_val = stats.wilcoxon(errors1, errors2)
                 except Exception:
                     p_val = 1.0
                 key = f"{os1}_vs_{os2}"
@@ -245,6 +314,14 @@ class StatisticalBenchmark:
         return self._apply_correction(p_values)
 
     def _calculate_effect_sizes(self, dataset_slice: pd.DataFrame) -> Dict[str, float]:
+        """Compute pairwise Cohen's d effect sizes.
+
+        Args:
+            dataset_slice: Subset of results for a single dataset.
+
+        Returns:
+            Mapping of ``oversampler_a_vs_b`` to Cohen's d.
+        """
         effect_sizes: Dict[str, float] = {}
         oversamplers = dataset_slice["oversampler_name"].unique()
         for i, os1 in enumerate(oversamplers):
@@ -270,6 +347,15 @@ class StatisticalBenchmark:
 
     @staticmethod
     def _pooled_std(x: np.ndarray, y: np.ndarray) -> float:
+        """Return pooled standard deviation for two samples.
+
+        Args:
+            x: Sample 1.
+            y: Sample 2.
+
+        Returns:
+            Pooled standard deviation.
+        """
         if len(x) < 2 or len(y) < 2:
             return 0.0
         n1, n2 = len(x), len(y)
@@ -278,6 +364,14 @@ class StatisticalBenchmark:
         return math.sqrt(max(pooled, 0.0))
 
     def _apply_correction(self, p_values: Dict[str, float]) -> Dict[str, float]:
+        """Apply multiple-comparison correction to p-values.
+
+        Args:
+            p_values: Raw p-values.
+
+        Returns:
+            Corrected p-values using the configured method.
+        """
         if not p_values:
             return p_values
         if self.correction_method == "bonferroni":
@@ -294,6 +388,14 @@ class StatisticalBenchmark:
 
     @staticmethod
     def _result_to_dict(result: BenchmarkResult) -> Dict[str, Any]:
+        """Convert BenchmarkResult to a serializable dictionary.
+
+        Args:
+            result: Benchmark result structure.
+
+        Returns:
+            Dict suitable for DataFrame construction or serialization.
+        """
         return {
             "dataset_name": result.dataset_name,
             "oversampler_name": result.oversampler_name,
@@ -323,6 +425,16 @@ class DatasetRepository:
         max_samples: int = 10_000,
         include_openml: bool = False,
     ) -> List[Dict[str, Any]]:
+        """Load curated datasets for benchmarking.
+
+        Args:
+            domains: Domain names to load.
+            max_samples: Maximum number of samples per dataset.
+            include_openml: Whether to attempt OpenML downloads.
+
+        Returns:
+            List of dataset descriptors.
+        """
         domains = tuple(domains or ("medical", "financial"))
         datasets: List[Dict[str, Any]] = []
         for domain in domains:
@@ -332,6 +444,16 @@ class DatasetRepository:
     def _load_domain(
         self, domain: str, max_samples: int, include_openml: bool
     ) -> List[Dict[str, Any]]:
+        """Load datasets for a single domain.
+
+        Args:
+            domain: Domain name.
+            max_samples: Maximum number of samples per dataset.
+            include_openml: Whether to attempt OpenML downloads.
+
+        Returns:
+            List of dataset descriptors.
+        """
         domain = domain.lower()
         if domain == "medical":
             return self._load_medical(max_samples, include_openml)
@@ -340,6 +462,15 @@ class DatasetRepository:
         return []
 
     def _load_medical(self, max_samples: int, include_openml: bool) -> List[Dict[str, Any]]:
+        """Load medical datasets for benchmarking.
+
+        Args:
+            max_samples: Maximum number of samples per dataset.
+            include_openml: Whether to attempt OpenML downloads.
+
+        Returns:
+            List of dataset descriptors.
+        """
         from sklearn.datasets import load_breast_cancer
 
         cancer = load_breast_cancer()
@@ -372,6 +503,14 @@ class DatasetRepository:
         return datasets
 
     def _load_financial(self, max_samples: int) -> List[Dict[str, Any]]:
+        """Load financial datasets for benchmarking.
+
+        Args:
+            max_samples: Maximum number of samples per dataset.
+
+        Returns:
+            List of dataset descriptors.
+        """
         try:
             from imbalanced_datasets import creditcard  # optional
         except Exception:  # pragma: no cover
@@ -393,6 +532,14 @@ class DatasetRepository:
     def create_synthetic_benchmark_suite(
         self, difficulty_levels: Optional[Sequence[str]] = None
     ) -> List[Dict[str, Any]]:
+        """Generate synthetic datasets for the requested difficulty levels.
+
+        Args:
+            difficulty_levels: Difficulty labels to generate.
+
+        Returns:
+            List of synthetic dataset descriptors.
+        """
         difficulty_levels = tuple(difficulty_levels or ("easy", "medium", "hard", "extreme"))
         synthetic: List[Dict[str, Any]] = []
         for difficulty in difficulty_levels:
@@ -400,6 +547,14 @@ class DatasetRepository:
         return synthetic
 
     def _generate_difficulty(self, difficulty: str) -> List[Dict[str, Any]]:
+        """Create synthetic datasets for a single difficulty tier.
+
+        Args:
+            difficulty: Difficulty label.
+
+        Returns:
+            List of dataset descriptors for the difficulty tier.
+        """
         from sklearn.datasets import make_classification
 
         difficulty = difficulty.lower()
@@ -446,7 +601,15 @@ class DatasetRepository:
 
 
 def create_benchmark_report(results_df: pd.DataFrame, output_path: str = "benchmark_report.html") -> Path:
-    """Create a lightweight HTML report summarising benchmark statistics."""
+    """Create a lightweight HTML report summarising benchmark statistics.
+
+    Args:
+        results_df: Benchmark results dataframe.
+        output_path: Output HTML path.
+
+    Returns:
+        Path to the generated report.
+    """
 
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)

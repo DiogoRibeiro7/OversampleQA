@@ -22,6 +22,19 @@ def _distance_disk(
     batch_size: int | str,
     kwargs_tuple: Tuple[Tuple[str, Any], ...],
 ) -> np.ndarray:
+    """Disk-cached distance computation wrapper for joblib.
+
+    Args:
+        X1: First feature matrix.
+        X2: Second feature matrix.
+        metric: Distance metric name.
+        optimizer: OptimizedDistanceMatrix instance.
+        batch_size: Batch size or mode.
+        kwargs_tuple: Serialized metric kwargs.
+
+    Returns:
+        Distance matrix.
+    """
     kwargs = dict(kwargs_tuple)
     return optimizer._compute_uncached(  # type: ignore[attr-defined]
         X1,
@@ -54,19 +67,39 @@ class ValidationCache:
         self._disk_distance = self.memory.cache(_distance_disk)
 
     def get_data_hash(self, X: np.ndarray, y: np.ndarray) -> str:
-        """Return stable SHA256 hash for dataset."""
+        """Return stable SHA256 hash for dataset.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+
+        Returns:
+            SHA256 hex digest.
+        """
         hasher = hashlib.sha256()
         self._update_hasher(hasher, X)
         self._update_hasher(hasher, y)
         return hasher.hexdigest()
 
     def cache_validation_result(self, params_hash: str, result: float) -> None:
-        """Persist validation result using joblib."""
+        """Persist validation result using joblib.
+
+        Args:
+            params_hash: Cache key for the run parameters.
+            result: Error rate to persist.
+        """
         path = self.cache_dir / f"validation_{params_hash}.pkl"
         joblib.dump(result, path)
 
     def load_validation_result(self, params_hash: str) -> float | None:
-        """Retrieve cached validation result if present."""
+        """Retrieve cached validation result if present.
+
+        Args:
+            params_hash: Cache key for the run parameters.
+
+        Returns:
+            Cached error rate if available.
+        """
         path = self.cache_dir / f"validation_{params_hash}.pkl"
         if path.exists():
             return joblib.load(path)
@@ -81,7 +114,19 @@ class ValidationCache:
         batch_size: int | str = "auto",
         **kwargs: Any,
     ) -> np.ndarray:
-        """Return cached distance matrix or compute and cache it."""
+        """Return cached distance matrix or compute and cache it.
+
+        Args:
+            optimizer: OptimizedDistanceMatrix instance.
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            metric: Distance metric name.
+            batch_size: Batch size or mode.
+            **kwargs: Metric keyword arguments.
+
+        Returns:
+            Distance matrix.
+        """
         key = self._distance_key(X1, X2, metric, kwargs)
         kwargs_tuple = tuple(sorted(kwargs.items(), key=lambda item: item[0]))
         self._distance_args[key] = (X1, X2, metric, optimizer, batch_size, kwargs_tuple)
@@ -91,6 +136,14 @@ class ValidationCache:
 
     @lru_cache(maxsize=128)
     def _lru_distance(self, key: str) -> np.ndarray:
+        """Fetch distance matrix from disk cache with LRU protection.
+
+        Args:
+            key: Cache key.
+
+        Returns:
+            Cached or newly computed distance matrix.
+        """
         args = self._distance_args.get(key)
         if args is None:
             raise ValueError(f"No arguments registered for key {key}")
@@ -108,6 +161,17 @@ class ValidationCache:
         metric: str,
         kwargs: Dict[str, Any],
     ) -> str:
+        """Return a stable key for distance matrix caching.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+            metric: Distance metric name.
+            kwargs: Metric keyword arguments.
+
+        Returns:
+            Cache key as a hex digest.
+        """
         hasher = hashlib.sha256()
         self._update_hasher(hasher, X1)
         self._update_hasher(hasher, X2)
@@ -119,6 +183,12 @@ class ValidationCache:
 
     @staticmethod
     def _update_hasher(hasher: "hashlib._Hash", arr: np.ndarray) -> None:
+        """Update the hasher with array shape, dtype, and data bytes.
+
+        Args:
+            hasher: Hash object to update.
+            arr: Array to serialize into the hash.
+        """
         hasher.update(str(arr.shape).encode("utf-8"))
         hasher.update(str(arr.dtype).encode("utf-8"))
         hasher.update(arr.tobytes(order="C"))

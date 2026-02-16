@@ -1,170 +1,83 @@
-# oversampleqa — Detailed Roadmap
+# OversampleQA Roadmap
 
-This document outlines the development of `oversampleqa`, a validation and benchmarking library for imbalanced classification workflows. The package focuses not just on function-by-function implementation but also on high-level goals, target use cases, and diagnostic coverage.
+This roadmap summarizes the current scope, maturity, and next steps for the project.
 
----
+## Project Goals
 
-## 🎯 Package Focus
+- Provide a practical, diagnostics-first toolkit for evaluating oversampling methods in imbalanced classification.
+- Make synthetic sample quality measurable and comparable across methods, datasets, and metrics.
+- Keep workflows reproducible with clear configuration, benchmarking, and exportable reports.
+- Offer a fast path for practitioners and a deeper path for research use cases.
+- Stay compatible with scikit-learn and imbalanced-learn conventions.
 
-A validation and benchmarking library for models and preprocessing methods applied to **imbalanced classification problems**, with special focus on:
+## Current State (v0.1.0)
 
-* ✅ Oversampling/undersampling validation
-* ✅ Error analysis of synthetic samples
-* ✅ Sensitivity diagnostics for imbalance mitigation
-* ✅ Distributional checks (e.g., overlap with hidden majority)
-* ✅ Human-understandable reports and plots
-* ✅ Modular, extensible design compatible with scikit-learn and imbalanced-learn
+- Core validation implemented for binary and multiclass workflows.
+- Broad distance metric support with optimized and memory-efficient computation.
+- Benchmarking utilities with dataset loaders and export helpers.
+- Rich CLI with profiles, templates, shell completion, and diagnostics.
+- Plugin system for custom metrics and validators.
+- Sphinx docs, examples, and tutorials in-repo.
 
----
+## Milestones
 
-## 🧱 Modules & Responsibilities
+Owner for all milestones: `diogoribeiro7`.
 
-| Module         | Purpose                                                                |
-| -------------- | ---------------------------------------------------------------------- |
-| `distance.py`  | Implement multiple distance metrics (Hassanat, Euclidean, Mahalanobis) |
-| `validator.py` | Validate oversampling using hidden majority comparison                 |
-| `metrics.py`   | Compute error rates, overlaps, density divergence                      |
-| `benchmark.py` | Run batched evaluations across datasets and oversampling methods       |
-| `plotting.py`  | 2D/3D visualizations (PCA, UMAP) of synthetic vs real examples         |
-| `report.py`    | Export JSON/Markdown/HTML summary reports                              |
-| `cli.py`       | (Optional) Command-line interface to run validations and exports       |
+### v0.2.0 — May 15, 2026
 
----
+Focus: documentation quality and reproducibility.
 
-## 📦 Phase 1 — Core Functionality
+Scope:
 
-### 1.1. `distance.py`
+- Add concise CLI examples and configuration samples to docs.
+- Add a short concepts page (reusing README content, expanded).
+- Add a minimal tutorial notebook mirroring README quick start.
+- Document reproducibility guidance (seeds, dataset provenance).
+- Harden edge-case behavior and document expected error modes.
 
-* ✅ `hassanat_distance()` implementation
-* ✅ Add `euclidean_distance()`, `manhattan_distance()`, `cosine_distance()`
-* ✅ General-purpose `distance_matrix(X1, X2, metric="hassanat")`
+Definition of Done:
 
-### 1.2. `validator.py`
+- `make lint typecheck` passes.
+- `make coverage` passes locally.
+- Docs build cleanly: `make docs`.
+- Version bumped in `pyproject.toml` and tag created.
 
-* ✅ `validate_oversampling(X, y, oversampler, minority_label, hidden_ratio)`
-* ✅ Extract synthetic samples from post-resample
-* ✅ Compare synthetic to hidden majority vs real minority
-* ✅ Support multiple distance metrics
-* ✅ Return error counts and full similarity matrix (optional)
+### v0.3.0 — August 15, 2026
 
-### 1.3. `metrics.py`
+Focus: benchmarking depth and reporting.
 
-* ✅ Calculate error rate: # majority-like synthetic / total synthetic
-* ✅ Confidence ratio: dist\_min / dist\_maj
-* ✅ Local density divergence
-* ✅ Minority-class recall loss (on synthetic data)
+Scope:
 
----
+- Expand benchmark suite with optional performance profiling runs.
+- Improve reporting templates for research and production contexts.
+- Add more built-in datasets with clear licensing metadata.
+- Add a benchmark results README in `docs/`.
 
-## 📊 Phase 2 — Benchmarking and Reporting
+Definition of Done:
 
-### 2.1. `benchmark.py`
+- Benchmark suite runs on at least 3 datasets without failures.
+- Exported reports validated for JSON/YAML/Markdown.
+- Release notes drafted in `CHANGELOG.md` (if reintroduced).
 
-* ✅ Load and normalize common datasets (Yeast4/5/6, Vehicle3)
-* ✅ Batch run all oversamplers on each dataset
-* ✅ Repeat with 10%, 25%, 50% hidden majority
-* ✅ Export CSV, JSON, Markdown summaries with error, rank, stddev
+### v1.0.0 — December 15, 2026
 
-### 2.2. `plotting.py`
+Focus: API stability and release automation.
 
-* ✅ PCA/UMAP 2D scatter plot of:
+Scope:
 
-  * Majority
-  * Minority
-  * Hidden Majority
-  * Synthetic samples
-* ✅ Boxplot of error rates across oversamplers
-* ✅ Rank vs error line chart
+- API stability commitments and semantic versioning guarantees.
+- Formalize plugin APIs and publish reference plugins.
+- Public release checklist with automated verification.
+- Documentation audit and deprecations plan.
 
-### 2.3. `report.py`
+Definition of Done:
 
-* ✅ Write markdown and HTML reports with:
+- Backwards compatibility policy documented.
+- Full test suite passes and `make security` passes.
+- Tagged release and release artifacts generated via CI.
 
-  * Table of metrics per sampler
-  * Charts and plots (as images)
-  * Summary rank table
+## Non-Goals
 
-### 2.4. Additional distance metrics
-
-* ✅ Implement Hellinger distance for probability vectors
-* ✅ Implement Jensen–Shannon distance for probability vectors
-
----
-
-## 🧠 Phase 3 — Advanced Diagnostics
-
-### 3.1. Surrogate Model Evaluation
-
-* ✅ Train model on:
-
-  * Real-only
-  * Real + synthetic
-  * Synthetic-only
-* ✅ Compare F1/Recall/Precision on held-out test set
-* ✅ Report shift in generalization
-
-### 3.2. Cluster-Based Diagnostics
-
-* ✅ Cluster majority + synthetic via k-means / DBSCAN
-* ✅ Flag synthetic examples in high-density majority regions
-* ✅ Add overlap score via silhouette or centroid distance
-
-### 3.3. Multi-Class Extension
-
-* ✅ Generalize validation logic to handle >2 classes
-* ✅ Matrix of error rates per (synthetic class, true proximity class)
-
----
-
-## 🧪 Optional Modules / Extensions
-
-* ✅ **Manifold comparison** using UMAP projections
-* ✅ **Model fairness checker** (minority group calibration after oversampling)
-* ✅ **Clustering diagnostics** as alternative to distance validation
-* ✅ **Noise sensitivity diagnostics** (effect of label noise on synthetic risk)
-
----
-
-## 🎯 Target Audience
-
-* Researchers experimenting with **imbalanced classification** techniques
-* ML engineers working on **fraud, medical, security, safety-critical systems**
-* Developers using **`imbalanced-learn`**, **`smote-variants`**, or **AutoML** pipelines
-* Anyone concerned with **trust, generalization, and validity of synthetic data**
-
----
-
-## 📁 Phase 4 — CLI and Packaging
-
-### 4.1. CLI Interface
-
-* ✅ `oversampleqa-validate path/to.csv --oversampler=SMOTE --hidden=0.25`
-* ✅ Optional flags: `--out report.md`, `--plot pca.png`, `--distance hassanat`
-
-### 4.2. PyPI Support
-
-* ✅ Create `pyproject.toml` using Poetry
-* ✅ Add CLI entry point
-* ✅ Register package on PyPI
-* ✅ Provide installation instructions and versioning in README
-
-All roadmap phases are complete as of version 0.1.0.
-
----
-
-## 🛡 Phase 5 — Reliability and Logging
-
-* ✅ Add consistent logging to validator, benchmark, clustering, and surrogate modules
-* ✅ Wrap oversampler and clustering calls in try/except blocks
-* ✅ Log errors in the CLI and propagate exceptions cleanly
-* ✅ Document logging setup in the README
-
-All reliability tasks are complete.
-
----
-
-## 📈 Long-Term Vision
-
-* Provide the **first real diagnostic tool** for oversampling that goes beyond metrics
-* Promote **transparency and interpretability** in imbalanced learning workflows
-* Help prevent overfitting to fake data in sensitive, real-world applications
+- End-to-end AutoML pipelines.
+- Oversampler implementation (delegated to imbalanced-learn and similar libraries).
+- Production model serving.

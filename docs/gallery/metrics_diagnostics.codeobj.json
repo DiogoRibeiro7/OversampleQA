@@ -1,0 +1,56 @@
+{
+ "SMOTE": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "imblearn.over_sampling",
+   "module_short": "imblearn.over_sampling",
+   "name": "SMOTE"
+  }
+ ],
+ "__name__": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "str"
+  }
+ ],
+ "extract_synthetic_samples": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "oversampleqa.validator",
+   "module_short": "oversampleqa.validator",
+   "name": "extract_synthetic_samples"
+  }
+ ],
+ "local_density_divergence": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "oversampleqa.metrics",
+   "module_short": "oversampleqa.metrics",
+   "name": "local_density_divergence"
+  }
+ ],
+ "make_classification": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "sklearn.datasets",
+   "module_short": "sklearn.datasets",
+   "name": "make_classification"
+  }
+ ],
+ "noise_sensitivity_diagnostic": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "oversampleqa.metrics",
+   "module_short": "oversampleqa.metrics",
+   "name": "noise_sensitivity_diagnostic"
+  }
+ ]
+}

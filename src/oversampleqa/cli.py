@@ -10,6 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for validation.
+
+    Returns:
+        Parsed argument namespace.
+    """
     parser = argparse.ArgumentParser(
         description="Validate oversampling using the hidden majority approach"
     )
@@ -53,6 +58,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the CLI validation workflow.
+
+    This entry point loads the dataset, configures the oversampler, runs the
+    validation, and optionally writes a report or plot.
+    """
     logging.basicConfig(level=logging.INFO)
     args = parse_args()
     try:

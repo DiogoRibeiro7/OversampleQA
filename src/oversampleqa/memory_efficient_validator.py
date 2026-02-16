@@ -57,7 +57,21 @@ class MemoryEfficientValidator:
         metric_kwargs: dict[str, Any] | None = None,
         return_details: bool = False,
     ) -> float | tuple[float, int, NDArray[np.floating], NDArray[np.floating]]:
-        """Validate oversampling with streaming-aware distance calculations."""
+        """Validate oversampling with streaming-aware distance calculations.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            minority_label: Minority class label.
+            oversampler: Oversampler instance.
+            hidden_ratio: Fraction of majority to hide.
+            metric: Distance metric name.
+            metric_kwargs: Metric keyword arguments.
+            return_details: Whether to return distance matrices.
+
+        Returns:
+            Error rate or detailed tuple when ``return_details`` is True.
+        """
         X = np.asarray(X)
         y = np.asarray(y)
         metric_kwargs = metric_kwargs or {}
@@ -181,6 +195,19 @@ class MemoryEfficientValidator:
         metric_kwargs: dict[str, Any],
         return_details: bool,
     ) -> float | tuple[float, int, NDArray[np.floating], NDArray[np.floating]]:
+        """Compute validation statistics using chunked distance matrices.
+
+        Args:
+            synthetic: Synthetic samples.
+            hidden_majority: Hidden majority samples.
+            minority: Minority samples.
+            metric: Distance metric name.
+            metric_kwargs: Metric keyword arguments.
+            return_details: Whether to return distance matrices.
+
+        Returns:
+            Error rate or detailed tuple when ``return_details`` is True.
+        """
         dtype = np.result_type(synthetic.dtype, minority.dtype, np.float64)
         n_syn = len(synthetic)
         n_hidden = len(hidden_majority)
@@ -265,12 +292,25 @@ class MemoryEfficientValidator:
         return rate
 
     def _stream_chunk_size(self, n_cols: int, dtype: np.dtype) -> int:
+        """Return streaming chunk size based on memory limit.
+
+        Args:
+            n_cols: Number of columns in distance matrix.
+            dtype: Data type of the distance matrix.
+
+        Returns:
+            Maximum number of rows to process per chunk.
+        """
         limit_bytes = int(self.memory_limit_gb * (1024**3))
         per_row = max(1, n_cols * np.dtype(dtype).itemsize)
         return max(1, limit_bytes // per_row)
 
     def cleanup(self) -> None:
-        """Remove temporary files created during streaming computations."""
+        """Remove temporary files created during streaming computations.
+
+        This cleans any memmap-backed temporary directories created during
+        streaming validation.
+        """
         for path in self._stream_dirs:
             shutil.rmtree(path, ignore_errors=True)
         self._stream_dirs.clear()

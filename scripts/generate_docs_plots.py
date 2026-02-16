@@ -1,0 +1,82 @@
+import os
+import sys
+from pathlib import Path
+
+import numpy as np
+from sklearn.datasets import make_classification
+from imblearn.over_sampling import SMOTE
+
+sys.path.insert(0, os.path.abspath("src"))
+
+from oversampleqa.plotting import (  # noqa: E402
+    plot_class_balance,
+    plot_distance_histogram,
+    plot_error_heatmap,
+)
+from oversampleqa.validator import validate_oversampling, validate_multiclass_oversampling  # noqa: E402
+
+
+def main() -> None:
+    static_dir = Path("docs/_static")
+    static_dir.mkdir(parents=True, exist_ok=True)
+
+    # Distance histogram example
+    X, y = make_classification(
+        n_samples=500,
+        n_features=6,
+        weights=[0.9, 0.1],
+        random_state=42,
+    )
+    error_rate, _, dist_hidden, dist_min = validate_oversampling(
+        X,
+        y,
+        minority_label=1,
+        oversampler=SMOTE(random_state=42),
+        hidden_ratio=0.1,
+        metric="hassanat",
+        return_details=True,
+    )
+    plot_distance_histogram(
+        dist_hidden,
+        dist_min,
+        save_path=str(static_dir / "distance_histogram.png"),
+    )
+    print(f"distance_histogram.png (error_rate={error_rate:.3f})")
+
+    # Class balance example
+    oversampler = SMOTE(random_state=0)
+    X_res, y_res = oversampler.fit_resample(X, y)
+    plot_class_balance(
+        labels_before=y,
+        labels_after=y_res,
+        save_path=str(static_dir / "class_balance.png"),
+    )
+    print("class_balance.png")
+
+    # Multiclass error heatmap
+    Xm, ym = make_classification(
+        n_samples=700,
+        n_features=8,
+        n_classes=3,
+        n_informative=6,
+        weights=[0.7, 0.2, 0.1],
+        random_state=7,
+    )
+    _, matrix = validate_multiclass_oversampling(
+        Xm,
+        ym,
+        oversampler=SMOTE(random_state=7),
+        hidden_ratio=0.1,
+        metric="hassanat",
+        return_matrix=True,
+    )
+    plot_error_heatmap(
+        error_matrix=matrix,
+        class_labels=[0, 1, 2],
+        save_path=str(static_dir / "multiclass_heatmap.png"),
+    )
+    print("multiclass_heatmap.png")
+
+
+if __name__ == "__main__":
+    main()

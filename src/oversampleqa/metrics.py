@@ -7,14 +7,30 @@ import pandas as pd
 
 
 def calculate_error_rate(errors: int, total: int) -> float:
-    """Return error rate given the number of errors and total samples."""
+    """Return error rate given the number of errors and total samples.
+
+    Args:
+        errors: Number of error samples.
+        total: Total number of samples.
+
+    Returns:
+        Error rate in the range [0, 1].
+    """
     if total == 0:
         return 0.0
     return errors / total
 
 
 def confidence_ratio(dist_min: float, dist_maj: float) -> float:
-    """Return ratio between distances to minority and majority classes."""
+    """Return ratio between distances to minority and majority classes.
+
+    Args:
+        dist_min: Distance to minority class.
+        dist_maj: Distance to majority class.
+
+    Returns:
+        Ratio ``dist_min / dist_maj`` (inf if ``dist_maj`` is zero).
+    """
     if dist_maj == 0:
         return float("inf")
     return dist_min / dist_maj
@@ -98,7 +114,17 @@ def umap_manifold_distance(
     n_neighbors: int = 15,
     random_state: int | None = None,
 ) -> float:
-    """Return Wasserstein distance between real and synthetic data in UMAP space."""
+    """Return Wasserstein distance between real and synthetic data in UMAP space.
+
+    Args:
+        real: Real samples.
+        synthetic: Synthetic samples.
+        n_neighbors: UMAP neighborhood size.
+        random_state: Optional random seed.
+
+    Returns:
+        Mean Wasserstein distance across UMAP dimensions.
+    """
 
     from umap import UMAP
     from .extended_distances import wasserstein_1d_distance
@@ -106,7 +132,12 @@ def umap_manifold_distance(
     if len(synthetic) == 0 or len(real) == 0:
         return 0.0
 
-    reducer = UMAP(n_neighbors=n_neighbors, n_components=2, random_state=random_state)
+    reducer = UMAP(
+        n_neighbors=n_neighbors,
+        n_components=2,
+        random_state=random_state,
+        n_jobs=1,
+    )
     X = np.vstack([real, synthetic])
     embed = reducer.fit_transform(X)
     real_emb = embed[: len(real)]
@@ -122,7 +153,17 @@ def check_model_fairness(
     protected_attr: np.ndarray,
     minority_label: int,
 ) -> float:
-    """Return absolute difference in minority recall across protected groups."""
+    """Return absolute difference in minority recall across protected groups.
+
+    Args:
+        y_true: True labels.
+        y_pred: Predicted labels.
+        protected_attr: Protected group labels.
+        minority_label: Minority class label.
+
+    Returns:
+        Absolute recall gap between the two groups.
+    """
 
     from sklearn.metrics import recall_score
 
@@ -153,7 +194,21 @@ def noise_sensitivity_diagnostic(
     metric: str = "hassanat",
     random_state: int | None = None,
 ) -> pd.DataFrame:
-    """Evaluate error rate under different label noise levels."""
+    """Evaluate error rate under different label noise levels.
+
+    Args:
+        X: Feature matrix.
+        y: Target labels.
+        minority_label: Minority class label.
+        oversampler: Oversampler instance.
+        noise_levels: Noise levels to evaluate.
+        hidden_ratio: Fraction of majority to hide.
+        metric: Distance metric name.
+        random_state: Optional random seed.
+
+    Returns:
+        DataFrame with noise levels and error rates.
+    """
 
     from .validator import validate_oversampling
 

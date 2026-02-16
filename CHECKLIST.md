@@ -23,7 +23,7 @@ A checklist to ensure quality, maintainability, and usability of your Python pac
 
 ## 3. Dependencies
 
-* ✅ All dependencies declared in `pyproject.toml` or `requirements.txt`  
+* ✅ All dependencies declared in `pyproject.toml`  
 * ✅ Development dependencies separated from runtime dependencies  
 * ✅ Uses minimal, necessary dependencies only  
 

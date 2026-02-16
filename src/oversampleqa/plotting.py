@@ -56,7 +56,7 @@ def plot_sample_distribution(
     else:
         if UMAP is None:
             raise ImportError("umap-learn is required for method='umap'")
-        reducer = UMAP(n_components=2, random_state=42)
+        reducer = UMAP(n_components=2, random_state=42, n_jobs=1)
 
     comps = reducer.fit_transform(X)
     n_maj = len(majority)
@@ -92,7 +92,12 @@ def plot_sample_distribution(
 def plot_error_comparison(
     benchmark_results: pd.DataFrame, save_path: str | None = None
 ) -> None:
-    """Bar plot showing mean error rates for each oversampler."""
+    """Bar plot showing mean error rates for each oversampler.
+
+    Args:
+        benchmark_results: Benchmark results dataframe.
+        save_path: Optional output image path.
+    """
     summary = benchmark_results.groupby("oversampler")["error_rate"].mean()
     summary.plot(kind="bar")
     plt.ylabel("Mean error rate")
@@ -104,7 +109,12 @@ def plot_error_comparison(
 def plot_error_boxplot(
     benchmark_results: pd.DataFrame, save_path: str | None = None
 ) -> None:
-    """Boxplot of error rates for each oversampler."""
+    """Boxplot of error rates for each oversampler.
+
+    Args:
+        benchmark_results: Benchmark results dataframe.
+        save_path: Optional output image path.
+    """
     benchmark_results.boxplot(column="error_rate", by="oversampler")
     plt.ylabel("Error rate")
     plt.title("Error rate distribution")
@@ -150,7 +160,12 @@ def plot_error_heatmap(
 def plot_error_ranking(
     benchmark_results: pd.DataFrame, save_path: str | None = None
 ) -> None:
-    """Line chart of mean error rate ranked by oversampler."""
+    """Line chart of mean error rate ranked by oversampler.
+
+    Args:
+        benchmark_results: Benchmark results dataframe.
+        save_path: Optional output image path.
+    """
     summary = (
         benchmark_results.groupby("oversampler")["error_rate"].mean().sort_values()
     )
