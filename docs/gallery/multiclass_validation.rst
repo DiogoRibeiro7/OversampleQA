@@ -17,13 +17,9 @@
 
 .. _sphx_glr_gallery_multiclass_validation.py:
 
-
-Multiclass Validation
-=====================
-
 Multiclass validation example using SMOTE.
 
-.. GENERATED FROM PYTHON SOURCE LINES 7-37
+.. GENERATED FROM PYTHON SOURCE LINES 2-32
 
 .. code-block:: Python
 

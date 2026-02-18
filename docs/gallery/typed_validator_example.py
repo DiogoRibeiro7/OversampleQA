@@ -1,9 +1,4 @@
-"""
-Typed Validator Example
-=======================
-
-Typed validator example using ValidationConfig.
-"""
+"""Typed validator example using ValidationConfig."""
 
 from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE

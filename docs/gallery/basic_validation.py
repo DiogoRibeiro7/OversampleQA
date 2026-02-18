@@ -1,9 +1,4 @@
-"""
-Basic Validation
-================
-
-Minimal example using oversampleqa.
-"""
+"""Minimal example using oversampleqa."""
 
 from imblearn.over_sampling import SMOTE
 from sklearn.datasets import make_classification

@@ -1,9 +1,4 @@
-"""
-Multiclass Validation
-=====================
-
-Multiclass validation example using SMOTE.
-"""
+"""Multiclass validation example using SMOTE."""
 
 from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE

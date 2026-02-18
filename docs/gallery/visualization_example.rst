@@ -17,13 +17,9 @@
 
 .. _sphx_glr_gallery_visualization_example.py:
 
-
-Visualization Example
-=====================
-
 Visualize sample distributions after oversampling.
 
-.. GENERATED FROM PYTHON SOURCE LINES 7-32
+.. GENERATED FROM PYTHON SOURCE LINES 2-27
 
 .. code-block:: Python
 

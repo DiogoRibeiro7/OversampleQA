@@ -18,8 +18,8 @@
 .. _sphx_glr_gallery_plot_basic_validation.py:
 
 
-Plot Basic Validation
-=====================
+Basic Validation Example
+========================
 
 This example demonstrates the basic usage of OversampleQA
 to validate SMOTE oversampling on a synthetic dataset.

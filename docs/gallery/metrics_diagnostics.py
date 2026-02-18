@@ -1,9 +1,4 @@
-"""
-Metrics Diagnostics
-===================
-
-Diagnostics example for density divergence and noise sensitivity.
-"""
+"""Diagnostics example for density divergence and noise sensitivity."""
 
 from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE

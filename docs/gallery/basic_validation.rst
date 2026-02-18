@@ -17,13 +17,9 @@
 
 .. _sphx_glr_gallery_basic_validation.py:
 
-
-Basic Validation
-================
-
 Minimal example using oversampleqa.
 
-.. GENERATED FROM PYTHON SOURCE LINES 7-23
+.. GENERATED FROM PYTHON SOURCE LINES 2-18
 
 .. code-block:: Python
 

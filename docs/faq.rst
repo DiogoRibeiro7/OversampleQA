@@ -24,3 +24,12 @@ Why are there multiple distance metrics?
 
 Different metrics capture different aspects of similarity. It is good practice to validate with at least two
 metrics to confirm stability.
+
+Repro checklist
+---------------
+
+- Set ``random_state`` for dataset generation and oversamplers.
+- Keep ``hidden_ratio`` and ``metric`` fixed for comparisons.
+- Record dependency versions (Python, NumPy, scikit-learn, imbalanced-learn).
+- Save the exact CLI or typed config used for each run.
+- Use ``poetry.lock`` to pin versions when sharing results.

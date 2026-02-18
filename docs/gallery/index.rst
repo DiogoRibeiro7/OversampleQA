@@ -26,7 +26,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Basic Validation</div>
+      <div class="sphx-glr-thumbnail-title">Minimal example using oversampleqa.</div>
     </div>
 
 
@@ -43,7 +43,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Benchmark Example</div>
+      <div class="sphx-glr-thumbnail-title">Run a simple benchmark using oversampleqa.</div>
     </div>
 
 
@@ -60,7 +60,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Visualization Example</div>
+      <div class="sphx-glr-thumbnail-title">Visualize sample distributions after oversampling.</div>
     </div>
 
 
@@ -77,7 +77,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Multiclass Validation</div>
+      <div class="sphx-glr-thumbnail-title">Multiclass validation example using SMOTE.</div>
     </div>
 
 
@@ -94,7 +94,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Typed Validator Example</div>
+      <div class="sphx-glr-thumbnail-title">Typed validator example using ValidationConfig.</div>
     </div>
 
 
@@ -111,7 +111,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Metrics Diagnostics</div>
+      <div class="sphx-glr-thumbnail-title">Diagnostics example for density divergence and noise sensitivity.</div>
     </div>
 
 
@@ -128,7 +128,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Plot Basic Validation</div>
+      <div class="sphx-glr-thumbnail-title">Basic Validation Example</div>
     </div>
 
 

@@ -17,13 +17,9 @@
 
 .. _sphx_glr_gallery_typed_validator_example.py:
 
-
-Typed Validator Example
-=======================
-
 Typed validator example using ValidationConfig.
 
-.. GENERATED FROM PYTHON SOURCE LINES 7-37
+.. GENERATED FROM PYTHON SOURCE LINES 2-32
 
 .. code-block:: Python
 

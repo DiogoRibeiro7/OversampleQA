@@ -44,6 +44,7 @@ Contents
 
    installation
    quickstart
+   concepts
    user_guide
    algorithms
    distances
