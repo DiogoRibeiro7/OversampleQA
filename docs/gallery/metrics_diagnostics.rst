@@ -17,13 +17,9 @@
 
 .. _sphx_glr_gallery_metrics_diagnostics.py:
 
-
-Metrics Diagnostics
-===================
-
 Diagnostics example for density divergence and noise sensitivity.
 
-.. GENERATED FROM PYTHON SOURCE LINES 7-46
+.. GENERATED FROM PYTHON SOURCE LINES 2-41
 
 .. code-block:: Python
 

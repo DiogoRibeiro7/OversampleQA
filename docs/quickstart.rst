@@ -46,6 +46,19 @@ Here's a simple example of validating SMOTE oversampling:
 
    print(f"Validation error rate: {error_rate:.3f}")
 
+Concepts
+--------
+
+OversampleQA validates synthetic samples by hiding a portion of the majority class and comparing each generated sample to both hidden majority and real minority examples. A synthetic point is counted as an error when it is closer to the hidden majority than to the minority. The resulting error rate is a signal of how often oversampling produces majority-like artifacts.
+
+Reproducibility notes
+---------------------
+
+- Fix random seeds in dataset generation and oversamplers (e.g., ``random_state=42``).
+- Keep ``hidden_ratio`` and ``metric`` fixed when comparing methods.
+- Record versions for Python, NumPy, scikit-learn, and imbalanced-learn.
+- Store the exact config used for each run.
+
 Interpreting Results
 --------------------
 
@@ -58,6 +71,7 @@ The error rate tells you what fraction of synthetic samples are more similar to 
 Next Steps
 ----------
 
+* Read the :doc:`concepts` page for a deeper explanation
 * Read the :doc:`user_guide` for detailed concepts
 * Try the :doc:`tutorials` for step-by-step examples
 * Check the :doc:`api_reference` for all functions

@@ -1,9 +1,4 @@
-"""
-Visualization Example
-=====================
-
-Visualize sample distributions after oversampling.
-"""
+"""Visualize sample distributions after oversampling."""
 
 from imblearn.over_sampling import SMOTE
 from sklearn.datasets import make_classification

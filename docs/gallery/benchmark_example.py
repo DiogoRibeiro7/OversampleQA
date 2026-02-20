@@ -1,9 +1,4 @@
-"""
-Benchmark Example
-=================
-
-Run a simple benchmark using oversampleqa.
-"""
+"""Run a simple benchmark using oversampleqa."""
 
 from imblearn.over_sampling import SMOTE
 

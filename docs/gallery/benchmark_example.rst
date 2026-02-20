@@ -17,13 +17,9 @@
 
 .. _sphx_glr_gallery_benchmark_example.py:
 
-
-Benchmark Example
-=================
-
 Run a simple benchmark using oversampleqa.
 
-.. GENERATED FROM PYTHON SOURCE LINES 7-24
+.. GENERATED FROM PYTHON SOURCE LINES 2-19
 
 .. code-block:: Python
 

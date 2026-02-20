@@ -38,6 +38,17 @@ minority samples. Lower is better.
 * **0.1 - 0.3**: moderate
 * **> 0.3**: high risk
 
+Reproducibility
+---------------
+
+For consistent results across runs and machines:
+
+- Fix random seeds in both dataset generation and oversamplers (e.g., ``random_state=42``).
+- Keep ``hidden_ratio`` and the distance metric fixed when comparing methods.
+- Pin dependency versions using ``poetry.lock`` and record Python, NumPy, scikit-learn, and imbalanced-learn versions.
+- Store the exact configuration used for each run (CLI config or typed config object).
+- When using the enhanced CLI, keep ``--resume`` enabled so repeated runs reuse cached results when available.
+
 Recommended workflow
 --------------------
 
