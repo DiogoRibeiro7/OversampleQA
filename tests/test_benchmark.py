@@ -23,7 +23,12 @@ def test_run_benchmark_basic():
 
 
 def test_export_and_ranking(tmp_path):
-    df = run_benchmark(load_standard_datasets()[:1], [SMOTE(random_state=0)], hidden_ratios=[0.1], n_runs=1)
+    df = run_benchmark(
+        load_standard_datasets()[:1],
+        [SMOTE(random_state=0)],
+        hidden_ratios=[0.1],
+        n_runs=1,
+    )
     summary = compute_ranking(df)
     assert "rank" in summary.columns
     csv_path = tmp_path / "out.csv"
@@ -40,3 +45,13 @@ def test_export_and_ranking(tmp_path):
 def test_load_standard_datasets_with_openml():
     datasets = load_standard_datasets(include_openml=True)
     assert len(datasets) >= 7
+
+
+def test_standard_datasets_have_provenance():
+    required = {"source", "generator", "params", "url", "license", "notes"}
+    for dataset in load_standard_datasets():
+        provenance = dataset.get("provenance")
+        assert provenance is not None, f"{dataset['name']} missing provenance"
+        assert required <= set(provenance), f"{dataset['name']} provenance incomplete"
+        assert provenance["source"] == "synthetic"
+        assert provenance["license"]

@@ -15,6 +15,9 @@ entries below the *Unreleased* section are generated from conventional commit me
 - Reproducibility guide in the docs covering randomness sources, dataset
   provenance, and cache keying/invalidation.
 - Documented public-API error modes and edge-case behavior in the FAQ.
+- Provenance and license metadata on every built-in benchmark dataset
+  (`load_standard_datasets` now attaches a `provenance` dict with source,
+  generator, params, URL, license, and notes).
 
 ### Changed
 
