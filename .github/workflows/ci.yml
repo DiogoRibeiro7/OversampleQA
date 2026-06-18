@@ -30,7 +30,7 @@ jobs:
       run: poetry run pytest --cov=oversampleqa --cov-report=xml
     
     - name: Upload coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
 
   docs:
     runs-on: ubuntu-latest
