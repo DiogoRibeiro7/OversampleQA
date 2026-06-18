@@ -54,6 +54,7 @@ Contents
    visual_examples
    cli
    configuration
+   reproducibility
    api_landing
    api_reference
    tutorials

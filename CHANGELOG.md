@@ -12,6 +12,8 @@ entries below the *Unreleased* section are generated from conventional commit me
 ### Added
 
 - `CHANGELOG.md` seeded and wired to the existing `python-semantic-release` configuration.
+- Reproducibility guide in the docs covering randomness sources, dataset
+  provenance, and cache keying/invalidation.
 
 ## [0.1.0] - 2025-10-10
 
