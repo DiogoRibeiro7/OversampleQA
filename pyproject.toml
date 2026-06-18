@@ -52,12 +52,19 @@ tag_format = "v$version"
 update_changelog_on_bump = true
 
 [tool.semantic_release]
-version_variable = ["pyproject.toml:version"]
-branch = "main"
+version_toml = ["pyproject.toml:tool.poetry.version"]
 build_command = "poetry build"
-changelog_file = "CHANGELOG.md"
 commit_parser = "conventional"
-upload_to_pypi = false
+
+[tool.semantic_release.branches.main]
+match = "main"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.publish]
+upload_to_vcs_release = true
+dist_glob_patterns = ["dist/*"]
 
 [tool.poetry.scripts]
 oversampleqa-validate = "oversampleqa.cli:main"
