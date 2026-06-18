@@ -14,6 +14,13 @@ entries below the *Unreleased* section are generated from conventional commit me
 - `CHANGELOG.md` seeded and wired to the existing `python-semantic-release` configuration.
 - Reproducibility guide in the docs covering randomness sources, dataset
   provenance, and cache keying/invalidation.
+- Documented public-API error modes and edge-case behavior in the FAQ.
+
+### Changed
+
+- `validate_oversampling` and `validate_multiclass_oversampling` now validate
+  `hidden_ratio` up front and raise a clear `ValueError` when it is outside the
+  open interval `(0, 1)`, instead of leaking a downstream scikit-learn error.
 
 ## [0.1.0] - 2025-10-10
 
