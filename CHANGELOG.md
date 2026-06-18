@@ -22,6 +22,13 @@ entries below the *Unreleased* section are generated from conventional commit me
   `hidden_ratio` up front and raise a clear `ValueError` when it is outside the
   open interval `(0, 1)`, instead of leaking a downstream scikit-learn error.
 
+### Fixed
+
+- Corrected the typed-validator and configuration examples in the docs: the
+  `TypedValidator` example now uses the real `validate(...)` API, and
+  `ValidationConfig` no longer shows a non-existent `minority_label` field.
+- Documented the `setup` command and the global CLI options.
+
 ## [0.1.0] - 2025-10-10
 
 Initial release.

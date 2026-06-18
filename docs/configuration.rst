@@ -11,10 +11,13 @@ Typed validation configuration
    from oversampleqa.types import ValidationConfig
 
    cfg = ValidationConfig(
-       minority_label=1,
        hidden_ratio=0.1,
        metric="hassanat",
+       random_state=0,
    )
+
+``minority_label`` and the oversampler are passed to ``validate`` rather than
+stored on the config (see below).
 
 Typed validator
 ---------------
@@ -24,9 +27,18 @@ Typed validator
    from oversampleqa.typed_validator import TypedValidator
    from imblearn.over_sampling import SMOTE
 
-   validator = TypedValidator(config=cfg, oversampler=SMOTE(random_state=0))
-   result = validator.run(X, y)
-   print(result.error_rate)
+   validator = TypedValidator()
+   result = validator.validate(
+       X,
+       y,
+       minority_label=1,
+       oversampler=SMOTE(random_state=0),
+       config=cfg,
+   )
+   print(result["error_rate"])
+
+The config is optional; you can pass ``hidden_ratio``, ``metric``,
+``return_details``, and ``random_state`` directly as keyword arguments instead.
 
 Enhanced CLI configuration
 --------------------------

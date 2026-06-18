@@ -87,6 +87,25 @@ Diagnostics
 
    oversampleqa doctor
 
+Initial setup
+~~~~~~~~~~~~~
+
+Run the guided wizard to create a configuration file:
+
+.. code-block:: bash
+
+   oversampleqa setup
+
+Global options
+~~~~~~~~~~~~~~
+
+These apply to any subcommand and come before it:
+
+- ``--config/-c``: path to a configuration file (default ``~/.oversampleqa/config.yaml``).
+- ``--profile/-p``: configuration profile to apply.
+- ``--verbose/-v``: enable verbose output.
+- ``--version``: print the version and exit.
+
 Common options for ``validate``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
