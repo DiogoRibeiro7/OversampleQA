@@ -24,6 +24,8 @@ entries below the *Unreleased* section are generated from conventional commit me
   intervals, pairwise p-values, effect sizes).
 - `format_statistical_summary` renders a statistical benchmark frame as Markdown
   and is exported from the package.
+- Benchmark-results docs page with a reproducible reference run (pinned seed,
+  configuration, and environment) and guidance on interpreting the output.
 
 ### Changed
 

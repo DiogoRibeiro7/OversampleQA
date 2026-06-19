@@ -50,6 +50,7 @@ Contents
    distances
    metrics
    benchmarking
+   benchmark_results
    plotting
    visual_examples
    cli
