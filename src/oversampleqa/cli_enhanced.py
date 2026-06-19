@@ -30,6 +30,11 @@ from rich.progress import (
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from .advanced_benchmark import (
+    StatisticalBenchmark,
+    create_benchmark_report,
+    format_statistical_summary,
+)
 from .benchmark import export_benchmark_results, load_standard_datasets
 from .config_templates import CONFIG_TEMPLATES, generate_config_file
 from .memory_efficient_validator import MemoryEfficientValidator
@@ -148,13 +153,20 @@ class CLIConfig:
                         message += f". Did you mean '{suggestion[0]}'?"
                     raise ConfigValidationError(message)
 
-        allowed_profile_keys = KNOWN_PARAMS | {"n_runs", "include_plots", "cache_results", "statistical_tests"}
+        allowed_profile_keys = KNOWN_PARAMS | {
+            "n_runs",
+            "include_plots",
+            "cache_results",
+            "statistical_tests",
+        }
         check_section("defaults", KNOWN_PARAMS)
         profiles = config.get("profiles", {})
         if isinstance(profiles, dict):
             for profile_name, params in profiles.items():
                 if not isinstance(params, dict):
-                    raise ConfigValidationError(f"Profile '{profile_name}' must be a mapping")
+                    raise ConfigValidationError(
+                        f"Profile '{profile_name}' must be a mapping"
+                    )
                 for key in params:
                     if key not in allowed_profile_keys:
                         suggestion = get_close_matches(key, allowed_profile_keys, n=1)
@@ -232,7 +244,9 @@ def load_dataset(
         df = pd.read_csv(dataset_path)
 
     if target_column not in df.columns:
-        raise click.ClickException(f"Target column '{target_column}' not found in dataset.")
+        raise click.ClickException(
+            f"Target column '{target_column}' not found in dataset."
+        )
     X = df.drop(columns=[target_column])
     y = df[target_column]
     return X, y
@@ -336,7 +350,13 @@ def run_validation_with_progress(
         console.print("[green]Using cached results from previous run.[/green]")
         return checkpoint["results"]
 
-    stages = ["Loading dataset", "Analyzing class balance", "Fitting oversampler", "Validating samples", "Finalizing"]
+    stages = [
+        "Loading dataset",
+        "Analyzing class balance",
+        "Fitting oversampler",
+        "Validating samples",
+        "Finalizing",
+    ]
 
     results: Dict[str, Any] = {}
     mlflow_settings = mlflow_config or {}
@@ -362,7 +382,9 @@ def run_validation_with_progress(
 
         progress.update(task, description=stages[1])
         imbalance_ratio = minority_count / max(majority_count, 1)
-        runtime_estimate = estimate_runtime(n_samples * n_features * hidden_ratio / 3000 + 10)
+        runtime_estimate = estimate_runtime(
+            n_samples * n_features * hidden_ratio / 3000 + 10
+        )
         results.update(
             {
                 "dataset": str(dataset_path),
@@ -415,7 +437,9 @@ def run_validation_with_progress(
                 "oversampler": oversampler_name,
                 "minority_label": minority_label,
                 "elapsed_seconds": elapsed,
-                "mlflow_experiment": mlflow_settings.get("experiment_name", "OversampleQA"),
+                "mlflow_experiment": mlflow_settings.get(
+                    "experiment_name", "OversampleQA"
+                ),
             }
         )
         progress.advance(task)
@@ -439,7 +463,9 @@ def run_validation_with_progress(
     return results
 
 
-def export_results(results: Dict[str, Any], formats: Iterable[str], output_dir: Optional[Path]) -> None:
+def export_results(
+    results: Dict[str, Any], formats: Iterable[str], output_dir: Optional[Path]
+) -> None:
     """Export results to requested formats.
 
     Args:
@@ -455,7 +481,9 @@ def export_results(results: Dict[str, Any], formats: Iterable[str], output_dir: 
     for fmt in formats:
         fmt_lower = fmt.lower()
         if fmt_lower not in SUPPORTED_EXPORTS:
-            console.print(f"[yellow]Skipping unsupported export format '{fmt}'.[/yellow]")
+            console.print(
+                f"[yellow]Skipping unsupported export format '{fmt}'.[/yellow]"
+            )
             continue
         if fmt_lower == "json":
             (output_dir / "validation_results.json").write_text(
@@ -484,7 +512,9 @@ def export_results(results: Dict[str, Any], formats: Iterable[str], output_dir: 
                 - Estimated Runtime: {results['runtime_estimate']}
                 """
             ).strip()
-            (output_dir / "validation_results.md").write_text(markdown + "\n", encoding="utf-8")
+            (output_dir / "validation_results.md").write_text(
+                markdown + "\n", encoding="utf-8"
+            )
 
 
 def integrate_with_mlflow(results: Dict[str, Any], settings: Dict[str, Any]) -> None:
@@ -498,10 +528,16 @@ def integrate_with_mlflow(results: Dict[str, Any], settings: Dict[str, Any]) -> 
     try:
         import mlflow
     except ImportError:  # pragma: no cover - optional dependency
-        console.print("[yellow]MLflow integration requested but mlflow is not installed.[/yellow]")
+        console.print(
+            "[yellow]MLflow integration requested but mlflow is not installed.[/yellow]"
+        )
         return
 
-    experiment = results.get("mlflow_experiment") or settings.get("experiment_name") or "OversampleQA"
+    experiment = (
+        results.get("mlflow_experiment")
+        or settings.get("experiment_name")
+        or "OversampleQA"
+    )
     mlflow.set_experiment(experiment)
     with mlflow.start_run(run_name="oversampleqa-validation"):
         mlflow.log_params(
@@ -523,7 +559,9 @@ def display_results(results: Dict[str, Any]) -> None:
         results: Results dictionary.
     """
 
-    table = Table(title="Validation Summary", show_header=True, header_style="bold magenta")
+    table = Table(
+        title="Validation Summary", show_header=True, header_style="bold magenta"
+    )
     table.add_column("Metric", style="cyan")
     table.add_column("Value", style="green")
     table.add_column("Interpretation", style="yellow")
@@ -535,13 +573,27 @@ def display_results(results: Dict[str, Any]) -> None:
         f"{error_rate:.3f}",
         interpret_error_rate(error_rate),
     )
-    table.add_row("Imbalance Ratio", f"{results['imbalance_ratio']:.3f}", explain_ratio(results["imbalance_ratio"]))
-    table.add_row("Estimated Runtime", results["runtime_estimate"], "Projected duration for similar runs")
-    table.add_row("Actual Runtime", f"{results['elapsed_seconds']:.2f}s", "Measured wall-clock execution time")
+    table.add_row(
+        "Imbalance Ratio",
+        f"{results['imbalance_ratio']:.3f}",
+        explain_ratio(results["imbalance_ratio"]),
+    )
+    table.add_row(
+        "Estimated Runtime",
+        results["runtime_estimate"],
+        "Projected duration for similar runs",
+    )
+    table.add_row(
+        "Actual Runtime",
+        f"{results['elapsed_seconds']:.2f}s",
+        "Measured wall-clock execution time",
+    )
     console.print(table)
 
     console.print("\n[bold]Recommendations:[/bold]")
-    for recommendation in generate_recommendations(error_rate, results["imbalance_ratio"]):
+    for recommendation in generate_recommendations(
+        error_rate, results["imbalance_ratio"]
+    ):
         console.print(f"- {recommendation}")
 
 
@@ -591,14 +643,18 @@ def generate_recommendations(error_rate: float, imbalance_ratio: float) -> List[
     if error_rate > 0.3:
         tips.append("Evaluate advanced oversamplers such as BorderlineSMOTE or ADASYN.")
     if imbalance_ratio < 0.1:
-        tips.append("Experiment with higher hidden ratios to stress-test synthetic samples.")
+        tips.append(
+            "Experiment with higher hidden ratios to stress-test synthetic samples."
+        )
     if error_rate < 0.1:
         tips.append("Proceed to downstream modelling with confidence.")
     tips.append("Store results with '--export markdown' for reporting.")
     return tips
 
 
-def analyze_dataset(dataset_path: Path, target: str, minority_label: int) -> Dict[str, Any]:
+def analyze_dataset(
+    dataset_path: Path, target: str, minority_label: int
+) -> Dict[str, Any]:
     """Analyze dataset size, feature count, and class imbalance.
 
     Args:
@@ -691,7 +747,9 @@ def guided_validation(dataset: Path, config: CLIConfig, profile: Optional[str]) 
     defaults = config.resolve_defaults(profile)
 
     target = Prompt.ask("Target column", default=defaults["target"])
-    minority_label = int(Prompt.ask("Minority class label", default=str(defaults["minority_label"])))
+    minority_label = int(
+        Prompt.ask("Minority class label", default=str(defaults["minority_label"]))
+    )
     dataset_info = analyze_dataset(dataset, target, minority_label)
     show_dataset_table(dataset_info)
 
@@ -701,7 +759,9 @@ def guided_validation(dataset: Path, config: CLIConfig, profile: Optional[str]) 
         console.print(f"- {key}: {value}")
 
     metric = Prompt.ask("Distance metric", default=suggested["metric"])
-    hidden_ratio = float(Prompt.ask("Hidden ratio", default=str(suggested["hidden_ratio"])))
+    hidden_ratio = float(
+        Prompt.ask("Hidden ratio", default=str(suggested["hidden_ratio"]))
+    )
     oversampler = Prompt.ask("Oversampler", default=suggested["oversampler"])
     export = Prompt.ask(
         "Export formats (comma separated)",
@@ -737,11 +797,22 @@ def guided_validation(dataset: Path, config: CLIConfig, profile: Optional[str]) 
 
 @click.group()
 @click.version_option()
-@click.option("--config", "-c", "config_path", type=click.Path(path_type=Path), help="Configuration file path.")
+@click.option(
+    "--config",
+    "-c",
+    "config_path",
+    type=click.Path(path_type=Path),
+    help="Configuration file path.",
+)
 @click.option("--profile", "-p", help="Configuration profile to use.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.")
 @click.pass_context
-def cli(ctx: click.Context, config_path: Optional[Path], profile: Optional[str], verbose: bool) -> None:
+def cli(
+    ctx: click.Context,
+    config_path: Optional[Path],
+    profile: Optional[str],
+    verbose: bool,
+) -> None:
     """OversampleQA: Validate your oversampling methods with confidence!
 
     Args:
@@ -773,10 +844,22 @@ def cli(ctx: click.Context, config_path: Optional[Path], profile: Optional[str],
 @click.option("--metric", help="Distance metric to use.")
 @click.option("--hidden-ratio", type=float, help="Hidden majority ratio.")
 @click.option("--export", multiple=True, help="Export formats (json|yaml|markdown).")
-@click.option("--output", "-o", type=click.Path(path_type=Path), help="Directory to store outputs.")
-@click.option("--resume/--no-resume", default=None, help="Resume from previous runs if available.")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Directory to store outputs.",
+)
+@click.option(
+    "--resume/--no-resume", default=None, help="Resume from previous runs if available."
+)
 @click.option("--interactive", "-i", is_flag=True, help="Interactive guided wizard.")
-@click.option("--mlflow", "mlflow_enabled", is_flag=True, help="Log results to MLflow if installed.")
+@click.option(
+    "--mlflow",
+    "mlflow_enabled",
+    is_flag=True,
+    help="Log results to MLflow if installed.",
+)
 @click.pass_context
 def validate(
     ctx: click.Context,
@@ -818,10 +901,14 @@ def validate(
 
     defaults = config.resolve_defaults(profile)
     target = target or defaults["target"]
-    minority_label = minority_label if minority_label is not None else defaults["minority_label"]
+    minority_label = (
+        minority_label if minority_label is not None else defaults["minority_label"]
+    )
     oversampler = oversampler or defaults["oversampler"]
     metric = metric or defaults["metric"]
-    hidden_ratio = hidden_ratio if hidden_ratio is not None else defaults["hidden_ratio"]
+    hidden_ratio = (
+        hidden_ratio if hidden_ratio is not None else defaults["hidden_ratio"]
+    )
     export_formats = export or tuple(defaults.get("export", []))
     resume = defaults["resume"] if resume is None else resume
 
@@ -845,8 +932,16 @@ def validate(
 
 
 @cli.command()
-@click.option("--template", type=click.Choice(sorted(CONFIG_TEMPLATES)), default="production")
-@click.option("--output", "-o", type=click.Path(path_type=Path), required=True, help="Output file path.")
+@click.option(
+    "--template", type=click.Choice(sorted(CONFIG_TEMPLATES)), default="production"
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    required=True,
+    help="Output file path.",
+)
 def template(template: str, output: Path) -> None:
     """Generate a configuration file from a named template.
 
@@ -880,7 +975,9 @@ def profiles(ctx: click.Context) -> None:
 
 
 @cli.command()
-@click.argument("shell", required=False, type=click.Choice(["bash", "zsh", "fish", "powershell"]))
+@click.argument(
+    "shell", required=False, type=click.Choice(["bash", "zsh", "fish", "powershell"])
+)
 def completion(shell: Optional[str]) -> None:
     """Provide shell completion installation instructions.
 
@@ -894,8 +991,8 @@ def completion(shell: Optional[str]) -> None:
     instructions = {
         "bash": f'eval "$({env_var}=bash_source {script_name})"',
         "zsh": f'eval "$({env_var}=zsh_source {script_name})"',
-        "fish": f'set -x {env_var} fish_source; {script_name} | source',
-        "powershell": f'set-item env:{env_var} powershell_source; {script_name} | Out-String | Invoke-Expression',
+        "fish": f"set -x {env_var} fish_source; {script_name} | source",
+        "powershell": f"set-item env:{env_var} powershell_source; {script_name} | Out-String | Invoke-Expression",
     }
     console.print(Panel.fit("Shell completion setup", style="bold blue"))
     console.print(f"Selected shell: {shell}")
@@ -903,26 +1000,119 @@ def completion(shell: Optional[str]) -> None:
     console.print(f"[cyan]{instructions[shell]}[/cyan]")
 
 
+def _run_statistical_benchmark(
+    datasets: List[Dict[str, Any]], output: Path, folds: int, repeats: int
+) -> None:
+    """Run the statistical benchmark engine and surface its results.
+
+    Args:
+        datasets: Dataset descriptors.
+        output: Output directory for artifacts.
+        folds: Number of CV folds.
+        repeats: Number of CV repeats.
+    """
+    oversampler_names = ["SMOTE", "ADASYN"]
+    oversampler_module = __import__(
+        "imblearn.over_sampling", fromlist=oversampler_names
+    )
+    oversamplers = [getattr(oversampler_module, name)() for name in oversampler_names]
+
+    with console.status("Running cross-validated statistical benchmark..."):
+        engine = StatisticalBenchmark(n_folds=folds, n_repeats=repeats)
+        frame = engine.run_comprehensive_benchmark(datasets, oversamplers)
+
+    if frame.empty:
+        console.print("[yellow]No benchmark results were produced.[/yellow]")
+        return
+
+    table = Table(
+        title="Statistical Benchmark", show_header=True, header_style="bold magenta"
+    )
+    for column in ("Dataset", "Oversampler", "Metric", "Mean", "Std", "95% CI", "n"):
+        table.add_column(column)
+    for _, row in frame.iterrows():
+        table.add_row(
+            str(row["dataset_name"]),
+            str(row["oversampler_name"]),
+            str(row["metric"]),
+            f"{row['mean_error']:.3f}",
+            f"{row['std_error']:.3f}",
+            f"[{row['ci_lower']:.3f}, {row['ci_upper']:.3f}]",
+            str(int(row["n_observations"])),
+        )
+    console.print(table)
+
+    output.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(output / "benchmark_statistics.csv", index=False)
+    summary_md = format_statistical_summary(frame)
+    (output / "benchmark_summary.md").write_text(summary_md, encoding="utf-8")
+    create_benchmark_report(frame, str(output / "benchmark_report.html"))
+    console.print(
+        f"[green]Statistical results stored in {output}[/green] "
+        "(benchmark_statistics.csv, benchmark_summary.md, benchmark_report.html)"
+    )
+
+
 @cli.command()
 @click.option("--include-openml", is_flag=True, help="Include OpenML datasets.")
-@click.option("--output", "-o", type=click.Path(path_type=Path), default=Path("benchmark_results"))
+@click.option(
+    "--output", "-o", type=click.Path(path_type=Path), default=Path("benchmark_results")
+)
+@click.option(
+    "--statistical",
+    is_flag=True,
+    help="Run cross-validated statistical benchmarking (CIs, p-values, effect sizes).",
+)
+@click.option(
+    "--folds",
+    type=int,
+    default=5,
+    show_default=True,
+    help="CV folds (statistical mode).",
+)
+@click.option(
+    "--repeats",
+    type=int,
+    default=5,
+    show_default=True,
+    help="CV repeats (statistical mode).",
+)
 @click.pass_context
-def benchmark(ctx: click.Context, include_openml: bool, output: Path) -> None:
+def benchmark(
+    ctx: click.Context,
+    include_openml: bool,
+    output: Path,
+    statistical: bool,
+    folds: int,
+    repeats: int,
+) -> None:
     """Run comprehensive benchmarking across datasets.
 
     Args:
         ctx: Click context.
         include_openml: Whether to include OpenML datasets.
         output: Output directory.
+        statistical: Run cross-validated statistical benchmarking.
+        folds: Number of CV folds for statistical mode.
+        repeats: Number of CV repeats for statistical mode.
     """
 
     console.print(Panel.fit("Running comprehensive benchmark", style="bold green"))
 
     datasets = load_standard_datasets(include_openml=include_openml)
+
+    if statistical:
+        _run_statistical_benchmark(datasets, output, folds, repeats)
+        return
+
     oversampler_names = ["SMOTE", "ADASYN"]
     hidden_ratios = [0.1, 0.25]
-    oversampler_module = __import__("imblearn.over_sampling", fromlist=oversampler_names)
-    oversampler_classes = [getattr(oversampler_module, name) for name in oversampler_names]
+    oversampler_module = __import__(
+        "imblearn.over_sampling", fromlist=oversampler_names
+    )
+    oversampler_classes = [
+        getattr(oversampler_module, name) for name in oversampler_names
+    ]
 
     total_steps = len(datasets) * len(oversampler_classes) * len(hidden_ratios)
     results: List[Dict[str, Any]] = []
@@ -942,7 +1132,9 @@ def benchmark(ctx: click.Context, include_openml: bool, output: Path) -> None:
 
             for oversampler_cls in oversampler_classes:
                 for hidden_ratio in hidden_ratios:
-                    progress.update(task, description=f"{dataset_name} / {oversampler_cls.__name__}")
+                    progress.update(
+                        task, description=f"{dataset_name} / {oversampler_cls.__name__}"
+                    )
                     oversampler = oversampler_cls()
                     try:
                         error = validate_oversampling(
@@ -967,7 +1159,9 @@ def benchmark(ctx: click.Context, include_openml: bool, output: Path) -> None:
                     progress.advance(task)
 
     output.mkdir(parents=True, exist_ok=True)
-    export_benchmark_results(pd.DataFrame(results), str(output / "benchmark_summary.csv"))
+    export_benchmark_results(
+        pd.DataFrame(results), str(output / "benchmark_summary.csv")
+    )
     console.print(f"[green]Benchmark results stored in {output}[/green]")
 
 
@@ -1031,7 +1225,9 @@ def doctor() -> None:
 
     console.print(table)
     if not all(success for _, success in checks):
-        console.print("[red]Some checks failed. Please reinstall missing dependencies.[/red]")
+        console.print(
+            "[red]Some checks failed. Please reinstall missing dependencies.[/red]"
+        )
     else:
         console.print("[green]All required components are present![/green]")
 

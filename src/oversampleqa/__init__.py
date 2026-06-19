@@ -37,6 +37,7 @@ from .advanced_benchmark import (
     StatisticalBenchmark,
     DatasetRepository,
     create_benchmark_report,
+    format_statistical_summary,
 )
 from .types import (
     ValidationConfig,
@@ -110,6 +111,7 @@ __all__ = [
     "StatisticalBenchmark",
     "DatasetRepository",
     "create_benchmark_report",
+    "format_statistical_summary",
     "ValidationConfig",
     "BenchmarkConfig",
     "ValidationMode",

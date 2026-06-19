@@ -18,6 +18,12 @@ entries below the *Unreleased* section are generated from conventional commit me
 - Provenance and license metadata on every built-in benchmark dataset
   (`load_standard_datasets` now attaches a `provenance` dict with source,
   generator, params, URL, license, and notes).
+- Statistical benchmarking is now surfaced in the CLI: `oversampleqa benchmark
+  --statistical` runs cross-validated benchmarking and prints a summary table
+  plus writes a CSV, a Markdown summary, and an HTML report (confidence
+  intervals, pairwise p-values, effect sizes).
+- `format_statistical_summary` renders a statistical benchmark frame as Markdown
+  and is exported from the package.
 
 ### Changed
 
