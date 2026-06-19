@@ -1,6 +1,6 @@
 # OversampleQA Roadmap
 
-This roadmap summarizes the current scope, maturity, and next steps for the project.
+This roadmap reflects a repo review completed on June 19, 2026. The test suite is green (`103 passed`), but several release and quality gates still do not match the repo's stated maturity.
 
 ## Project Goals
 
@@ -10,93 +10,134 @@ This roadmap summarizes the current scope, maturity, and next steps for the proj
 - Offer a fast path for practitioners and a deeper path for research use cases.
 - Stay compatible with scikit-learn and imbalanced-learn conventions.
 
-## Current State (v0.1.0)
+## Current State (v0.1.0, reviewed June 19, 2026)
 
-Validation
+What is working:
 
-- Hidden-majority error rate for binary and multiclass workflows (`validator.py`), with per-class confusion-style error matrices.
-- Memory-efficient validator with batched / streaming computation (`memory_efficient_validator.py`).
-- Typed validator with Pydantic config, async support, and session management (`typed_validator.py`).
+- Core validation, benchmarking, reporting, plotting, and CLI flows are implemented.
+- `poetry run pytest` passes across 103 tests.
+- Docs build to HTML successfully in permissive mode.
 
-Metrics and distances
+What is not yet at release-ready quality:
 
-- 16 distance metrics across geometric, statistical, and probability families (`distance.py`, `extended_distances.py`), with a registry and optimized, memory-aware matrix computation (`optimized_distance.py`).
-- Diagnostic metrics beyond error rate: confidence ratio, local density divergence, minority recall loss, UMAP manifold distance, fairness checks, and noise sensitivity (`metrics.py`).
+- `make lint` does not pass. The repo currently has a large backlog of `flake8`/`ruff` findings across both `src/` and `tests/`.
+- `make typecheck` is not in a healthy state. The typed validator module contains unresolved symbols and async-control-flow issues that should be fixed before claiming strict typing support.
+- `make docs` is not warning-clean. The Sphinx build currently succeeds with 66 warnings, mostly from gallery pages lacking resolvable titles/refs.
+- The `Makefile` is Unix-centric even though development is happening on Windows: `clean` uses `rm`/`find`, and the docs command shells through `cd docs && poetry run make html`.
+- Some advertised advanced surfaces are only partially real: async mode exists in `typed_validator.py`, but it is not production-safe yet.
 
-Benchmarking and reporting
+## Review Findings To Drive The Roadmap
 
-- Benchmark runner with dataset loaders, ranking, and export helpers (`benchmark.py`).
-- Statistical benchmarking with k-fold CV, confidence intervals, effect sizes, and p-values (`advanced_benchmark.py`).
-- Disk caching of validation results and distance matrices (`caching.py`).
-- Surrogate-model evaluation (real-only / real+synthetic / synthetic-only) and cluster-overlap diagnostics (`surrogate.py`, `clustering.py`).
-- Report generation (Markdown/HTML) and a plotting suite (`report.py`, `plotting.py`).
+### Bugs
 
-Tooling and extensibility
+- `src/oversampleqa/typed_validator.py` has latent runtime/type defects:
+  - `_wald_confidence_interval()` annotates `Tuple[float, float]` but `Tuple` is not imported.
+  - `ServiceRegistry.get()` raises `ConfigurationError`, but that symbol is not imported or defined in the module.
+  - `validation_session()` uses `return` inside `finally`, which can suppress exceptions.
+  - `ValidationMode.ASYNC` calls `run_until_complete()`, which is unsafe when already inside a running event loop.
+- `docs/gallery/index.rst` and generated gallery pages cause unresolved-title and broken-cross-reference warnings, so the docs are not compatible with a `-W` build yet.
+- `Makefile` commands are not portable to Windows. `clean` is broken in a PowerShell-first environment, and the docs target depends on Unix shell chaining.
+- `src/oversampleqa/caching.py` uses `@lru_cache` on an instance method backed by mutable temporary state (`self._distance_args`). That is brittle for long-lived processes and likely unsafe under concurrent use.
 
-- Rich CLI with profiles, templates, shell completion, and a `doctor` diagnostic (`cli_enhanced.py`), plus a minimal legacy CLI (`cli.py`).
-- Plugin system for custom metrics and validators (`plugin_system.py`).
-- 26 test files covering validators, metrics, distances, benchmarking, CLI, plotting, performance, and memory.
-- Sphinx docs (22 sources, gallery), examples, and tutorials in-repo.
-- CI on Python 3.10–3.12 with coverage upload, docs built with `-W`, weekly security scan, and a semantic-release pipeline (PyPI upload currently gated off).
+### Improvements
+
+- Reduce the quality-gate gap between the README/roadmap promises and reality: lint, typecheck, docs, and release automation should all be verifiably green.
+- Add explicit cross-platform maintenance for development tooling and CI, not just package runtime code.
+- Add focused tests for async validation, service-registry error paths, and docs/gallery generation.
+- Tighten plugin discovery and validation so custom extensions fail with actionable errors instead of permissive duck-typing.
+- Turn docs and benchmark outputs into reproducible artifacts with pinned seeds, dataset provenance, and warning-free builds.
+
+### New Features
+
+- Surface statistical benchmark outputs directly in exported reports and CLI summaries.
+- Publish a reference plugin that demonstrates the supported metric/validator extension contract.
+- Add a documented benchmark catalog with dataset licenses, provenance, and pinned reference results.
+- Add performance-regression tracking for distance matrices, validator throughput, and memory-efficient paths.
 
 ## Milestones
 
 Owner for all milestones: `diogoribeiro7`.
 
-### v0.2.0 — May 15, 2026
+### v0.2.0 — reset target: July 31, 2026
 
-Focus: release plumbing and reproducibility — close the gap between the configured tooling and an actual published release.
-
-Scope:
-
-- Add a `CHANGELOG.md` and wire it to the existing `python-semantic-release` config (currently `changelog_file` points at a file that does not exist).
-- Enable and verify automated PyPI publishing: set `upload_to_pypi`/`PYPI_TOKEN` flow in `release.yml`, dry-run against TestPyPI first.
-- Document reproducibility guidance (seeds, dataset provenance, cache invalidation) in `docs/`.
-- Audit and document expected error modes / edge-case behavior for the public API (empty minority class, single feature, all-identical points, degenerate covariance for Mahalanobis).
-- Tidy docs drift: confirm `concepts.rst`, `cli.rst`, and `configuration.rst` match the shipped CLI surface and config schema.
-
-Definition of Done:
-
-- `make lint typecheck` and `make coverage` pass locally; coverage stays above its current threshold.
-- `make docs` builds cleanly with `-W` (warnings as errors).
-- A tagged `v0.2.0` release produces artifacts and a `CHANGELOG.md` entry via CI.
-- TestPyPI upload verified end-to-end.
-
-### v0.3.0 — August 15, 2026
-
-Focus: benchmarking depth and reporting confidence.
+Focus: correctness and release-gate credibility.
 
 Scope:
 
-- Expand the built-in dataset catalog with explicit licensing/provenance metadata.
-- Surface the statistical benchmarking (CIs, effect sizes, p-values) in reports and CLI output, not just the API.
-- Add optional performance/regression profiling runs to catch distance-matrix and validator slowdowns.
-- Add a benchmark-results page in `docs/` with a reproducible reference run.
+- Fix typed-validator correctness bugs in `src/oversampleqa/typed_validator.py`:
+  - import/define missing symbols,
+  - remove exception-silencing control flow,
+  - make async mode safe under an existing event loop,
+  - add tests that exercise those paths.
+- Get `make lint` and `make typecheck` to pass, or narrow the configured rule set to what the project is actually prepared to enforce.
+- Make docs warning-clean:
+  - fix gallery title/reference generation,
+  - ensure the docs command is run with warnings treated as errors in CI.
+- Make developer tooling cross-platform:
+  - replace Unix-only `clean`/docs shell commands,
+  - verify workflow on Windows and Linux.
+- Audit caching behavior in `src/oversampleqa/caching.py` and either harden the current design or simplify it to a safer disk-cache-only path.
 
 Definition of Done:
 
-- Benchmark suite runs on at least 3 datasets without failures.
-- Exported reports validated for JSON/YAML/Markdown, including statistical fields.
-- A documented reference benchmark run is reproducible from a pinned seed and config.
-- Release notes captured in `CHANGELOG.md`.
+- `poetry run pytest`, `make lint`, and `make typecheck` all pass on a clean checkout.
+- `make docs` succeeds with warnings treated as errors.
+- Typed validator async/session paths have dedicated tests.
+- The documented developer commands work on both Windows and Linux.
 
-### v1.0.0 — December 15, 2026
+### v0.3.0 — target: September 30, 2026
 
-Focus: API stability and release automation.
+Focus: reproducible benchmarking and report depth.
 
 Scope:
 
-- Backwards-compatibility policy and semantic-versioning guarantees.
-- Freeze and document the public API surface (`__all__`) and the plugin/protocol APIs; publish at least one reference plugin.
-- Public release checklist with automated verification (build, install-from-wheel smoke test, docs, security).
-- Documentation audit and a deprecations plan for anything not promoted to stable.
+- Expand the built-in dataset catalog with explicit licensing and provenance metadata.
+- Surface confidence intervals, effect sizes, and p-values in CLI output and exported reports, not only in the API.
+- Add a reproducible benchmark-results page with pinned seeds/configuration.
+- Add performance/regression checks for distance-matrix generation and memory-efficient validation.
+- Export benchmark results in a more analysis-friendly shape across CSV/JSON/Markdown outputs.
 
 Definition of Done:
 
-- Backwards-compatibility policy documented and linked from the README.
-- Full test suite and `make security` pass in CI.
-- Tagged release with artifacts generated and published via CI.
-- A clean-environment install-from-PyPI smoke test passes.
+- Benchmark suite runs on at least 3 documented datasets without failures.
+- Statistical fields are visible in CLI summaries and exported reports.
+- A reference benchmark run is reproducible from committed config and seed values.
+- Performance baselines are captured and compared in CI or scheduled runs.
+
+### v0.4.0 — target: November 30, 2026
+
+Focus: extensibility and public API hardening.
+
+Scope:
+
+- Freeze and document the intended public API surface.
+- Tighten plugin-system contracts and publish one reference plugin.
+- Add better extension diagnostics for invalid plugins, missing methods, and registration collisions.
+- Document compatibility guarantees and deprecation policy for pre-1.0 users.
+
+Definition of Done:
+
+- Public API and plugin contracts are documented and tested.
+- A reference plugin is published in-repo or as a companion example package.
+- Plugin loading failures produce actionable user-facing errors.
+
+### v1.0.0 — target: January 29, 2027
+
+Focus: stable release automation.
+
+Scope:
+
+- Finalize backwards-compatibility policy and semantic-versioning guarantees.
+- Enable end-to-end automated release publishing with verified artifacts.
+- Add a clean-environment install-and-smoke-test step for built distributions.
+- Publish an explicit release checklist covering build, test, docs, and security verification.
+
+Definition of Done:
+
+- Tagged release artifacts are generated and published via CI.
+- Full test suite, docs, lint, typecheck, and security checks pass in CI.
+- A clean-environment install-from-wheel or install-from-PyPI smoke test passes.
+- Release process is documented and repeatable.
 
 ## Non-Goals
 
