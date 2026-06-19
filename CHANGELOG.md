@@ -26,6 +26,9 @@ entries below the *Unreleased* section are generated from conventional commit me
   and is exported from the package.
 - Benchmark-results docs page with a reproducible reference run (pinned seed,
   configuration, and environment) and guidance on interpreting the output.
+- Optional performance profiling script (`scripts/profile_performance.py`, `make
+  profile`) that times the distance-matrix and validator hot paths and can save
+  or check a JSON baseline to catch regressions.
 
 ### Changed
 
