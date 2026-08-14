@@ -61,6 +61,7 @@ class OptimizedDistanceMatrix:
         self.cache = cache
 
         self._vectorized_dispatch: Dict[str, Callable[..., NDArray[np.floating]]] = {
+            "hassanat": self._vectorized_hassanat,
             "euclidean": self._vectorized_euclidean,
             "manhattan": self._vectorized_manhattan,
             "cosine": self._vectorized_cosine,
@@ -250,6 +251,35 @@ class OptimizedDistanceMatrix:
         with np.errstate(divide="ignore", invalid="ignore"):
             res = 1.0 - np.where(denom == 0, 0.0, dot / denom)
         return np.nan_to_num(res)
+
+    def _vectorized_hassanat(
+        self,
+        X1: NDArray[np.floating],
+        X2: NDArray[np.floating],
+        **_: Any,
+    ) -> NDArray[np.floating]:
+        """Vectorized Hassanat distance matrix.
+
+        Mirrors :func:`oversampleqa.distance.hassanat_distance`. The
+        denominator is ``1 + mx + shift``, which is always ``>= 1``, so no
+        division guard is needed.
+
+        Note: this allocates an ``(n1, n2, d)`` intermediate. Memory
+        accounting for the batched paths is handled by the caller.
+
+        Args:
+            X1: First feature matrix.
+            X2: Second feature matrix.
+
+        Returns:
+            Distance matrix.
+        """
+        mn = np.minimum(X1[:, None, :], X2[None, :, :])
+        mx = np.maximum(X1[:, None, :], X2[None, :, :])
+        shift = np.where(mn < 0.0, -mn, 0.0)
+        ratio = (1.0 + mn + shift) / (1.0 + mx + shift)
+        result: NDArray[np.floating] = np.sum(1.0 - ratio, axis=-1)
+        return result
 
     def _vectorized_chebyshev(
         self,

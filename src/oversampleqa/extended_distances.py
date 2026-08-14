@@ -232,6 +232,15 @@ def energy_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute energy distance between two 1D or 2D vectors.
 
     The implementation follows the definition from energy statistics.
+
+    .. warning::
+
+       This is a **sample-based** metric, not a point metric. A 1-D input is
+       reshaped to ``(len(x), 1)`` and treated as a *set of scalar
+       observations*, not as one point in ``len(x)``-dimensional feature
+       space. It therefore does not measure the same kind of quantity as
+       ``euclidean`` or ``hassanat``, even though it is reachable through the
+       same registry. Use it to compare two samples, not two points.
     """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
@@ -259,6 +268,15 @@ def energy_distance(x1: np.ndarray, x2: np.ndarray) -> float:
 
 def wasserstein_1d_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute the 1D Wasserstein distance between two empirical distributions.
+
+    .. warning::
+
+       This is a **sample-based** metric, not a point metric. The input vector
+       is flattened and treated as a *set of scalar observations* drawn from a
+       distribution, not as one point in feature space. It therefore does not
+       measure the same kind of quantity as ``euclidean`` or ``hassanat``,
+       even though it is reachable through the same registry. Use it to
+       compare two samples, not two points.
 
     Args:
         x1: Samples from distribution 1.

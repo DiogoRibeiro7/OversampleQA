@@ -27,6 +27,9 @@ pydantic = "^2.9.2"
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.0"
 pytest-cov = "^7.0.0"
+# Test-only: independent reference for the distance-metric audit. Deliberately
+# not a runtime dependency.
+scipy = "^1.14"
 black = "^26.1.0"
 isort = "^8.0.0"
 ruff = ">=0.15,<0.17"

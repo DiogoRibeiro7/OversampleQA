@@ -4,7 +4,9 @@ This bibliography lists the primary references for algorithms and techniques use
 
 ## Distance Metrics
 
-- **Hassanat Distance** – A. B. Hassanat, "Dimensionality Invariant Similarity Measure," 2014.
+- **Hassanat Distance** – A. B. Hassanat, "Dimensionality Invariant Similarity Measure," *Journal of American Science*, 10(8), 2014.
+  - A. B. Hassanat et al., "On enhancing the performance of nearest neighbour classifiers using Hassanat distance metric," arXiv:1501.00687, 2015.
+  - A. B. Hassanat et al., "Applications review of Hassanat distance metric," IEEE, 2022.
 - **Hellinger Distance** – E. Hellinger, "Neue Begründung der Theorie quadratischer Formen von unendlichvielen Veränderlichen," 1909.
 - **Jensen–Shannon Distance** – J. Lin, "Divergence Measures Based on the Shannon Entropy," 1991.
 - **Minkowski and Manhattan Distances** – H. Minkowski, "Geometrie der Zahlen," 1896.

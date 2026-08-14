@@ -27,10 +27,19 @@ built-in datasets are generated deterministically (see
    engine = StatisticalBenchmark(n_folds=5, n_repeats=5, random_state=42)
    frame = engine.run_comprehensive_benchmark(
        datasets,
-       [RandomOverSampler(), SMOTE()],
+       [RandomOverSampler(random_state=42), SMOTE(random_state=42)],
        metrics=["euclidean", "hassanat"],
    )
    print(format_statistical_summary(frame))
+
+.. important::
+
+   Seed the oversamplers themselves, as above. ``StatisticalBenchmark``'s
+   ``random_state`` controls the cross-validation splits, not the oversampler's
+   own sampling. Constructing ``SMOTE()`` without ``random_state`` draws from
+   global NumPy state and the run is **not** reproducible: the same
+   configuration produced mean errors of 0.003894, 0.003894 and 0.003186 on
+   three consecutive trials.
 
 The equivalent (whole-catalog) run from the CLI is:
 
@@ -57,25 +66,31 @@ Reference output
 .. code-block:: text
 
    ## Dataset: circles
-   | Oversampler       | Metric    | Mean  | Std   | CI               | n  |
-   | RandomOverSampler | euclidean | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | RandomOverSampler | hassanat  | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | SMOTE             | euclidean | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | SMOTE             | hassanat  | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
+
+   | Oversampler | Metric | Mean error | Std | CI | n |
+   | --- | --- | --- | --- | --- | --- |
+   | RandomOverSampler | euclidean | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | RandomOverSampler | hassanat | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | SMOTE | euclidean | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | SMOTE | hassanat | 0.000 | 0.000 | [0.000, 0.000] | 25 |
 
    ## Dataset: classification
-   | Oversampler       | Metric    | Mean  | Std   | CI               | n  |
-   | RandomOverSampler | euclidean | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | RandomOverSampler | hassanat  | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | SMOTE             | euclidean | 0.001 | 0.004 | [-0.001, 0.002]  | 25 |
-   | SMOTE             | hassanat  | 0.059 | 0.036 | [0.044, 0.074]   | 25 |
+
+   | Oversampler | Metric | Mean error | Std | CI | n |
+   | --- | --- | --- | --- | --- | --- |
+   | RandomOverSampler | euclidean | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | RandomOverSampler | hassanat | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | SMOTE | euclidean | 0.001 | 0.002 | [-0.000, 0.002] | 25 |
+   | SMOTE | hassanat | 0.005 | 0.006 | [0.002, 0.007] | 25 |
 
    ## Dataset: moons
-   | Oversampler       | Metric    | Mean  | Std   | CI               | n  |
-   | RandomOverSampler | euclidean | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | RandomOverSampler | hassanat  | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | SMOTE             | euclidean | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
-   | SMOTE             | hassanat  | 0.000 | 0.000 | [0.000, 0.000]   | 25 |
+
+   | Oversampler | Metric | Mean error | Std | CI | n |
+   | --- | --- | --- | --- | --- | --- |
+   | RandomOverSampler | euclidean | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | RandomOverSampler | hassanat | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | SMOTE | euclidean | 0.000 | 0.000 | [0.000, 0.000] | 25 |
+   | SMOTE | hassanat | 0.000 | 0.000 | [0.000, 0.000] | 25 |
 
 Interpreting the reference
 --------------------------
@@ -84,9 +99,16 @@ Most of these synthetic datasets are easily separable, so the validation error
 rate is effectively zero — the synthetic minority points are nowhere near the
 hidden majority. The informative cell is **SMOTE on the** ``classification``
 **dataset with the Hassanat metric**, which produces a measurable error rate of
-roughly ``0.059`` with a 95% confidence interval that excludes zero. That is the
-diagnostic doing its job: it flags that, under this metric, a small but
-consistent fraction of SMOTE's synthetic samples look majority-like.
+roughly ``0.005`` (mean 0.004602) with a 95% confidence interval that excludes
+zero. That is the diagnostic doing its job: it flags that, under this metric, a
+small but consistent fraction of SMOTE's synthetic samples look majority-like.
+
+.. note::
+
+   These figures were regenerated after the Hassanat distance was corrected to
+   match Hassanat (2014). The previous version of this page reported ``0.059``
+   for this cell, produced by an implementation that was not the Hassanat
+   distance. The two numbers are **not comparable**.
 
 Two takeaways:
 
