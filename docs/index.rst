@@ -62,6 +62,7 @@ Contents
    examples
    gallery/index
    contributing
+   citation
    bibliography
    faq
 

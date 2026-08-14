@@ -1,0 +1,49 @@
+{
+  "upload_type": "software",
+  "title": "OversampleQA: a diagnostic toolkit to validate, audit, and benchmark oversampling methods",
+  "description": "<p>OversampleQA is a Python toolkit for validating oversampling methods used in imbalanced classification. It implements hidden-majority validation: a portion of the majority class is hidden, and each synthetic minority sample is scored by its nearest-neighbour distance to the hidden majority and to the real minority. A synthetic sample that sits closer to the hidden majority counts as an error, so the resulting error rate measures how often an oversampler produces majority-like artifacts.</p><p>The package provides binary and multiclass validation, a broad set of distance metrics (Hassanat, Euclidean, Mahalanobis, Hellinger, Jensen-Shannon, Wasserstein, and others), memory-efficient distance matrix computation, benchmarking across datasets and oversamplers with exportable results, plotting and reporting helpers, a configurable command-line interface, and a plugin system for custom metrics and validators.</p><p>The validation methodology follows Hassanat et al., \"Stop Oversampling for Class Imbalance Learning: A Critical Review\" (2022).</p>",
+  "creators": [
+    {
+      "name": "Ribeiro, Diogo",
+      "affiliation": "ESMAD - Instituto Politécnico do Porto",
+      "orcid": "0009-0001-2022-7072"
+    }
+  ],
+  "license": "mit",
+  "access_right": "open",
+  "language": "eng",
+  "keywords": [
+    "oversampling",
+    "class imbalance",
+    "imbalanced classification",
+    "synthetic data",
+    "SMOTE",
+    "ADASYN",
+    "data quality",
+    "validation",
+    "benchmarking",
+    "distance metrics",
+    "machine learning",
+    "scikit-learn",
+    "Python"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://pypi.org/project/oversampleqa/",
+      "relation": "isIdenticalTo",
+      "resource_type": "software",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/diogoribeiro7/OversampleQA",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "references": [
+    "Hassanat, A. B., et al. (2022). Stop Oversampling for Class Imbalance Learning: A Critical Review.",
+    "Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic Minority Over-sampling Technique. Journal of Artificial Intelligence Research, 16, 321-357.",
+    "He, H., Bai, Y., Garcia, E. A., & Li, S. (2008). ADASYN: Adaptive Synthetic Sampling Approach for Imbalanced Learning.",
+    "Hassanat, A. B. (2014). Dimensionality Invariant Similarity Measure."
+  ]
+}

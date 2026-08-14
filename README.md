@@ -144,6 +144,30 @@ make security
 poetry run pre-commit run --all-files
 ```
 
+## Citation
+
+If you use OversampleQA in academic work, please cite it. Machine-readable metadata
+lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button.
+
+```bibtex
+@software{ribeiro_oversampleqa,
+  author  = {Ribeiro, Diogo},
+  title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
+             and benchmark oversampling methods}},
+  version = {0.1.0},
+  year    = {2025},
+  url     = {https://github.com/diogoribeiro7/OversampleQA}
+}
+```
+
+Tagged releases are archived on Zenodo, which mints a DOI for each one. See
+[Citing OversampleQA](docs/citation.rst) for the archiving setup and for how to
+cite a specific version.
+
+<!-- After the first Zenodo archive, add the concept-DOI badge to the badge block
+     at the top of this file and drop the DOI into the BibTeX entry above:
+     [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
+
 ## License
 
 MIT. See `LICENSE`.

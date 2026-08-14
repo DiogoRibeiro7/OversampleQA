@@ -1,11 +1,40 @@
 cff-version: 1.2.0
 message: "If you use this package, please cite it as below."
 title: "OversampleQA"
+abstract: >-
+  A diagnostic toolkit to validate, audit, and benchmark oversampling methods
+  for imbalanced classification. OversampleQA hides part of the majority class
+  and scores each synthetic minority sample by its nearest-neighbour distance to
+  the hidden majority and to the real minority, yielding an error rate that
+  measures how often an oversampler produces majority-like artifacts.
+type: software
 version: "0.1.0"
 date-released: 2025-08-01
+license: MIT
 authors:
   - family-names: Ribeiro
     given-names: Diogo
     email: dfr@esmad.ipp.pt
     affiliation: ESMAD - Instituto Politécnico do Porto
     orcid: https://orcid.org/0009-0001-2022-7072
+repository-code: "https://github.com/diogoribeiro7/OversampleQA"
+url: "https://github.com/diogoribeiro7/OversampleQA"
+repository-artifact: "https://pypi.org/project/oversampleqa/"
+keywords:
+  - oversampling
+  - class imbalance
+  - imbalanced classification
+  - synthetic data
+  - SMOTE
+  - data quality
+  - validation
+  - benchmarking
+  - machine learning
+  - Python
+# Uncomment and fill in after the first Zenodo archive is minted. Use the
+# concept DOI (the one that always resolves to the latest version), which
+# Zenodo shows as "Cite all versions" on the record page.
+# identifiers:
+#   - type: doi
+#     value: 10.5281/zenodo.XXXXXXX
+#     description: Concept DOI for all versions of OversampleQA.
