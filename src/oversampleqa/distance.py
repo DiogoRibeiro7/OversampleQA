@@ -45,26 +45,58 @@ __all__ = [
 ]
 
 
-def hassanat_distance(x1: np.ndarray, x2: np.ndarray) -> float:
-    """Compute the Hassanat distance between two vectors.
+def hassanat_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:
+    r"""Compute the Hassanat distance between two vectors.
 
-    Args:
-        x1: First vector.
-        x2: Second vector.
+    For each dimension :math:`i`, with :math:`m = \min(a_i, b_i)` and
+    :math:`M = \max(a_i, b_i)`:
 
-    Returns:
-        Hassanat distance.
+    .. math::
+
+       D(a_i, b_i) = \begin{cases}
+         1 - \dfrac{1 + m}{1 + M} & m \ge 0 \\[2ex]
+         1 - \dfrac{1 + m + |m|}{1 + M + |m|} & m < 0
+       \end{cases}
+
+    and :math:`HD(a, b) = \sum_i D(a_i, b_i)`.
+
+    Every per-dimension term lies in :math:`[0, 1)`, which is what makes the
+    metric invariant to feature scale and robust to outliers: no single
+    dimension can contribute more than 1 regardless of its magnitude.
+
+    Parameters
+    ----------
+    x1, x2 : NDArray[np.floating]
+        Input vectors of identical shape.
+
+    Returns
+    -------
+    float
+        Hassanat distance, in ``[0, n_features)``.
+
+    Raises
+    ------
+    ValueError
+        If the two vectors do not have the same shape.
+
+    References
+    ----------
+    Hassanat, A. B. (2014). Dimensionality invariant similarity measure.
+    *Journal of American Science*, 10(8).
     """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
 
-    max_vals = np.maximum(np.abs(x1), np.abs(x2))
-    min_vals = np.minimum(np.abs(x1), np.abs(x2))
-    with np.errstate(divide="ignore", invalid="ignore"):
-        d = np.where(max_vals == 0, 0.0, 1.0 - min_vals / max_vals)
-    return float(np.sum(d))
+    mn = np.minimum(x1, x2)
+    mx = np.maximum(x1, x2)
+    # Adding |min| on the negative branch shifts both terms up so the ratio
+    # stays in (0, 1]. The denominator is 1 + mx + shift; since mx >= mn and
+    # shift = max(-mn, 0), we have mx + shift >= mn + shift >= 0, so the
+    # denominator is >= 1 and can never vanish. No division guard is needed.
+    shift = np.where(mn < 0.0, -mn, 0.0)
+    return float(np.sum(1.0 - (1.0 + mn + shift) / (1.0 + mx + shift)))
 
 
 def euclidean_distance(x1: np.ndarray, x2: np.ndarray) -> float:

@@ -10,6 +10,51 @@ maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`hassanat_distance` did not implement the Hassanat (2014) distance.** It
+  computed `1 - min(|a|, |b|) / max(|a|, |b|)` summed over dimensions: absolute
+  values, and no unit shift. That function is not a metric — it scored `[-5]`
+  and `[5]` as distance zero, violating identity of indiscernibles — and it was
+  discontinuous at the origin, giving `[0]` and `[1e-9]` the maximum
+  per-dimension distance. Any zero-centred feature was therefore scored close to
+  randomly near its mean. It is now the definition from Hassanat (2014), with
+  every per-dimension contribution bounded to `[0, 1)`.
+
+  **`hassanat` is the package default metric**, so error rates computed before
+  this release are **not comparable** to those computed after it. This affects
+  `distance_matrix`, `validate_oversampling`, and
+  `validate_multiclass_oversampling` under default settings.
+
+  Regenerated artefacts:
+
+  - `docs/benchmark_results.rst` — the pinned reference run. The headline cell
+    (SMOTE / `classification` / hassanat) moved from `0.059` to `0.005`.
+  - `docs/_static/distance_histogram.png` and
+    `docs/_static/multiclass_heatmap.png` — both plotted with `metric="hassanat"`.
+
+### Added
+
+- `hassanat` now has a vectorised kernel in
+  `OptimizedDistanceMatrix._vectorized_dispatch`. It was previously absent, so
+  the default metric always fell through to a Python double loop calling the
+  metric once per pair.
+- Distance-metric audit: every metric in the registry is now checked against
+  SciPy or an independent closed form, not merely against itself. SciPy is a
+  new **dev-only** dependency for this.
+
+### Changed
+
+- `energy` and `wasserstein` are documented as **sample-based** metrics rather
+  than point metrics, in their docstrings and in `docs/distances.rst`. They
+  treat the input vector as a set of observations, not as a point in feature
+  space, so they answer a different question from the rest of the registry.
+- The reference benchmark in `docs/benchmark_results.rst` now seeds the
+  oversamplers. Without that, the "pinned" run was not reproducible: the same
+  configuration produced 0.003894, 0.003894 and 0.003186 on three consecutive
+  trials, because `StatisticalBenchmark(random_state=...)` seeds the
+  cross-validation splits but not the oversampler's own sampling.
+
 ## [0.2.0] - 2026-08-14
 
 ### Added
