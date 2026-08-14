@@ -44,6 +44,12 @@ jobs:
         cache-dependency-path: |
           docs/requirements.txt
           poetry.lock
+    - name: Install pandoc
+      # nbsphinx shells out to pandoc to render the .ipynb tutorials; without it
+      # the build dies with PandocMissing.
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pandoc
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
