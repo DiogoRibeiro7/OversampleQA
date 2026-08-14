@@ -30,10 +30,10 @@ keywords:
   - benchmarking
   - machine learning
   - Python
-# Uncomment and fill in after the first Zenodo archive is minted. Use the
-# concept DOI (the one that always resolves to the latest version), which
-# Zenodo shows as "Cite all versions" on the record page.
-# identifiers:
-#   - type: doi
-#     value: 10.5281/zenodo.XXXXXXX
-#     description: Concept DOI for all versions of OversampleQA.
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.21940361
+    description: Concept DOI for all versions of OversampleQA.
+  - type: doi
+    value: 10.5281/zenodo.21940362
+    description: DOI for version 0.2.0.

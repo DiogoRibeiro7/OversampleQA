@@ -3,6 +3,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/OversampleQA/ci.yml?branch=main)](https://github.com/diogoribeiro7/OversampleQA/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/diogoribeiro7/OversampleQA)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21940361.svg)](https://doi.org/10.5281/zenodo.21940361)
 
 A diagnostic toolkit to validate, audit, and benchmark oversampling methods for imbalanced classification.
 
@@ -153,17 +154,15 @@ lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button
              and benchmark oversampling methods}},
   version = {0.2.0},
   year    = {2026},
-  url     = {https://github.com/diogoribeiro7/OversampleQA}
+  doi     = {10.5281/zenodo.21940361},
+  url     = {https://doi.org/10.5281/zenodo.21940361}
 }
 ```
 
-Tagged releases are archived on Zenodo, which mints a DOI for each one. See
-[Citing OversampleQA](docs/citation.rst) for the archiving setup and for how to
-cite a specific version.
-
-<!-- After the first Zenodo archive, add the concept-DOI badge to the badge block
-     at the top of this file and drop the DOI into the BibTeX entry above:
-     [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
+The DOI above is the concept DOI: it always resolves to the newest archived
+version. To cite this exact release instead, use `10.5281/zenodo.21940362`. See
+[Citing OversampleQA](docs/citation.rst) for the difference and for how releases
+are archived.
 
 ## License
 

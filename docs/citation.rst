@@ -27,46 +27,51 @@ BibTeX
                 and benchmark oversampling methods}},
      version = {0.2.0},
      year    = {2026},
-     url     = {https://github.com/diogoribeiro7/OversampleQA}
+     doi     = {10.5281/zenodo.21940361},
+     url     = {https://doi.org/10.5281/zenodo.21940361}
    }
-
-Once a release has been archived, add the DOI to the entry with
-``doi = {10.5281/zenodo.XXXXXXX}``.
 
 Which DOI to cite
 -----------------
 
 Zenodo mints two kinds of DOI:
 
-Concept DOI
+Concept DOI — ``10.5281/zenodo.21940361``
    Always resolves to the newest archived version. Zenodo labels it *Cite all
-   versions* on the record page. Use it in the README badge and in
-   ``CITATION.cff``, because it never goes stale.
+   versions* on the record page. This is what the README badge and
+   ``CITATION.cff`` point at, because it never goes stale.
 
-Version DOI
+Version DOI — ``10.5281/zenodo.21940362`` for 0.2.0
    Points at one specific release. Use it in a paper, where the reader needs the
    exact code that produced the results.
 
 Archiving a release on Zenodo
 -----------------------------
 
-The link between GitHub and Zenodo is enabled once, by hand, by a maintainer
-with admin rights on the repository. It cannot be set up from the codebase.
+The GitHub-Zenodo link is already enabled for this repository, so publishing a
+release is all that is needed. Releases are cut by hand; nothing in CI tags or
+publishes them.
 
-1. Sign in at https://zenodo.org with the GitHub account that owns the
-   repository and grant the Zenodo GitHub application access.
-2. Open https://zenodo.org/account/settings/github/ and flip the switch next to
-   ``diogoribeiro7/OversampleQA``. Only repositories where you have admin rights
-   appear; use *Sync now* if the repository is missing from the list.
-3. Publish a GitHub release. The webhook fires on release publication only, so
-   pushing a tag alone does nothing, and releases published *before* the switch
-   was enabled are not archived retroactively.
-4. Zenodo creates the record and mints the DOI within a few minutes. Check the
-   result at https://zenodo.org/account/settings/github/ and open the record to
-   confirm the metadata came from ``.zenodo.json``.
-5. Copy the concept DOI into the README badge, the BibTeX entry above, and the
-   ``identifiers`` block in ``CITATION.cff`` (commented out until the first
-   archive exists). Commit that change.
+1. Update ``version`` and ``date-released`` in ``CITATION.cff``, the version in
+   ``pyproject.toml``, ``[tool.commitizen]``, and ``src/oversampleqa/__init__.py``,
+   and promote the *Unreleased* changelog section. Commit.
+2. Tag the release and push the tag::
+
+      git tag -s vX.Y.Z -m "vX.Y.Z"
+      git push origin vX.Y.Z
+
+3. Publish a GitHub release for that tag. The webhook fires on release
+   publication only, so pushing a tag alone archives nothing.
+4. Zenodo creates the record and mints a fresh version DOI within a few minutes.
+   The concept DOI stays the same. Confirm the metadata came from
+   ``.zenodo.json`` by opening the new record.
+5. Add the new version DOI to the ``identifiers`` block in ``CITATION.cff``. The
+   README badge and BibTeX entry use the concept DOI and need no change.
+
+Should the integration ever need re-enabling, it is done by hand at
+https://zenodo.org/account/settings/github/ by a maintainer with admin rights on
+the repository; it cannot be set up from the codebase. Releases published while
+the switch is off are not archived retroactively.
 
 Release checklist
 -----------------
