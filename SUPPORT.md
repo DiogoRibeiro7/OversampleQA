@@ -23,12 +23,9 @@ https://github.com/diogoribeiro7/oversampleqa/issues
 # Ensure you have Python 3.10+
 python --version
 
-# Install from PyPI
-pip install oversampleqa
-
-# Install from source
-git clone https://github.com/diogoribeiro7/oversampleqa.git
-cd oversampleqa
+# Install from source (OversampleQA is not published on PyPI)
+git clone https://github.com/diogoribeiro7/OversampleQA.git
+cd OversampleQA
 pip install -e .
 ```
 

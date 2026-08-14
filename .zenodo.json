@@ -29,12 +29,6 @@
   ],
   "related_identifiers": [
     {
-      "identifier": "https://pypi.org/project/oversampleqa/",
-      "relation": "isIdenticalTo",
-      "resource_type": "software",
-      "scheme": "url"
-    },
-    {
       "identifier": "https://github.com/diogoribeiro7/OversampleQA",
       "relation": "isSupplementTo",
       "scheme": "url"

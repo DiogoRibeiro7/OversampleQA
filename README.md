@@ -1,8 +1,7 @@
 # OversampleQA
 
 [![CI](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/OversampleQA/ci.yml?branch=main)](https://github.com/diogoribeiro7/OversampleQA/actions)
-[![PyPI](https://img.shields.io/pypi/v/oversampleqa)](https://pypi.org/project/oversampleqa/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/oversampleqa)](https://pypi.org/project/oversampleqa/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/diogoribeiro7/OversampleQA)](LICENSE)
 
 A diagnostic toolkit to validate, audit, and benchmark oversampling methods for imbalanced classification.
@@ -22,22 +21,20 @@ OversampleQA validates synthetic samples by hiding a portion of the majority cla
 
 ## Install
 
-Python 3.10+ is required.
-
-```bash
-poetry add oversampleqa
-```
-
-```bash
-pip install oversampleqa
-```
-
-From source (recommended for development):
+Python 3.10+ is required. OversampleQA is not published on PyPI; install it from
+source:
 
 ```bash
 git clone https://github.com/diogoribeiro7/OversampleQA.git
 cd OversampleQA
 poetry install
+```
+
+To use it as a dependency in another project, point your package manager at the
+repository:
+
+```bash
+pip install git+https://github.com/diogoribeiro7/OversampleQA.git
 ```
 
 ## Quick Start (Python)

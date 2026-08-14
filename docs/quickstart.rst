@@ -6,11 +6,13 @@ This guide will get you started with OversampleQA in just a few minutes.
 Installation
 ------------
 
-Install OversampleQA using pip:
+OversampleQA is not published on PyPI. Install it from source:
 
 .. code-block:: bash
 
-   pip install oversampleqa
+   git clone https://github.com/diogoribeiro7/OversampleQA.git
+   cd OversampleQA
+   poetry install
 
 Basic Usage
 -----------

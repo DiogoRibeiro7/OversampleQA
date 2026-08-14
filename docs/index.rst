@@ -1,11 +1,8 @@
 OversampleQA Documentation
 ==========================
 
-.. image:: https://img.shields.io/pypi/v/oversampleqa.svg
-   :target: https://pypi.org/project/oversampleqa/
-
-.. image:: https://img.shields.io/pypi/pyversions/oversampleqa.svg
-   :target: https://pypi.org/project/oversampleqa/
+.. image:: https://img.shields.io/badge/python-3.10%2B-blue.svg
+   :target: https://www.python.org/downloads/
 
 **OversampleQA** is a validation toolkit for oversampling methods in imbalanced classification.
 
@@ -32,9 +29,13 @@ Quick Start
 Installation
 ------------
 
+OversampleQA is not published on PyPI. Install it from source:
+
 .. code-block:: bash
 
-   pip install oversampleqa
+   git clone https://github.com/diogoribeiro7/OversampleQA.git
+   cd OversampleQA
+   poetry install
 
 Contents
 --------

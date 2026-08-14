@@ -35,7 +35,6 @@ mypy = ">=1.18,<3.0"
 pre-commit = "^4.3.0"
 safety = "^3.2.7"
 commitizen = "^4.1.1"
-python-semantic-release = "^10.3.1"
 flake8 = "^7.3.0"
 sphinx = "^8.1.3"
 myst-parser = "^4.0.1"
@@ -50,21 +49,6 @@ name = "cz_conventional_commits"
 version = "0.1.0"
 tag_format = "v$version"
 update_changelog_on_bump = true
-
-[tool.semantic_release]
-version_toml = ["pyproject.toml:tool.poetry.version"]
-build_command = "poetry build"
-commit_parser = "conventional"
-
-[tool.semantic_release.branches.main]
-match = "main"
-
-[tool.semantic_release.changelog.default_templates]
-changelog_file = "CHANGELOG.md"
-
-[tool.semantic_release.publish]
-upload_to_vcs_release = true
-dist_glob_patterns = ["dist/*"]
 
 [tool.poetry.scripts]
 oversampleqa-validate = "oversampleqa.cli:main"
