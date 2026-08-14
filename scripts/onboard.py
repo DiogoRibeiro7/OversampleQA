@@ -28,7 +28,7 @@ def main() -> None:
     run(["poetry", "run", "pre-commit", "install"])
     run(["poetry", "run", "pre-commit", "install", "--hook-type", "commit-msg"])
 
-    default_branch = os.getenv("DEFAULT_BRANCH", "develop")
+    default_branch = os.getenv("DEFAULT_BRANCH", "main")
     print(f"Environment ready. Remember to branch from '{default_branch}'.")
 
 
