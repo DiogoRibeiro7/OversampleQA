@@ -1,4 +1,10 @@
-"""Minimal example using oversampleqa."""
+"""
+Minimal Validation
+==================
+
+The smallest useful example: validate SMOTE on a synthetic imbalanced dataset
+and print the hidden-majority error rate.
+"""
 
 from imblearn.over_sampling import SMOTE
 from sklearn.datasets import make_classification
