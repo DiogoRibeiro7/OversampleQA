@@ -10,6 +10,8 @@ maintained manually.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-14
+
 ### Added
 
 - `CHANGELOG.md` seeded, maintained manually alongside tagged releases.
@@ -69,5 +71,6 @@ Initial release.
 - Plugin system for custom metrics and validators.
 - Sphinx documentation, examples gallery, and tutorials.
 
-[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.2.0
 [0.1.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.1.0

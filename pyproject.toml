@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oversampleqa"
-version = "0.1.0"
+version = "0.2.0"
 description = "A diagnostic toolkit to validate oversampling methods."
 authors = ["Diogo Ribeiro <dfr@esmad.ipp.pt>"]
 license = "MIT"
@@ -46,7 +46,7 @@ strict = true
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.1.0"
+version = "0.2.0"
 tag_format = "v$version"
 update_changelog_on_bump = true
 

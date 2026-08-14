@@ -25,8 +25,8 @@ BibTeX
      author  = {Ribeiro, Diogo},
      title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
                 and benchmark oversampling methods}},
-     version = {0.1.0},
-     year    = {2025},
+     version = {0.2.0},
+     year    = {2026},
      url     = {https://github.com/diogoribeiro7/OversampleQA}
    }
 
