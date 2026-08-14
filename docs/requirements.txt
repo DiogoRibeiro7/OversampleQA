@@ -5,5 +5,5 @@ sphinx-copybutton==0.5.2
 nbsphinx==0.9.8
 jupyter==1.1.1
 matplotlib==3.10.9
-sphinx-gallery==0.20.0
+sphinx-gallery==0.21.0
 
