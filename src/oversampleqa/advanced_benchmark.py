@@ -125,7 +125,9 @@ class StatisticalBenchmark:
                 if not error_rates:
                     continue
                 mean_error = float(np.mean(error_rates))
-                std_error = float(np.std(error_rates, ddof=1)) if len(error_rates) > 1 else 0.0
+                std_error = (
+                    float(np.std(error_rates, ddof=1)) if len(error_rates) > 1 else 0.0
+                )
                 ci_lower, ci_upper = self._confidence_interval(error_rates)
                 power_samples = self._recommended_sample_size(error_rates)
 
@@ -170,7 +172,9 @@ class StatisticalBenchmark:
             cv = StratifiedKFold(
                 n_splits=self.n_folds,
                 shuffle=True,
-                random_state=None if self.random_state is None else rng.integers(0, 1_000_000),
+                random_state=(
+                    None if self.random_state is None else rng.integers(0, 1_000_000)
+                ),
             )
             for fold, (train_idx, val_idx) in enumerate(cv.split(X, y)):
                 X_train, X_val = X[train_idx], X[val_idx]
@@ -206,7 +210,10 @@ class StatisticalBenchmark:
             Lower and upper bounds for the configured confidence level.
         """
         if len(values) < 2:
-            return (float(values[0]) if values else 0.0, float(values[0]) if values else 0.0)
+            return (
+                float(values[0]) if values else 0.0,
+                float(values[0]) if values else 0.0,
+            )
         arr = np.asarray(values, dtype=float)
         mean = float(arr.mean())
         alpha = 1 - self.confidence_level
@@ -219,7 +226,9 @@ class StatisticalBenchmark:
         upper = float(np.percentile(arr, (1 - alpha / 2) * 100))
         return lower, upper
 
-    def _recommended_sample_size(self, values: Sequence[float], target_power: float = 0.8) -> Optional[int]:
+    def _recommended_sample_size(
+        self, values: Sequence[float], target_power: float = 0.8
+    ) -> Optional[int]:
         """Estimate recommended sample size using a Cohen's d approximation.
 
         Args:
@@ -243,7 +252,7 @@ class StatisticalBenchmark:
         alpha = 1 - self.confidence_level
         z_alpha = stats.norm.ppf(1 - alpha / 2)
         z_beta = stats.norm.ppf(target_power)
-        n = ((z_alpha + z_beta) ** 2) * 2 / (d ** 2)
+        n = ((z_alpha + z_beta) ** 2) * 2 / (d**2)
         return int(math.ceil(n))
 
     def _add_statistical_analysis(self, frame: pd.DataFrame) -> pd.DataFrame:
@@ -271,7 +280,9 @@ class StatisticalBenchmark:
                 frame.at[idx, "pairwise_effect_sizes"] = json.dumps(effects)
         return frame
 
-    def _pairwise_statistical_tests(self, dataset_slice: pd.DataFrame) -> Dict[str, float]:
+    def _pairwise_statistical_tests(
+        self, dataset_slice: pd.DataFrame
+    ) -> Dict[str, float]:
         """Compute pairwise Wilcoxon tests across oversamplers.
 
         Args:
@@ -461,7 +472,9 @@ class DatasetRepository:
             return self._load_financial(max_samples)
         return []
 
-    def _load_medical(self, max_samples: int, include_openml: bool) -> List[Dict[str, Any]]:
+    def _load_medical(
+        self, max_samples: int, include_openml: bool
+    ) -> List[Dict[str, Any]]:
         """Load medical datasets for benchmarking.
 
         Args:
@@ -540,7 +553,9 @@ class DatasetRepository:
         Returns:
             List of synthetic dataset descriptors.
         """
-        difficulty_levels = tuple(difficulty_levels or ("easy", "medium", "hard", "extreme"))
+        difficulty_levels = tuple(
+            difficulty_levels or ("easy", "medium", "hard", "extreme")
+        )
         synthetic: List[Dict[str, Any]] = []
         for difficulty in difficulty_levels:
             synthetic.extend(self._generate_difficulty(difficulty))
@@ -561,23 +576,55 @@ class DatasetRepository:
         configs: List[Dict[str, Any]]
         if difficulty == "easy":
             configs = [
-                {"n_samples": 600, "n_features": 8, "class_sep": 2.0, "weights": [0.75, 0.25]},
-                {"n_samples": 800, "n_features": 5, "class_sep": 1.8, "weights": [0.8, 0.2]},
+                {
+                    "n_samples": 600,
+                    "n_features": 8,
+                    "class_sep": 2.0,
+                    "weights": [0.75, 0.25],
+                },
+                {
+                    "n_samples": 800,
+                    "n_features": 5,
+                    "class_sep": 1.8,
+                    "weights": [0.8, 0.2],
+                },
             ]
         elif difficulty == "medium":
             configs = [
-                {"n_samples": 1000, "n_features": 12, "class_sep": 1.2, "weights": [0.85, 0.15]},
+                {
+                    "n_samples": 1000,
+                    "n_features": 12,
+                    "class_sep": 1.2,
+                    "weights": [0.85, 0.15],
+                },
             ]
         elif difficulty == "hard":
             configs = [
-                {"n_samples": 1500, "n_features": 20, "class_sep": 0.8, "weights": [0.9, 0.1]},
+                {
+                    "n_samples": 1500,
+                    "n_features": 20,
+                    "class_sep": 0.8,
+                    "weights": [0.9, 0.1],
+                },
             ]
         elif difficulty == "extreme":
             configs = [
-                {"n_samples": 2000, "n_features": 40, "class_sep": 0.4, "weights": [0.97, 0.03]},
+                {
+                    "n_samples": 2000,
+                    "n_features": 40,
+                    "class_sep": 0.4,
+                    "weights": [0.97, 0.03],
+                },
             ]
         else:
-            configs = [{"n_samples": 800, "n_features": 10, "class_sep": 1.0, "weights": [0.8, 0.2]}]
+            configs = [
+                {
+                    "n_samples": 800,
+                    "n_features": 10,
+                    "class_sep": 1.0,
+                    "weights": [0.8, 0.2],
+                }
+            ]
 
         datasets: List[Dict[str, Any]] = []
         for idx, config in enumerate(configs):
@@ -600,7 +647,100 @@ class DatasetRepository:
         return datasets
 
 
-def create_benchmark_report(results_df: pd.DataFrame, output_path: str = "benchmark_report.html") -> Path:
+def format_statistical_summary(
+    results_df: pd.DataFrame, significance_level: float = 0.05
+) -> str:
+    """Render a Markdown summary of a statistical benchmark frame.
+
+    The frame is expected to come from
+    :meth:`StatisticalBenchmark.run_comprehensive_benchmark`. The summary lists,
+    per dataset, the mean error, standard deviation and confidence interval for
+    each oversampler/metric, followed by the statistically significant pairwise
+    comparisons (corrected p-value below ``significance_level``).
+
+    Args:
+        results_df: Benchmark results dataframe.
+        significance_level: Threshold below which a pairwise p-value is reported.
+
+    Returns:
+        A Markdown-formatted string.
+    """
+    if results_df.empty:
+        return (
+            "# OversampleQA Statistical Benchmark\n\nNo benchmark results available.\n"
+        )
+
+    lines = ["# OversampleQA Statistical Benchmark", ""]
+    lines.append(
+        "Confidence intervals use the configured confidence level. Pairwise "
+        "p-values and effect sizes (Cohen's d) compare oversamplers on the same "
+        "dataset and metric, corrected by the configured method."
+    )
+    lines.append("")
+
+    for dataset_name, group in results_df.groupby("dataset_name", sort=True):
+        lines.append(f"## Dataset: {dataset_name}")
+        lines.append("")
+        lines.append("| Oversampler | Metric | Mean error | Std | CI | n |")
+        lines.append("| --- | --- | --- | --- | --- | --- |")
+        for _, row in group.iterrows():
+            ci = f"[{row['ci_lower']:.3f}, {row['ci_upper']:.3f}]"
+            lines.append(
+                f"| {row['oversampler_name']} | {row['metric']} | "
+                f"{row['mean_error']:.3f} | {row['std_error']:.3f} | {ci} | "
+                f"{int(row['n_observations'])} |"
+            )
+        lines.append("")
+
+        significant = _significant_pairwise(group, significance_level)
+        if significant:
+            lines.append(
+                f"Significant pairwise differences (p < {significance_level}):"
+            )
+            for label, p_val, effect in significant:
+                effect_str = f", d={effect:.2f}" if effect is not None else ""
+                lines.append(f"- {label}: p={p_val:.4f}{effect_str}")
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def _significant_pairwise(
+    group: pd.DataFrame, significance_level: float
+) -> List[Tuple[str, float, Optional[float]]]:
+    """Extract significant pairwise comparisons from a per-dataset group.
+
+    Args:
+        group: Rows for a single dataset.
+        significance_level: Threshold below which a p-value is reported.
+
+    Returns:
+        Sorted list of ``(comparison, p_value, effect_size)`` tuples.
+    """
+    if "pairwise_p_values" not in group.columns:
+        return []
+    raw_p = group["pairwise_p_values"].dropna()
+    if raw_p.empty:
+        return []
+    p_values = json.loads(raw_p.iloc[0])
+    effects: Dict[str, Any] = {}
+    if "pairwise_effect_sizes" in group.columns:
+        raw_e = group["pairwise_effect_sizes"].dropna()
+        if not raw_e.empty:
+            effects = json.loads(raw_e.iloc[0])
+
+    significant = [
+        (label, float(p_val), effects.get(label))
+        for label, p_val in p_values.items()
+        if p_val is not None and p_val < significance_level
+    ]
+    significant.sort(key=lambda item: item[1])
+    return significant
+
+
+def create_benchmark_report(
+    results_df: pd.DataFrame, output_path: str = "benchmark_report.html"
+) -> Path:
     """Create a lightweight HTML report summarising benchmark statistics.
 
     Args:

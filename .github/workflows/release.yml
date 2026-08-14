@@ -37,9 +37,23 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Semantic Release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN || '' }}
         run: |
           poetry run semantic-release version
           poetry run semantic-release publish
+
+      # python-semantic-release (v8+) no longer uploads to PyPI itself; it only
+      # attaches build artifacts to the GitHub release. Publish to PyPI with
+      # twine, gated on PYPI_TOKEN so forks/test runs without the secret skip it.
+      # Point TWINE_REPOSITORY_URL at TestPyPI to verify end-to-end before going live.
+      - name: Publish to PyPI
+        if: ${{ secrets.PYPI_TOKEN != '' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          TWINE_REPOSITORY_URL: ${{ vars.TWINE_REPOSITORY_URL }}
+        run: |
+          poetry run pip install twine
+          poetry run twine upload --skip-existing dist/*

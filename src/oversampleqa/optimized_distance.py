@@ -6,16 +6,24 @@ import math
 from typing import Any, Callable, Dict, Iterable, Optional, Union, TYPE_CHECKING
 
 import numpy as np
-import psutil
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     from .caching import ValidationCache
 
+try:  # pragma: no cover - psutil is optional
+    import psutil
+except ImportError:  # pragma: no cover - fallback if psutil is unavailable
+    psutil = None
+
 try:  # pragma: no cover - tqdm is optional
     from tqdm.auto import tqdm
 except ImportError:  # pragma: no cover - fallback if tqdm is unavailable
     tqdm = None
+
+# Conservative assumption used when psutil is not installed, so memory-aware
+# batching still picks a safe (smaller) batch size rather than failing.
+_DEFAULT_AVAILABLE_MEMORY_GB = 1.0
 
 DistanceCallable = Callable[[NDArray[np.floating], NDArray[np.floating]], float]
 
@@ -23,9 +31,13 @@ DistanceCallable = Callable[[NDArray[np.floating], NDArray[np.floating]], float]
 def get_available_memory_gb() -> float:
     """Return currently available system memory in gigabytes.
 
+    Falls back to a conservative constant when ``psutil`` is not installed.
+
     Returns:
         Available memory in GB.
     """
+    if psutil is None:
+        return _DEFAULT_AVAILABLE_MEMORY_GB
     return psutil.virtual_memory().available / (1024**3)
 
 

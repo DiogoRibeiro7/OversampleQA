@@ -10,6 +10,7 @@ from oversampleqa.advanced_benchmark import (
     DatasetRepository,
     StatisticalBenchmark,
     create_benchmark_report,
+    format_statistical_summary,
 )
 
 
@@ -42,7 +43,10 @@ def test_confidence_interval_and_power_estimate():
         [dataset], [RandomOverSampler()], metrics=["hassanat"]
     )
     assert (df["ci_upper"] >= df["ci_lower"]).all()
-    assert df["recommended_samples"].iloc[0] is None or df["recommended_samples"].iloc[0] > 0
+    assert (
+        df["recommended_samples"].iloc[0] is None
+        or df["recommended_samples"].iloc[0] > 0
+    )
 
 
 def test_dataset_repository_synthetic_generation():
@@ -74,3 +78,28 @@ def test_benchmark_report_creation(tmp_path: Path):
     assert report_path.exists()
     content = report_path.read_text(encoding="utf-8")
     assert "OversampleQA Benchmark Report" in content
+
+
+def test_format_statistical_summary_reports_significance():
+    df = pd.DataFrame(
+        {
+            "dataset_name": ["toy", "toy"],
+            "oversampler_name": ["SMOTE", "ADASYN"],
+            "metric": ["hassanat", "hassanat"],
+            "mean_error": [0.10, 0.25],
+            "std_error": [0.01, 0.02],
+            "ci_lower": [0.08, 0.21],
+            "ci_upper": [0.12, 0.29],
+            "n_observations": [10, 10],
+            "pairwise_p_values": [json.dumps({"SMOTE_vs_ADASYN": 0.01}), None],
+            "pairwise_effect_sizes": [json.dumps({"SMOTE_vs_ADASYN": 1.3}), None],
+        }
+    )
+    summary = format_statistical_summary(df)
+    assert "## Dataset: toy" in summary
+    assert "| SMOTE | hassanat | 0.100 |" in summary
+    assert "SMOTE_vs_ADASYN: p=0.0100, d=1.30" in summary
+
+
+def test_format_statistical_summary_handles_empty():
+    assert "No benchmark results" in format_statistical_summary(pd.DataFrame())

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import logging
 import numpy as np
@@ -11,6 +11,31 @@ import pandas as pd
 from .validator import validate_oversampling
 
 logger = logging.getLogger(__name__)
+
+_SKLEARN_LICENSE = "BSD-3-Clause (scikit-learn synthetic generator)"
+
+
+def _synthetic_provenance(generator: str, **params: Any) -> Dict:
+    """Build provenance metadata for a scikit-learn synthetic dataset.
+
+    Args:
+        generator: Fully-qualified name of the scikit-learn generator used.
+        **params: The generation parameters (including ``random_state``).
+
+    Returns:
+        A provenance dict describing the dataset's source and license.
+    """
+    return {
+        "source": "synthetic",
+        "generator": generator,
+        "params": params,
+        "url": "https://scikit-learn.org/stable/datasets/sample_generators.html",
+        "license": _SKLEARN_LICENSE,
+        "notes": (
+            "Generated deterministically from the fixed random_state; "
+            "not real-world data."
+        ),
+    }
 
 
 def run_benchmark(
@@ -86,8 +111,10 @@ def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
     Returns
     -------
     list of dict
-        Each entry contains ``name``, ``data``, ``target`` and
-        ``minority_label`` keys.
+        Each entry contains ``name``, ``data``, ``target``,
+        ``minority_label`` and ``provenance`` keys. The ``provenance`` value
+        is a dict describing the dataset's ``source``, ``generator``,
+        ``params``, ``url``, ``license`` and ``notes``.
     """
 
     from sklearn.datasets import (
@@ -121,46 +148,85 @@ def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
                         "data": X,
                         "target": y,
                         "minority_label": minority,
+                        "provenance": {
+                            "source": "OpenML",
+                            "generator": "sklearn.datasets.fetch_openml",
+                            "params": {"name": name, "version": 1},
+                            "url": f"https://www.openml.org/search?type=data&q={name}",
+                            "license": "Varies per dataset; see the OpenML page.",
+                            "notes": (
+                                "Downloaded from OpenML (version pinned to 1) and "
+                                "standardized with StandardScaler."
+                            ),
+                        },
                     }
                 )
             except Exception as exc:  # pragma: no cover - network dependent
                 logger.warning("Failed to fetch %s: %s", name, exc)
 
-    Xc, yc = make_classification(
-        n_samples=200, weights=[0.9, 0.1], random_state=42
+    Xc, yc = make_classification(n_samples=200, weights=[0.9, 0.1], random_state=42)
+    datasets.append(
+        {
+            "name": "classification",
+            "data": Xc,
+            "target": yc,
+            "minority_label": 1,
+            "provenance": _synthetic_provenance(
+                "sklearn.datasets.make_classification",
+                n_samples=200,
+                weights=[0.9, 0.1],
+                random_state=42,
+            ),
+        }
     )
-    datasets.append({
-        "name": "classification",
-        "data": Xc,
-        "target": yc,
-        "minority_label": 1,
-    })
 
     Xm, ym = make_moons(noise=0.2, random_state=42)
-    datasets.append({
-        "name": "moons",
-        "data": Xm,
-        "target": ym,
-        "minority_label": 1,
-    })
+    datasets.append(
+        {
+            "name": "moons",
+            "data": Xm,
+            "target": ym,
+            "minority_label": 1,
+            "provenance": _synthetic_provenance(
+                "sklearn.datasets.make_moons", noise=0.2, random_state=42
+            ),
+        }
+    )
 
     Xr, yr = make_circles(noise=0.1, factor=0.5, random_state=42)
-    datasets.append({
-        "name": "circles",
-        "data": Xr,
-        "target": yr,
-        "minority_label": 1,
-    })
+    datasets.append(
+        {
+            "name": "circles",
+            "data": Xr,
+            "target": yr,
+            "minority_label": 1,
+            "provenance": _synthetic_provenance(
+                "sklearn.datasets.make_circles", noise=0.1, factor=0.5, random_state=42
+            ),
+        }
+    )
 
     Xb, yb = make_blobs(
-        n_samples=[90, 10], centers=[(-2, 0), (2, 0)], cluster_std=[1.0, 1.0], random_state=42
+        n_samples=[90, 10],
+        centers=[(-2, 0), (2, 0)],
+        cluster_std=[1.0, 1.0],
+        random_state=42,
     )
-    datasets.append({
-        "name": "blobs",
-        "data": Xb,
-        "target": yb,
-        "minority_label": 1,
-    })
+    datasets.append(
+        {
+            "name": "blobs",
+            "data": Xb,
+            "target": yb,
+            "minority_label": 1,
+            "provenance": _synthetic_provenance(
+                "sklearn.datasets.make_blobs",
+                n_samples=[90, 10],
+                centers=[(-2, 0), (2, 0)],
+                cluster_std=[1.0, 1.0],
+                random_state=42,
+            ),
+        }
+    )
 
     Xh, yh = make_classification(
         n_samples=300,
@@ -171,12 +237,24 @@ def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
         class_sep=0.5,
         random_state=7,
     )
-    datasets.append({
-        "name": "hard_classification",
-        "data": Xh,
-        "target": yh,
-        "minority_label": 1,
-    })
+    datasets.append(
+        {
+            "name": "hard_classification",
+            "data": Xh,
+            "target": yh,
+            "minority_label": 1,
+            "provenance": _synthetic_provenance(
+                "sklearn.datasets.make_classification",
+                n_samples=300,
+                n_features=10,
+                n_informative=5,
+                n_redundant=2,
+                weights=[0.95, 0.05],
+                class_sep=0.5,
+                random_state=7,
+            ),
+        }
+    )
 
     Xe, ye = make_classification(
         n_samples=200,
@@ -193,6 +271,16 @@ def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
             "data": Xe,
             "target": ye,
             "minority_label": 1,
+            "provenance": _synthetic_provenance(
+                "sklearn.datasets.make_classification",
+                n_samples=200,
+                n_features=2,
+                n_redundant=0,
+                n_clusters_per_class=1,
+                weights=[0.95, 0.05],
+                class_sep=2.0,
+                random_state=21,
+            ),
         }
     )
 
@@ -212,6 +300,17 @@ def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
             "data": Xo,
             "target": yo,
             "minority_label": 1,
+            "provenance": _synthetic_provenance(
+                "sklearn.datasets.make_classification",
+                n_samples=200,
+                n_features=2,
+                n_redundant=0,
+                n_clusters_per_class=1,
+                weights=[0.95, 0.05],
+                class_sep=0.3,
+                flip_y=0.03,
+                random_state=22,
+            ),
         }
     )
 

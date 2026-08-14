@@ -53,4 +53,4 @@ jobs:
     - name: Sync gallery examples
       run: poetry run python scripts/sync_gallery_examples.py
     - name: Build docs (warnings as errors)
-      run: poetry run sphinx -b html docs docs/_build/html -W
+      run: poetry run sphinx-build -b html docs docs/_build/html -W

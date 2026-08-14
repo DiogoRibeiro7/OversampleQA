@@ -1,4 +1,4 @@
-.PHONY: help setup install hooks test lint typecheck format coverage security clean docs
+.PHONY: help setup install hooks test lint typecheck format coverage security clean docs profile
 
 help:
 	@echo "Available commands:"
@@ -13,6 +13,7 @@ help:
 	@echo "  security    Run security checks"
 	@echo "  clean       Clean build artifacts"
 	@echo "  docs        Build documentation"
+	@echo "  profile     Run optional performance profiling"
 
 setup: install hooks
 
@@ -51,3 +52,6 @@ clean:
 
 docs:
 	cd docs && poetry run make html
+
+profile:
+	poetry run python scripts/profile_performance.py

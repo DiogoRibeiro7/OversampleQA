@@ -36,6 +36,24 @@ pytest tests/ --cov=oversampleqa
 pytest tests/test_validator.py
 ```
 
+## Performance Profiling
+
+An optional script profiles the hot paths (distance-matrix computation and the
+validator) and can guard against regressions. It is not part of the default test
+suite.
+
+```bash
+# Print a timing table
+make profile            # or: python scripts/profile_performance.py
+
+# Save a baseline, then check a later change against it
+python scripts/profile_performance.py --save perf_baseline.json
+python scripts/profile_performance.py --check perf_baseline.json --tolerance 1.5
+```
+
+The check exits non-zero if any benchmark is slower than `tolerance` times its
+baseline, so it can run in CI or a pre-release gate.
+
 ## Questions?
 
 Open an issue or start a discussion on GitHub.

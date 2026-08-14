@@ -73,6 +73,17 @@ Benchmark multiple datasets
 
    oversampleqa benchmark --output benchmark_results
 
+For cross-validated statistical benchmarking with confidence intervals, pairwise
+p-values, and effect sizes, add ``--statistical`` (optionally tuning ``--folds``
+and ``--repeats``):
+
+.. code-block:: bash
+
+   oversampleqa benchmark --statistical --folds 5 --repeats 5 -o benchmark_results
+
+This prints a summary table and writes ``benchmark_statistics.csv``,
+``benchmark_summary.md``, and ``benchmark_report.html`` to the output directory.
+
 Shell completion
 ~~~~~~~~~~~~~~~~
 
@@ -86,6 +97,25 @@ Diagnostics
 .. code-block:: bash
 
    oversampleqa doctor
+
+Initial setup
+~~~~~~~~~~~~~
+
+Run the guided wizard to create a configuration file:
+
+.. code-block:: bash
+
+   oversampleqa setup
+
+Global options
+~~~~~~~~~~~~~~
+
+These apply to any subcommand and come before it:
+
+- ``--config/-c``: path to a configuration file (default ``~/.oversampleqa/config.yaml``).
+- ``--profile/-p``: configuration profile to apply.
+- ``--verbose/-v``: enable verbose output.
+- ``--version``: print the version and exit.
 
 Common options for ``validate``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

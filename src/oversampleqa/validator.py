@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
+from imblearn.over_sampling.base import BaseOverSampler
 from numpy.typing import NDArray
 from sklearn.model_selection import train_test_split
-from imblearn.over_sampling.base import BaseOverSampler
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,24 @@ from .distance import distance_matrix
 from .metrics import calculate_error_rate
 
 
-def _split_classes(X: NDArray[np.floating], y: NDArray[np.integer], minority_label: int):
+def _validate_hidden_ratio(hidden_ratio: float) -> None:
+    """Validate that ``hidden_ratio`` is a fraction strictly between 0 and 1.
+
+    Args:
+        hidden_ratio: Fraction of samples to hide during validation.
+
+    Raises:
+        ValueError: If ``hidden_ratio`` is not in the open interval ``(0, 1)``.
+    """
+    if not 0.0 < hidden_ratio < 1.0:
+        raise ValueError(
+            f"hidden_ratio must be in the open interval (0, 1); got {hidden_ratio!r}"
+        )
+
+
+def _split_classes(
+    X: NDArray[np.floating], y: NDArray[np.integer], minority_label: int
+):
     """Split features into minority and majority subsets.
 
     Args:
@@ -100,6 +117,7 @@ def validate_oversampling(
         Error rate by default. If ``return_details`` is ``True`` a tuple
         ``(error_rate, n_errors, dist_hidden, dist_min)`` is returned.
     """
+    _validate_hidden_ratio(hidden_ratio)
     labels = np.unique(y)
     if minority_label not in labels:
         raise ValueError(f"minority_label {minority_label} not found in y")
@@ -195,6 +213,7 @@ def validate_multiclass_oversampling(
         ``True`` the second element is the error matrix.
     """
 
+    _validate_hidden_ratio(hidden_ratio)
     labels = np.unique(y)
     rng = np.random.default_rng(42)
 
@@ -229,9 +248,11 @@ def validate_multiclass_oversampling(
 
     # Precompute distance matrices to hidden samples of each class
     hidden_dists: dict[int, NDArray[np.floating] | None] = {
-        lbl: distance_matrix(X_syn, hidden[lbl], metric, **metric_kwargs)
-        if len(hidden[lbl]) > 0
-        else None
+        lbl: (
+            distance_matrix(X_syn, hidden[lbl], metric, **metric_kwargs)
+            if len(hidden[lbl]) > 0
+            else None
+        )
         for lbl in labels
     }
 
