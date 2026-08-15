@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import sys
 import textwrap
 import time
-import copy
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 import click
 import numpy as np
@@ -45,7 +46,7 @@ from .validator import validate_oversampling
 logger = logging.getLogger(__name__)
 console = Console()
 
-DEFAULT_CONFIG: Dict[str, Any] = {
+DEFAULT_CONFIG: dict[str, Any] = {
     "defaults": {
         "target": "target",
         "minority_label": 1,
@@ -86,16 +87,19 @@ class ConfigValidationError(ValueError):
 class CLIConfig:
     """Configuration management for the enhanced CLI."""
 
-    config_file: Optional[Path] = None
+    # Optional as an *input*: __post_init__ always resolves it to a concrete
+    # Path, so every read after construction is non-None.
+    config_file: Path = None
     console: Console = field(default_factory=Console)
-    data: Dict[str, Any] = field(init=False)
+    data: dict[str, Any] = field(init=False)
 
     def __post_init__(self) -> None:
         default_path = Path.home() / ".oversampleqa" / "config.yaml"
+        # Always concrete after this point; the Optional is an input convenience.
         self.config_file = (self.config_file or default_path).expanduser()
         self.data = self.load_config()
 
-    def load_config(self) -> Dict[str, Any]:
+    def load_config(self) -> dict[str, Any]:
         """Load configuration from disk and merge with defaults.
 
         Returns:
@@ -124,7 +128,7 @@ class CLIConfig:
         merged.setdefault("integrations", {}).update(raw.get("integrations", {}))
         return merged
 
-    def save_config(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def save_config(self, config: dict[str, Any] | None = None) -> None:
         """Persist configuration to disk.
 
         Args:
@@ -136,7 +140,7 @@ class CLIConfig:
         with self.config_file.open("w", encoding="utf-8") as handle:
             yaml.safe_dump(payload, handle, sort_keys=False)
 
-    def _validate_keys(self, config: Dict[str, Any]) -> None:
+    def _validate_keys(self, config: dict[str, Any]) -> None:
         """Validate configuration keys and provide suggestions.
 
         Args:
@@ -177,7 +181,7 @@ class CLIConfig:
                             message += f". Did you mean '{suggestion[0]}'?"
                         raise ConfigValidationError(message)
 
-    def resolve_defaults(self, profile: Optional[str] = None) -> Dict[str, Any]:
+    def resolve_defaults(self, profile: str | None = None) -> dict[str, Any]:
         """Return default parameters merged with optional profile.
 
         Args:
@@ -196,7 +200,7 @@ class CLIConfig:
 
         return defaults
 
-    def get_profile(self, name: str) -> Dict[str, Any]:
+    def get_profile(self, name: str) -> dict[str, Any]:
         """Return configuration profile parameters by name.
 
         Args:
@@ -215,7 +219,7 @@ class CLIConfig:
             )
         return dict(profiles[name])
 
-    def list_profiles(self) -> List[Tuple[str, Dict[str, Any]]]:
+    def list_profiles(self) -> list[tuple[str, dict[str, Any]]]:
         """List all available profiles.
 
         Returns:
@@ -229,7 +233,7 @@ class CLIConfig:
 def load_dataset(
     dataset_path: Path,
     target_column: str,
-) -> Tuple[pd.DataFrame, pd.Series]:
+) -> tuple[pd.DataFrame, pd.Series]:
     """Load dataset from CSV/Parquet and split into features/target.
 
     Args:
@@ -254,7 +258,7 @@ def load_dataset(
     return X, y
 
 
-def load_checkpoint(output_dir: Optional[Path]) -> Optional[Dict[str, Any]]:
+def load_checkpoint(output_dir: Path | None) -> dict[str, Any] | None:
     """Load a saved run checkpoint from the output directory.
 
     Args:
@@ -274,7 +278,7 @@ def load_checkpoint(output_dir: Optional[Path]) -> Optional[Dict[str, Any]]:
         return None
 
 
-def save_checkpoint(output_dir: Optional[Path], payload: Dict[str, Any]) -> None:
+def save_checkpoint(output_dir: Path | None, payload: dict[str, Any]) -> None:
     """Save a run checkpoint to the output directory.
 
     Args:
@@ -298,7 +302,7 @@ def estimate_runtime(seconds: float) -> str:
         Formatted estimate string.
     """
 
-    minutes, sec = divmod(int(round(seconds)), 60)
+    minutes, sec = divmod(round(seconds), 60)
     hours, minutes = divmod(minutes, 60)
     parts = []
     if hours:
@@ -319,13 +323,13 @@ def run_validation_with_progress(
     hidden_ratio: float,
     export_formats: Iterable[str],
     resume: bool,
-    output_dir: Optional[Path],
+    output_dir: Path | None,
     mlflow_override: bool,
-    mlflow_config: Optional[Dict[str, Any]],
+    mlflow_config: dict[str, Any] | None,
     verbose: bool,
     random_state: int | None = 42,
     n_repeats: int = 1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run validation with rich progress feedback.
 
     Args:
@@ -364,7 +368,7 @@ def run_validation_with_progress(
         "Finalizing",
     ]
 
-    results: Dict[str, Any] = {}
+    results: dict[str, Any] = {}
     mlflow_settings = mlflow_config or {}
     mlflow_active = mlflow_override or bool(mlflow_settings.get("enabled"))
 
@@ -501,7 +505,7 @@ def run_validation_with_progress(
 
 
 def export_results(
-    results: Dict[str, Any], formats: Iterable[str], output_dir: Optional[Path]
+    results: dict[str, Any], formats: Iterable[str], output_dir: Path | None
 ) -> None:
     """Export results to requested formats.
 
@@ -535,18 +539,18 @@ def export_results(
                 f"""
                 # OversampleQA Validation Report
 
-                - Dataset: `{results['dataset']}`
-                - Samples: {results['n_samples']}
-                - Features: {results['n_features']}
-                - Minority Samples: {results['minority_count']}
-                - Majority Samples: {results['majority_count']}
-                - Imbalance Ratio: {results['imbalance_ratio']:.3f}
-                - Hidden Ratio: {results['hidden_ratio']}
-                - Metric: {results['metric']}
-                - Oversampler: {results['oversampler']}
-                - Error Rate: {results['error_rate']:.3f}
-                - Runtime: {results['elapsed_seconds']:.2f}s
-                - Estimated Runtime: {results['runtime_estimate']}
+                - Dataset: `{results["dataset"]}`
+                - Samples: {results["n_samples"]}
+                - Features: {results["n_features"]}
+                - Minority Samples: {results["minority_count"]}
+                - Majority Samples: {results["majority_count"]}
+                - Imbalance Ratio: {results["imbalance_ratio"]:.3f}
+                - Hidden Ratio: {results["hidden_ratio"]}
+                - Metric: {results["metric"]}
+                - Oversampler: {results["oversampler"]}
+                - Error Rate: {results["error_rate"]:.3f}
+                - Runtime: {results["elapsed_seconds"]:.2f}s
+                - Estimated Runtime: {results["runtime_estimate"]}
                 """
             ).strip()
             (output_dir / "validation_results.md").write_text(
@@ -554,7 +558,7 @@ def export_results(
             )
 
 
-def integrate_with_mlflow(results: Dict[str, Any], settings: Dict[str, Any]) -> None:
+def integrate_with_mlflow(results: dict[str, Any], settings: dict[str, Any]) -> None:
     """Log results to MLflow if available.
 
     Args:
@@ -589,7 +593,7 @@ def integrate_with_mlflow(results: Dict[str, Any], settings: Dict[str, Any]) -> 
         mlflow.log_metric("elapsed_seconds", results["elapsed_seconds"])
 
 
-def display_results(results: Dict[str, Any]) -> None:
+def display_results(results: dict[str, Any]) -> None:
     """Pretty-print validation results.
 
     Args:
@@ -677,7 +681,7 @@ def explain_ratio(ratio: float) -> str:
     return "Near-balanced - consider alternative validation strategies."
 
 
-def generate_recommendations(error_rate: float, imbalance_ratio: float) -> List[str]:
+def generate_recommendations(error_rate: float, imbalance_ratio: float) -> list[str]:
     """Return actionable recommendations based on diagnostics.
 
     Args:
@@ -702,7 +706,7 @@ def generate_recommendations(error_rate: float, imbalance_ratio: float) -> List[
 
 def analyze_dataset(
     dataset_path: Path, target: str, minority_label: int
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyze dataset size, feature count, and class imbalance.
 
     Args:
@@ -726,7 +730,7 @@ def analyze_dataset(
     }
 
 
-def suggest_parameters(dataset_info: Dict[str, Any]) -> Dict[str, Any]:
+def suggest_parameters(dataset_info: dict[str, Any]) -> dict[str, Any]:
     """Suggest parameters based on dataset scale and imbalance.
 
     Args:
@@ -766,7 +770,7 @@ def suggest_parameters(dataset_info: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def show_dataset_table(info: Dict[str, Any]) -> None:
+def show_dataset_table(info: dict[str, Any]) -> None:
     """Render a dataset summary table to the console.
 
     Args:
@@ -783,7 +787,7 @@ def show_dataset_table(info: Dict[str, Any]) -> None:
     console.print(table)
 
 
-def guided_validation(dataset: Path, config: CLIConfig, profile: Optional[str]) -> None:
+def guided_validation(dataset: Path, config: CLIConfig, profile: str | None) -> None:
     """Run an interactive validation workflow.
 
     Args:
@@ -857,8 +861,8 @@ def guided_validation(dataset: Path, config: CLIConfig, profile: Optional[str]) 
 @click.pass_context
 def cli(
     ctx: click.Context,
-    config_path: Optional[Path],
-    profile: Optional[str],
+    config_path: Path | None,
+    profile: str | None,
     verbose: bool,
 ) -> None:
     """OversampleQA: Validate your oversampling methods with confidence!
@@ -922,16 +926,16 @@ def cli(
 def validate(
     ctx: click.Context,
     dataset: Path,
-    target: Optional[str],
-    minority_label: Optional[int],
-    oversampler: Optional[str],
-    metric: Optional[str],
-    hidden_ratio: Optional[float],
+    target: str | None,
+    minority_label: int | None,
+    oversampler: str | None,
+    metric: str | None,
+    hidden_ratio: float | None,
     random_state: int | None,
     n_repeats: int | None,
-    export: Tuple[str, ...],
-    output: Optional[Path],
-    resume: Optional[bool],
+    export: tuple[str, ...],
+    output: Path | None,
+    resume: bool | None,
     interactive: bool,
     mlflow_enabled: bool,
 ) -> None:
@@ -955,7 +959,7 @@ def validate(
     """
 
     config: CLIConfig = ctx.obj["config"]
-    profile: Optional[str] = ctx.obj.get("profile")
+    profile: str | None = ctx.obj.get("profile")
 
     if interactive:
         guided_validation(dataset, config, profile)
@@ -972,13 +976,9 @@ def validate(
         hidden_ratio if hidden_ratio is not None else defaults["hidden_ratio"]
     )
     random_state = (
-        random_state
-        if random_state is not None
-        else defaults.get("random_state", 42)
+        random_state if random_state is not None else defaults.get("random_state", 42)
     )
-    n_repeats = (
-        n_repeats if n_repeats is not None else defaults.get("n_repeats", 1)
-    )
+    n_repeats = n_repeats if n_repeats is not None else defaults.get("n_repeats", 1)
     export_formats = export or tuple(defaults.get("export", []))
     resume = defaults["resume"] if resume is None else resume
 
@@ -1050,7 +1050,7 @@ def profiles(ctx: click.Context) -> None:
 @click.argument(
     "shell", required=False, type=click.Choice(["bash", "zsh", "fish", "powershell"])
 )
-def completion(shell: Optional[str]) -> None:
+def completion(shell: str | None) -> None:
     """Provide shell completion installation instructions.
 
     Args:
@@ -1073,7 +1073,7 @@ def completion(shell: Optional[str]) -> None:
 
 
 def _run_statistical_benchmark(
-    datasets: List[Dict[str, Any]], output: Path, folds: int, repeats: int
+    datasets: list[dict[str, Any]], output: Path, folds: int, repeats: int
 ) -> None:
     """Run the statistical benchmark engine and surface its results.
 
@@ -1187,7 +1187,7 @@ def benchmark(
     ]
 
     total_steps = len(datasets) * len(oversampler_classes) * len(hidden_ratios)
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     with Progress(
         SpinnerColumn(),

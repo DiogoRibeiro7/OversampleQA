@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from imblearn.over_sampling import RandomOverSampler
 
-from oversampleqa.typed_validator import TypedValidator, validation_session, registry
-from oversampleqa.types import ValidationConfig, ValidationError, ValidationMode
 from oversampleqa.plugin_system import plugin_manager, register_metric
+from oversampleqa.typed_validator import TypedValidator, validation_session
+from oversampleqa.types import ValidationConfig, ValidationError
 
 
 def sample_data():

@@ -2,15 +2,16 @@ import numpy as np
 import pytest
 
 from oversampleqa.distance import (
-    hassanat_distance,
-    euclidean_distance,
-    manhattan_distance,
     cosine_distance,
+    euclidean_distance,
+    hassanat_distance,
+    manhattan_distance,
 )
 
 
 @pytest.mark.parametrize(
-    "metric", [hassanat_distance, euclidean_distance, manhattan_distance, cosine_distance]
+    "metric",
+    [hassanat_distance, euclidean_distance, manhattan_distance, cosine_distance],
 )
 def test_metric_basic_properties(metric):
     x = np.array([1.0, -2.0, 3.0])

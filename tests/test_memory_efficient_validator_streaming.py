@@ -1,4 +1,3 @@
-import numpy as np
 from imblearn.over_sampling import SMOTE
 from sklearn.datasets import make_classification
 

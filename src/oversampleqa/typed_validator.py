@@ -5,14 +5,17 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Dict, Optional, Union, cast, overload
+from typing import Any, cast, overload
 
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
+from .distance import _METRICS
 from .exceptions import ConfigurationError, MetricError, ValidationError
 from .types import (
+    BaseValidator,
     FloatArray,
     IntArray,
     MetricName,
@@ -21,10 +24,7 @@ from .types import (
     ValidationDetails,
     ValidationMode,
     ValidationResult,
-    BaseValidator,
 )
-
-from .distance import _METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class PydanticValidationConfig(BaseModel):
     hidden_ratio: float = Field(default=0.1, gt=0.0, lt=1.0)
     metric: str = Field(default="hassanat")
     return_details: bool = Field(default=False)
-    random_state: Optional[int] = Field(default=None)
+    random_state: int | None = Field(default=None)
 
     @field_validator("metric")
     def validate_metric(cls, value: str) -> str:
@@ -53,7 +53,7 @@ class PydanticValidationConfig(BaseModel):
         return value
 
     @field_validator("random_state")
-    def validate_random_state(cls, value: Optional[int]) -> Optional[int]:
+    def validate_random_state(cls, value: int | None) -> int | None:
         """Validate random_state bounds when provided.
 
         Args:
@@ -94,7 +94,6 @@ class TypedValidator(BaseValidator[ValidationResult]):
         Returns:
             ValidationResult.
         """
-        ...
 
     @overload
     def validate(
@@ -107,7 +106,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
         hidden_ratio: float = 0.1,
         metric: str = "hassanat",
         return_details: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> ValidationResult:
         """Validate using keyword configuration parameters.
 
@@ -124,7 +123,6 @@ class TypedValidator(BaseValidator[ValidationResult]):
         Returns:
             ValidationResult.
         """
-        ...
 
     def validate(
         self,
@@ -132,7 +130,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
         y: IntArray,
         minority_label: int,
         oversampler: OversamplerProtocol,
-        config: Optional[ValidationConfig] = None,
+        config: ValidationConfig | None = None,
         **kwargs: Any,
     ) -> ValidationResult:
         """Validate oversampling with typed configuration.
@@ -320,6 +318,10 @@ class TypedValidator(BaseValidator[ValidationResult]):
                 random_state=config.random_state,
                 n_repeats=config.n_repeats,
             )
+            if isinstance(error_rate, ValidationDetails):  # pragma: no cover
+                raise ValidationError(
+                    "validate_oversampling(return_details=False) must return a float"
+                )
             ci = self._wilson_confidence_interval(error_rate, len(y))
             return ValidationResult(
                 error_rate=error_rate,
@@ -365,11 +367,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
             return (0.0, 1.0)
         denominator = 1.0 + z**2 / n
         centre = (rate + z**2 / (2 * n)) / denominator
-        margin = (
-            z
-            * math.sqrt(rate * (1 - rate) / n + z**2 / (4 * n**2))
-            / denominator
-        )
+        margin = z * math.sqrt(rate * (1 - rate) / n + z**2 / (4 * n**2)) / denominator
         return (max(0.0, centre - margin), min(1.0, centre + margin))
 
 
@@ -397,7 +395,7 @@ class ServiceRegistry:
     """Minimal dependency injection container."""
 
     def __init__(self) -> None:
-        self._services: Dict[type, Any] = {}
+        self._services: dict[type, Any] = {}
 
     def register(self, service_type: type, implementation: Any) -> None:
         """Register a service implementation by type.

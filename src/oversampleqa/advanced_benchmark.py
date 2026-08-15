@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
-
 import json
 import math
 import warnings
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -27,13 +27,13 @@ class BenchmarkResult:
     dataset_name: str
     oversampler_name: str
     metric: str
-    error_rates: List[float]
+    error_rates: list[float]
     mean_error: float
     std_error: float
-    confidence_interval: Tuple[float, float]
-    effect_size: Optional[float] = None
-    p_value: Optional[float] = None
-    recommended_samples: Optional[int] = None
+    confidence_interval: tuple[float, float]
+    effect_size: float | None = None
+    p_value: float | None = None
+    recommended_samples: int | None = None
 
 
 class StatisticalBenchmark:
@@ -45,7 +45,7 @@ class StatisticalBenchmark:
         n_repeats: int = 5,
         confidence_level: float = 0.95,
         correction_method: str = "holm",
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
         if n_folds < 2:
             raise ValueError("n_folds must be at least 2")
@@ -57,9 +57,9 @@ class StatisticalBenchmark:
 
     def run_comprehensive_benchmark(
         self,
-        datasets: Sequence[Dict[str, Any]],
+        datasets: Sequence[dict[str, Any]],
         oversamplers: Sequence[Any],
-        metrics: Optional[Sequence[str]] = None,
+        metrics: Sequence[str] | None = None,
     ) -> pd.DataFrame:
         """Run repeated stratified benchmarking across datasets.
 
@@ -76,7 +76,7 @@ class StatisticalBenchmark:
 
         metrics = tuple(metrics or ("hassanat", "euclidean", "mahalanobis"))
 
-        all_results: List[BenchmarkResult] = []
+        all_results: list[BenchmarkResult] = []
         for dataset in datasets:
             all_results.extend(
                 self._benchmark_single_dataset(dataset, oversamplers, metrics)
@@ -90,10 +90,10 @@ class StatisticalBenchmark:
 
     def _benchmark_single_dataset(
         self,
-        dataset: Dict[str, Any],
+        dataset: dict[str, Any],
         oversamplers: Sequence[Any],
         metrics: Sequence[str],
-    ) -> List[BenchmarkResult]:
+    ) -> list[BenchmarkResult]:
         """Run benchmark for a single dataset across oversamplers and metrics.
 
         Args:
@@ -112,7 +112,7 @@ class StatisticalBenchmark:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
-        results: List[BenchmarkResult] = []
+        results: list[BenchmarkResult] = []
         for oversampler in oversamplers:
             for metric in metrics:
                 error_rates = self._cross_validated_errors(
@@ -152,7 +152,7 @@ class StatisticalBenchmark:
         minority_label: int,
         oversampler: Any,
         metric: str,
-    ) -> List[float]:
+    ) -> list[float]:
         """Compute error rates across repeated stratified folds.
 
         Args:
@@ -165,10 +165,10 @@ class StatisticalBenchmark:
         Returns:
             List of error rates for each evaluated fold.
         """
-        errors: List[float] = []
+        errors: list[float] = []
         rng = np.random.default_rng(self.random_state)
 
-        for repeat in range(self.n_repeats):
+        for _repeat in range(self.n_repeats):
             cv = StratifiedKFold(
                 n_splits=self.n_folds,
                 shuffle=True,
@@ -176,11 +176,20 @@ class StatisticalBenchmark:
                     None if self.random_state is None else rng.integers(0, 1_000_000)
                 ),
             )
-            for fold, (train_idx, val_idx) in enumerate(cv.split(X, y)):
-                X_train, X_val = X[train_idx], X[val_idx]
-                y_train, y_val = y[train_idx], y[val_idx]
+            for fold, (train_idx, _val_idx) in enumerate(cv.split(X, y)):
+                # Only the training fold is used. validate_oversampling performs
+                # its own hold-out internally, so the CV validation fold has no
+                # role here -- the splitter is effectively a stratified
+                # subsampler, and each "fold" is one subsample of the data
+                # rather than a held-out evaluation. See docs/benchmarking.rst
+                # for what the resulting intervals therefore describe.
+                X_train = X[train_idx]
+                y_train = y[train_idx]
                 if len(np.unique(y_train)) < 2:
-                    warnings.warn("Training fold lacks class diversity; skipping fold.")
+                    warnings.warn(
+                        "Training fold lacks class diversity; skipping fold.",
+                        stacklevel=2,
+                    )
                     continue
                 sampler = clone(oversampler)
                 try:
@@ -193,14 +202,14 @@ class StatisticalBenchmark:
                         metric=metric,
                     )
                 except Exception as exc:  # pragma: no cover - defensive
-                    warnings.warn(f"Validation failed for fold {fold}: {exc}")
+                    warnings.warn(f"Validation failed for fold {fold}: {exc}", stacklevel=2)
                     continue
                 if np.isnan(error):
                     continue
                 errors.append(float(error))
         return errors
 
-    def _confidence_interval(self, values: Sequence[float]) -> Tuple[float, float]:
+    def _confidence_interval(self, values: Sequence[float]) -> tuple[float, float]:
         """Return a confidence interval for the provided values.
 
         Args:
@@ -228,7 +237,7 @@ class StatisticalBenchmark:
 
     def _recommended_sample_size(
         self, values: Sequence[float], target_power: float = 0.8
-    ) -> Optional[int]:
+    ) -> int | None:
         """Estimate recommended sample size using a Cohen's d approximation.
 
         Args:
@@ -253,7 +262,7 @@ class StatisticalBenchmark:
         z_alpha = stats.norm.ppf(1 - alpha / 2)
         z_beta = stats.norm.ppf(target_power)
         n = ((z_alpha + z_beta) ** 2) * 2 / (d**2)
-        return int(math.ceil(n))
+        return math.ceil(n)
 
     def _add_statistical_analysis(self, frame: pd.DataFrame) -> pd.DataFrame:
         """Add pairwise p-values and effect sizes per dataset.
@@ -282,7 +291,7 @@ class StatisticalBenchmark:
 
     def _pairwise_statistical_tests(
         self, dataset_slice: pd.DataFrame
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Compute pairwise Wilcoxon tests across oversamplers.
 
         Args:
@@ -291,7 +300,7 @@ class StatisticalBenchmark:
         Returns:
             Mapping of ``oversampler_a_vs_b`` to corrected p-values.
         """
-        p_values: Dict[str, float] = {}
+        p_values: dict[str, float] = {}
         oversamplers = dataset_slice["oversampler_name"].unique()
         for i, os1 in enumerate(oversamplers):
             for os2 in oversamplers[i + 1 :]:
@@ -308,11 +317,12 @@ class StatisticalBenchmark:
                     dtype=float,
                 )
                 try:
-                    if len(errors1) == 0 or len(errors2) == 0:
-                        p_val = 1.0
-                    elif len(errors1) != len(errors2):
-                        p_val = 1.0
-                    elif np.allclose(errors1, errors2):
+                    if (
+                        len(errors1) == 0
+                        or len(errors2) == 0
+                        or len(errors1) != len(errors2)
+                        or np.allclose(errors1, errors2)
+                    ):
                         p_val = 1.0
                     else:
                         with warnings.catch_warnings():
@@ -324,7 +334,7 @@ class StatisticalBenchmark:
                 p_values[key] = p_val
         return self._apply_correction(p_values)
 
-    def _calculate_effect_sizes(self, dataset_slice: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_effect_sizes(self, dataset_slice: pd.DataFrame) -> dict[str, float]:
         """Compute pairwise Cohen's d effect sizes.
 
         Args:
@@ -333,7 +343,7 @@ class StatisticalBenchmark:
         Returns:
             Mapping of ``oversampler_a_vs_b`` to Cohen's d.
         """
-        effect_sizes: Dict[str, float] = {}
+        effect_sizes: dict[str, float] = {}
         oversamplers = dataset_slice["oversampler_name"].unique()
         for i, os1 in enumerate(oversamplers):
             for os2 in oversamplers[i + 1 :]:
@@ -374,7 +384,7 @@ class StatisticalBenchmark:
         pooled = ((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2)
         return math.sqrt(max(pooled, 0.0))
 
-    def _apply_correction(self, p_values: Dict[str, float]) -> Dict[str, float]:
+    def _apply_correction(self, p_values: dict[str, float]) -> dict[str, float]:
         """Apply multiple-comparison correction to p-values.
 
         Args:
@@ -390,7 +400,7 @@ class StatisticalBenchmark:
             return {k: min(v * factor, 1.0) for k, v in p_values.items()}
         # default Holm-Bonferroni
         sorted_items = sorted(p_values.items(), key=lambda item: item[1])
-        corrected: Dict[str, float] = {}
+        corrected: dict[str, float] = {}
         m = len(sorted_items)
         for rank, (key, p_val) in enumerate(sorted_items, start=1):
             corrected_val = min((m - rank + 1) * p_val, 1.0)
@@ -398,7 +408,7 @@ class StatisticalBenchmark:
         return corrected
 
     @staticmethod
-    def _result_to_dict(result: BenchmarkResult) -> Dict[str, Any]:
+    def _result_to_dict(result: BenchmarkResult) -> dict[str, Any]:
         """Convert BenchmarkResult to a serializable dictionary.
 
         Args:
@@ -432,10 +442,10 @@ class DatasetRepository:
 
     def load_research_datasets(
         self,
-        domains: Optional[Sequence[str]] = None,
+        domains: Sequence[str] | None = None,
         max_samples: int = 10_000,
         include_openml: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Load curated datasets for benchmarking.
 
         Args:
@@ -447,14 +457,14 @@ class DatasetRepository:
             List of dataset descriptors.
         """
         domains = tuple(domains or ("medical", "financial"))
-        datasets: List[Dict[str, Any]] = []
+        datasets: list[dict[str, Any]] = []
         for domain in domains:
             datasets.extend(self._load_domain(domain, max_samples, include_openml))
         return datasets
 
     def _load_domain(
         self, domain: str, max_samples: int, include_openml: bool
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Load datasets for a single domain.
 
         Args:
@@ -474,7 +484,7 @@ class DatasetRepository:
 
     def _load_medical(
         self, max_samples: int, include_openml: bool
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Load medical datasets for benchmarking.
 
         Args:
@@ -512,10 +522,10 @@ class DatasetRepository:
                     }
                 )
             except Exception as exc:  # pragma: no cover - network dependent
-                warnings.warn(f"OpenML download failed: {exc}")
+                warnings.warn(f"OpenML download failed: {exc}", stacklevel=2)
         return datasets
 
-    def _load_financial(self, max_samples: int) -> List[Dict[str, Any]]:
+    def _load_financial(self, max_samples: int) -> list[dict[str, Any]]:
         """Load financial datasets for benchmarking.
 
         Args:
@@ -529,7 +539,7 @@ class DatasetRepository:
         except Exception:  # pragma: no cover
             creditcard = None
 
-        datasets: List[Dict[str, Any]] = []
+        datasets: list[dict[str, Any]] = []
         if creditcard is not None:  # pragma: no cover - optional dependency
             X, y = creditcard.load_data()
             datasets.append(
@@ -543,8 +553,8 @@ class DatasetRepository:
         return datasets
 
     def create_synthetic_benchmark_suite(
-        self, difficulty_levels: Optional[Sequence[str]] = None
-    ) -> List[Dict[str, Any]]:
+        self, difficulty_levels: Sequence[str] | None = None
+    ) -> list[dict[str, Any]]:
         """Generate synthetic datasets for the requested difficulty levels.
 
         Args:
@@ -556,12 +566,12 @@ class DatasetRepository:
         difficulty_levels = tuple(
             difficulty_levels or ("easy", "medium", "hard", "extreme")
         )
-        synthetic: List[Dict[str, Any]] = []
+        synthetic: list[dict[str, Any]] = []
         for difficulty in difficulty_levels:
             synthetic.extend(self._generate_difficulty(difficulty))
         return synthetic
 
-    def _generate_difficulty(self, difficulty: str) -> List[Dict[str, Any]]:
+    def _generate_difficulty(self, difficulty: str) -> list[dict[str, Any]]:
         """Create synthetic datasets for a single difficulty tier.
 
         Args:
@@ -573,7 +583,7 @@ class DatasetRepository:
         from sklearn.datasets import make_classification
 
         difficulty = difficulty.lower()
-        configs: List[Dict[str, Any]]
+        configs: list[dict[str, Any]]
         if difficulty == "easy":
             configs = [
                 {
@@ -626,7 +636,7 @@ class DatasetRepository:
                 }
             ]
 
-        datasets: List[Dict[str, Any]] = []
+        datasets: list[dict[str, Any]] = []
         for idx, config in enumerate(configs):
             X, y = make_classification(
                 random_state=42 + idx,
@@ -707,7 +717,7 @@ def format_statistical_summary(
 
 def _significant_pairwise(
     group: pd.DataFrame, significance_level: float
-) -> List[Tuple[str, float, Optional[float]]]:
+) -> list[tuple[str, float, float | None]]:
     """Extract significant pairwise comparisons from a per-dataset group.
 
     Args:
@@ -723,7 +733,7 @@ def _significant_pairwise(
     if raw_p.empty:
         return []
     p_values = json.loads(raw_p.iloc[0])
-    effects: Dict[str, Any] = {}
+    effects: dict[str, Any] = {}
     if "pairwise_effect_sizes" in group.columns:
         raw_e = group["pairwise_effect_sizes"].dropna()
         if not raw_e.empty:

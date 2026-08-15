@@ -1,5 +1,6 @@
 import pandas as pd
 from imblearn.over_sampling import SMOTE
+
 from oversampleqa.benchmark import load_standard_datasets, run_benchmark
 from oversampleqa.report import generate_report
 

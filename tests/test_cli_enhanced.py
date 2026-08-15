@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 import yaml
 from click.testing import CliRunner
 
@@ -87,7 +86,13 @@ def test_config_template_generation(tmp_path: Path):
 
 def test_suggest_parameters_balanced_dataset():
     params = suggest_parameters(
-        {"n_samples": 100, "n_features": 5, "imbalance_ratio": 0.4, "minority": 40, "majority": 60}
+        {
+            "n_samples": 100,
+            "n_features": 5,
+            "imbalance_ratio": 0.4,
+            "minority": 40,
+            "majority": 60,
+        }
     )
     assert params["oversampler"] == "RandomOverSampler"
     assert params["metric"] in {"cosine", "euclidean"}

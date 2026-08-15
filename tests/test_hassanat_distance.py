@@ -17,7 +17,7 @@ from oversampleqa.distance import distance_matrix, hassanat_distance
 def reference_hassanat(a: np.ndarray, b: np.ndarray) -> float:
     """Plain-loop Hassanat reference with an explicit sign branch."""
     total = 0.0
-    for ai, bi in zip(a, b):
+    for ai, bi in zip(a, b, strict=True):
         mn = min(ai, bi)
         mx = max(ai, bi)
         if mn >= 0:

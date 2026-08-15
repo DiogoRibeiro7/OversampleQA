@@ -3,8 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
-from imblearn.over_sampling import RandomOverSampler, SMOTE
+from imblearn.over_sampling import SMOTE, RandomOverSampler
 
 from oversampleqa.advanced_benchmark import (
     DatasetRepository,

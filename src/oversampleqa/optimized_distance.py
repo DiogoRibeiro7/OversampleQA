@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Callable, Dict, Iterable, Optional, Union, TYPE_CHECKING
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,7 +47,7 @@ _DEFAULT_AVAILABLE_MEMORY_GB = 1.0
 # tests/test_kernels.py::test_multiplier_table_matches_measured_peak.
 #
 # Metrics routed through _pairwise build no intermediate beyond the output row.
-_PEAK_MODEL: Dict[str, tuple[float, float]] = {
+_PEAK_MODEL: dict[str, tuple[float, float]] = {
     # metric            flat   per_feature       measured peak/output at d=16
     "euclidean": (3.0, 0.0),  # 3.02x
     "cosine": (5.0, 0.0),  # 4.65x
@@ -86,6 +87,7 @@ def peak_multiple(metric: str, n_features: int) -> float:
     flat, per_feature = _PEAK_MODEL.get(metric, _DEFAULT_PEAK_MODEL)
     return flat + per_feature * max(1, n_features)
 
+
 DistanceCallable = Callable[[NDArray[np.floating], NDArray[np.floating]], float]
 
 _psutil_warned = False
@@ -114,7 +116,8 @@ def get_available_memory_gb() -> float:
                 _DEFAULT_AVAILABLE_MEMORY_GB,
             )
         return _DEFAULT_AVAILABLE_MEMORY_GB
-    return psutil.virtual_memory().available / (1024**3)
+    available: float = psutil.virtual_memory().available / (1024**3)
+    return available
 
 
 class OptimizedDistanceMatrix:
@@ -153,16 +156,14 @@ class OptimizedDistanceMatrix:
         self,
         cache_size: int = 128,
         memory_limit_gb: float = 4.0,
-        metric_registry: Optional[Dict[str, DistanceCallable]] = None,
+        metric_registry: dict[str, DistanceCallable] | None = None,
         show_progress: bool = False,
         progress_threshold: int = 10_000,
-        cache: "ValidationCache | None" = None,
+        cache: ValidationCache | None = None,
         safety_factor: float = 0.8,
     ) -> None:
         if not 0.0 < safety_factor <= 1.0:
-            raise ValueError(
-                f"safety_factor must be in (0, 1]; got {safety_factor!r}"
-            )
+            raise ValueError(f"safety_factor must be in (0, 1]; got {safety_factor!r}")
         self.cache_size = cache_size
         self.memory_limit_gb = memory_limit_gb
         self.metric_registry = metric_registry or {}
@@ -171,7 +172,7 @@ class OptimizedDistanceMatrix:
         self.cache = cache
         self.safety_factor = safety_factor
 
-        self._vectorized_dispatch: Dict[str, Callable[..., NDArray[np.floating]]] = {
+        self._vectorized_dispatch: dict[str, Callable[..., NDArray[np.floating]]] = {
             "hassanat": self._vectorized_hassanat,
             "hamming": self._vectorized_hamming,
             "jaccard": self._vectorized_jaccard,
@@ -209,7 +210,7 @@ class OptimizedDistanceMatrix:
         X1: NDArray[np.floating],
         X2: NDArray[np.floating],
         metric: str = "hassanat",
-        batch_size: Union[int, str] = "auto",
+        batch_size: int | str = "auto",
         **kwargs: Any,
     ) -> NDArray[np.floating]:
         """Compute pairwise distances with automatic optimisation.
@@ -269,7 +270,7 @@ class OptimizedDistanceMatrix:
         X1: NDArray[np.floating],
         X2: NDArray[np.floating],
         metric: str,
-        batch_size: Union[int, str] = "auto",
+        batch_size: int | str = "auto",
         **kwargs: Any,
     ) -> NDArray[np.floating]:
         """Compute distances without using the cache.
@@ -291,9 +292,7 @@ class OptimizedDistanceMatrix:
         # Estimate the *peak*, including the (n1, n2, d) intermediates the
         # kernel allocates -- not just the output array. Underestimating here
         # is what let the whole-input path run when it should have batched.
-        memory_required = self._estimate_memory_usage(
-            n1, n2, dtype, n_features, metric
-        )
+        memory_required = self._estimate_memory_usage(n1, n2, dtype, n_features, metric)
         available_memory = min(self.memory_limit_gb, get_available_memory_gb())
 
         if isinstance(batch_size, str):
@@ -318,7 +317,9 @@ class OptimizedDistanceMatrix:
                     n_rows=n1,
                 )
         elif not isinstance(batch_size, int) or batch_size <= 0:
-            raise ValueError("batch_size must be 'auto', 'stream', or a positive integer")
+            raise ValueError(
+                "batch_size must be 'auto', 'stream', or a positive integer"
+            )
 
         batch_size = min(int(batch_size), max(1, n1))
 
@@ -353,7 +354,8 @@ class OptimizedDistanceMatrix:
         x2_norm = np.einsum("ij,ij->i", X2, X2)
         distances = x1_norm[:, None] + x2_norm[None, :] - 2.0 * (X1 @ X2.T)
         np.maximum(distances, 0.0, out=distances)
-        return np.sqrt(distances, out=distances)
+        result: NDArray[np.floating] = np.sqrt(distances, out=distances)
+        return result
 
     def _vectorized_manhattan(
         self,
@@ -371,7 +373,8 @@ class OptimizedDistanceMatrix:
             Distance matrix.
         """
         diff = np.abs(X1[:, None, :] - X2[None, :, :])
-        return diff.sum(axis=2)
+        result: NDArray[np.floating] = diff.sum(axis=2)
+        return result
 
     def _vectorized_cosine(
         self,
@@ -591,7 +594,8 @@ class OptimizedDistanceMatrix:
             Distance matrix.
         """
         diff = np.abs(X1[:, None, :] - X2[None, :, :])
-        return diff.max(axis=2)
+        result: NDArray[np.floating] = diff.max(axis=2)
+        return result
 
     def _vectorized_canberra(
         self,
@@ -612,7 +616,8 @@ class OptimizedDistanceMatrix:
         denominator = np.abs(X1[:, None, :]) + np.abs(X2[None, :, :])
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio = np.where(denominator == 0, 0.0, numerator / denominator)
-        return ratio.sum(axis=2)
+        result: NDArray[np.floating] = ratio.sum(axis=2)
+        return result
 
     def _vectorized_braycurtis(
         self,
@@ -659,7 +664,8 @@ class OptimizedDistanceMatrix:
         with np.errstate(divide="ignore", invalid="ignore"):
             corr = np.where(denom == 0, 0.0, dot / denom)
         corr = np.nan_to_num(corr)
-        return 1.0 - corr
+        result: NDArray[np.floating] = 1.0 - corr
+        return result
 
     def _vectorized_minkowski(
         self,
@@ -679,7 +685,8 @@ class OptimizedDistanceMatrix:
         """
         p = kwargs.get("p", 3.0)
         diff = np.abs(X1[:, None, :] - X2[None, :, :]) ** p
-        return np.sum(diff, axis=2) ** (1.0 / p)
+        result: NDArray[np.floating] = np.sum(diff, axis=2) ** (1.0 / p)
+        return result
 
     def _vectorized_mahalanobis(
         self,
@@ -703,7 +710,8 @@ class OptimizedDistanceMatrix:
         diff = X1[:, None, :] - X2[None, :, :]
         res = np.einsum("...i,ij,...j->...", diff, cov_inv, diff)
         np.maximum(res, 0.0, out=res)
-        return np.sqrt(res, out=res)
+        result: NDArray[np.floating] = np.sqrt(res, out=res)
+        return result
 
     def _batched_computation(
         self,
@@ -711,7 +719,7 @@ class OptimizedDistanceMatrix:
         X2: NDArray[np.floating],
         metric: str,
         batch_size: int,
-        vectorized: Optional[Callable[..., NDArray[np.floating]]] = None,
+        vectorized: Callable[..., NDArray[np.floating]] | None = None,
         **kwargs: Any,
     ) -> NDArray[np.floating]:
         """Compute distances in batches to limit memory usage.
@@ -801,13 +809,12 @@ class OptimizedDistanceMatrix:
         Returns:
             Iterator wrapped with tqdm when enabled.
         """
-        if (
-            not self.show_progress
-            or tqdm is None
-            or total < self.progress_threshold
-        ):
+        if not self.show_progress or tqdm is None or total < self.progress_threshold:
             return iterable
-        return tqdm(iterable, total=math.ceil(total))  # pragma: no cover - requires tqdm
+        wrapped: Iterable[int] = tqdm(  # pragma: no cover - requires tqdm
+            iterable, total=math.ceil(total)
+        )
+        return wrapped
 
     def _auto_batch_size(
         self,

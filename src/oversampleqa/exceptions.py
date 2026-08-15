@@ -13,12 +13,12 @@ with a confusing one.
 from __future__ import annotations
 
 __all__ = [
-    "OversampleQAError",
     "ConfigurationError",
-    "ValidationError",
-    "UnsupportedSamplerError",
     "MetricError",
+    "OversampleQAError",
     "PluginError",
+    "UnsupportedSamplerError",
+    "ValidationError",
 ]
 
 

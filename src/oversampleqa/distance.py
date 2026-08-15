@@ -2,46 +2,47 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
-from .optimized_distance import OptimizedDistanceMatrix
 from .caching import ValidationCache
 from .extended_distances import (
-    minkowski_distance,
-    chebyshev_distance,
-    mahalanobis_distance,
-    canberra_distance,
-    hamming_distance,
-    jaccard_distance,
     braycurtis_distance,
+    canberra_distance,
+    chebyshev_distance,
     correlation_distance,
     energy_distance,
-    wasserstein_1d_distance,
+    hamming_distance,
     hellinger_distance,
+    jaccard_distance,
     jensen_shannon_distance,
+    mahalanobis_distance,
+    minkowski_distance,
+    wasserstein_1d_distance,
 )
+from .optimized_distance import OptimizedDistanceMatrix
 
 __all__ = [
-    "hassanat_distance",
-    "euclidean_distance",
-    "manhattan_distance",
+    "braycurtis_distance",
+    "canberra_distance",
+    "chebyshev_distance",
+    "correlation_distance",
     "cosine_distance",
     "distance_matrix",
-    "minkowski_distance",
-    "chebyshev_distance",
-    "mahalanobis_distance",
-    "canberra_distance",
-    "hamming_distance",
-    "jaccard_distance",
-    "braycurtis_distance",
-    "correlation_distance",
     "energy_distance",
-    "wasserstein_1d_distance",
+    "euclidean_distance",
+    "hamming_distance",
+    "hassanat_distance",
     "hellinger_distance",
+    "jaccard_distance",
     "jensen_shannon_distance",
+    "mahalanobis_distance",
+    "manhattan_distance",
+    "minkowski_distance",
+    "wasserstein_1d_distance",
 ]
 
 

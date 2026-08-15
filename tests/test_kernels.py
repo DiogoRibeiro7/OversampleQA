@@ -151,13 +151,13 @@ def test_safety_factor_shrinks_batches():
     cautious = OptimizedDistanceMatrix(
         metric_registry=_METRICS, memory_limit_gb=1.0, safety_factor=0.5
     )
-    args = dict(
-        n_cols=500,
-        dtype=np.dtype(np.float64),
-        n_features=10,
-        metric="hassanat",
-        n_rows=200,
-    )
+    args = {
+        "n_cols": 500,
+        "dtype": np.dtype(np.float64),
+        "n_features": 10,
+        "metric": "hassanat",
+        "n_rows": 200,
+    }
     assert cautious._auto_batch_size(**args) < generous._auto_batch_size(**args)
 
 

@@ -1,6 +1,5 @@
-import numpy as np
-from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE
+from sklearn.datasets import make_classification
 
 from oversampleqa.clustering import cluster_based_diagnostics
 

@@ -1,12 +1,13 @@
 import numpy as np
+
 from oversampleqa.metrics import (
     calculate_error_rate,
+    check_model_fairness,
     confidence_ratio,
     local_density_divergence,
     minority_recall_loss,
-    umap_manifold_distance,
-    check_model_fairness,
     noise_sensitivity_diagnostic,
+    umap_manifold_distance,
 )
 
 
@@ -46,8 +47,8 @@ def test_check_model_fairness():
 
 
 def test_noise_sensitivity_diagnostic(tmp_path):
-    from sklearn.datasets import make_classification
     from imblearn.over_sampling import SMOTE
+    from sklearn.datasets import make_classification
 
     X, y = make_classification(n_samples=600, weights=[0.8, 0.2], random_state=0)
     df = noise_sensitivity_diagnostic(

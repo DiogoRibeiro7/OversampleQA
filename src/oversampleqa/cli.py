@@ -1,10 +1,11 @@
 import argparse
 import logging
-import pandas as pd
 from importlib import import_module
 
-from .validator import validate_oversampling, extract_synthetic_samples
+import pandas as pd
+
 from .plotting import plot_sample_distribution
+from .validator import extract_synthetic_samples, validate_oversampling
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Validate oversampling using the hidden majority approach"
     )
-    parser.add_argument("csv", help="Path to CSV dataset containing features and target column")
+    parser.add_argument(
+        "csv", help="Path to CSV dataset containing features and target column"
+    )
     parser.add_argument(
         "--target",
         default="target",

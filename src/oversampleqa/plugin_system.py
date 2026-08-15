@@ -5,21 +5,24 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
-from typing import Any, Dict, Type
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
-from .types import DistanceMetricProtocol, ValidatorProtocol, FloatArray
+from .types import DistanceMetricProtocol, FloatArray, ValidatorProtocol
 
 
 class PluginManager:
     """Runtime registry for pluggable components."""
 
     def __init__(self) -> None:
-        self._metric_plugins: Dict[str, Type[DistanceMetricProtocol]] = {}
-        self._validator_plugins: Dict[str, Type[ValidatorProtocol]] = {}
+        self._metric_plugins: dict[str, type[DistanceMetricProtocol]] = {}
+        self._validator_plugins: dict[str, type[ValidatorProtocol]] = {}
 
-    def register_metric(self, name: str, metric_cls: Type[DistanceMetricProtocol]) -> None:
+    def register_metric(
+        self, name: str, metric_cls: type[DistanceMetricProtocol]
+    ) -> None:
         """Register a metric class by name.
 
         Args:
@@ -28,7 +31,9 @@ class PluginManager:
         """
         self._metric_plugins[name] = metric_cls
 
-    def register_validator(self, name: str, validator_cls: Type[ValidatorProtocol]) -> None:
+    def register_validator(
+        self, name: str, validator_cls: type[ValidatorProtocol]
+    ) -> None:
         """Register a validator class by name.
 
         Args:
@@ -37,7 +42,7 @@ class PluginManager:
         """
         self._validator_plugins[name] = validator_cls
 
-    def get_metric(self, name: str) -> Type[DistanceMetricProtocol]:
+    def get_metric(self, name: str) -> type[DistanceMetricProtocol]:
         """Retrieve a registered metric class by name.
 
         Args:
@@ -50,7 +55,7 @@ class PluginManager:
             raise KeyError(f"Metric '{name}' is not registered")
         return self._metric_plugins[name]
 
-    def get_validator(self, name: str) -> Type[ValidatorProtocol]:
+    def get_validator(self, name: str) -> type[ValidatorProtocol]:
         """Retrieve a registered validator class by name.
 
         Args:
@@ -93,7 +98,7 @@ class PluginManager:
                 self.register_validator(cls.__name__.lower(), cls)
 
     @staticmethod
-    def _implements_metric(cls: Type) -> bool:
+    def _implements_metric(cls: type) -> bool:
         """Return True if class looks like a metric callable.
 
         Args:
@@ -102,10 +107,11 @@ class PluginManager:
         Returns:
             ``True`` if the class defines ``__call__``.
         """
+        # `callable(cls)` would be True for any class, so probe the attribute.
         return callable(getattr(cls, "__call__", None))
 
     @staticmethod
-    def _implements_validator(cls: Type) -> bool:
+    def _implements_validator(cls: type) -> bool:
         """Return True if class looks like a validator.
 
         Args:
@@ -120,26 +126,28 @@ class PluginManager:
 plugin_manager = PluginManager()
 
 
-def register_metric(name: str):
+def register_metric(name: str) -> Callable[[Any], Any]:
     """Decorator to register a metric plugin by name.
 
     Args:
         name: Metric identifier.
     """
-    def decorator(cls: Type[DistanceMetricProtocol]) -> Type[DistanceMetricProtocol]:
+
+    def decorator(cls: type[DistanceMetricProtocol]) -> type[DistanceMetricProtocol]:
         plugin_manager.register_metric(name, cls)
         return cls
 
     return decorator
 
 
-def register_validator(name: str):
+def register_validator(name: str) -> Callable[[Any], Any]:
     """Decorator to register a validator plugin by name.
 
     Args:
         name: Validator identifier.
     """
-    def decorator(cls: Type[ValidatorProtocol]) -> Type[ValidatorProtocol]:
+
+    def decorator(cls: type[ValidatorProtocol]) -> type[ValidatorProtocol]:
         plugin_manager.register_validator(name, cls)
         return cls
 

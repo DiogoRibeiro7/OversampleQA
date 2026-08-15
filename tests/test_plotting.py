@@ -1,20 +1,20 @@
+import numpy as np
+import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.datasets import make_classification
-import pandas as pd
-import numpy as np
 
-from oversampleqa.validator import validate_oversampling
 from oversampleqa import noise_sensitivity_diagnostic
 from oversampleqa.plotting import (
-    plot_sample_distribution,
+    plot_class_balance,
+    plot_distance_histogram,
     plot_error_boxplot,
     plot_error_comparison,
-    plot_error_ranking,
     plot_error_heatmap,
+    plot_error_ranking,
     plot_noise_sensitivity,
-    plot_distance_histogram,
-    plot_class_balance,
+    plot_sample_distribution,
 )
+from oversampleqa.validator import validate_oversampling
 
 
 def test_plot_sample_distribution_runs(tmp_path):
@@ -24,7 +24,7 @@ def test_plot_sample_distribution_runs(tmp_path):
     assert 0.0 <= error <= 1.0
     maj = X[y == 0]
     mino = X[y == 1]
-    synthetic = oversampler.fit_resample(X, y)[0][len(X):]
+    synthetic = oversampler.fit_resample(X, y)[0][len(X) :]
     plot_sample_distribution(
         maj,
         mino,
@@ -99,7 +99,7 @@ def test_plot_distance_histogram(tmp_path):
 def test_plot_class_balance(tmp_path):
     X, y = make_classification(n_samples=600, weights=[0.9, 0.1], random_state=0)
     oversampler = SMOTE(random_state=0)
-    X_res, y_res = oversampler.fit_resample(X, y)
+    _X_res, y_res = oversampler.fit_resample(X, y)
     path = tmp_path / "balance.png"
     plot_class_balance(y, y_res, save_path=path)
     assert path.exists()

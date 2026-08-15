@@ -1,9 +1,10 @@
 from imblearn.over_sampling import SMOTE
+
 from oversampleqa.benchmark import (
-    load_standard_datasets,
-    run_benchmark,
     compute_ranking,
     export_benchmark_results,
+    load_standard_datasets,
+    run_benchmark,
 )
 
 
