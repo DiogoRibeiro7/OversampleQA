@@ -144,9 +144,31 @@ its seed, the metric, the ``hidden_ratio``, and (for benchmarks) the
 Caching and invalidation
 -------------------------
 
-OversampleQA can cache distance matrices and validation results on disk
-(default directory ``.oversampleqa_cache``) to avoid recomputation. Cache keys
-are content-addressed with SHA256:
+Caching is **opt-in**. Nothing is cached, and no directory is created, unless
+you construct a :class:`~oversampleqa.caching.ValidationCache` and pass it in::
+
+    from oversampleqa.caching import ValidationCache
+    from oversampleqa import distance_matrix
+
+    cache = ValidationCache()            # per-user cache dir, created on first write
+    D = distance_matrix(X1, X2, "hassanat", cache=cache)
+
+Earlier versions built a cache at import time, which created
+``.oversampleqa_cache`` in the current working directory as a side effect of
+``import oversampleqa``. That no longer happens, and the default location is now
+the platform's per-user cache directory rather than the working directory.
+
+.. note::
+
+   **Caching does not always pay.** The key is a content hash, which must read
+   every input byte. For a BLAS-backed metric such as ``euclidean``, hashing the
+   inputs costs more than recomputing the result — on a 2000×10000 problem,
+   0.39 s to hash and store against 0.24 s to compute. For ``hassanat`` the same
+   problem takes 26.7 s to compute against 0.32 s to hash and store, an 83×
+   saving. Enable the cache for expensive metrics and repeated identical calls;
+   leave it off otherwise.
+
+Cache keys are content-addressed with SHA256:
 
 - A **dataset hash** combines each array's shape, dtype, and raw bytes
   (:meth:`~oversampleqa.caching.CacheManager.get_data_hash`).
@@ -157,6 +179,26 @@ This means the cache invalidates **automatically** whenever anything that would
 change the result changes: the data values, their dtype or shape, the chosen
 metric, or its parameters. There is no time-based expiry — a cache hit is only
 ever returned for byte-identical inputs.
+
+``batch_size`` is deliberately **not** part of the key. Batching splits one
+computation into chunks and concatenates them, so it cannot change the result;
+``tests/test_caching.py`` pins that invariant for every registered metric. The
+key also no longer includes the optimizer object, which used to make it depend
+on internal state that cannot affect the output and broke outright for
+locally-defined plugin metrics.
+
+Cached arrays are returned **read-only**. A cache hit hands back the stored
+array rather than a copy, so one in-place operation downstream would otherwise
+corrupt every later hit silently; the write flag makes that a loud
+``ValueError``. Call ``.copy()`` if you need to modify the result.
+
+Thread and process safety
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A single ``ValidationCache`` instance guards its own in-memory bookkeeping with
+a lock, so concurrent use through one instance is safe. On-disk writes are
+**not** atomic: two processes, or two instances sharing a directory, can
+interleave and leave a truncated file. Give each process its own ``cache_dir``.
 
 To force recomputation, delete the cache directory::
 

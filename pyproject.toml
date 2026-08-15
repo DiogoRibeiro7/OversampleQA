@@ -23,6 +23,9 @@ click = "^8.1.7"
 rich = ">=14.2,<16.0"
 pyyaml = "^6.0.2"
 pydantic = "^2.9.2"
+# Resolves the per-user cache directory. The cache falls back to
+# ~/.cache/oversampleqa if this is absent, so it is not a hard requirement.
+platformdirs = ">=3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.0"

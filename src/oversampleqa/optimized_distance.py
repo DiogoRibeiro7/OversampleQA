@@ -129,6 +129,7 @@ class OptimizedDistanceMatrix:
             X1,
             X2,
             metric=metric,
+            batch_size=batch_size,
             **kwargs,
         )
 
