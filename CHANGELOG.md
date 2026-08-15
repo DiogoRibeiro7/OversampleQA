@@ -10,7 +10,49 @@ maintained manually.
 
 ## [Unreleased]
 
+### Performance
+
+- **Vectorised five more kernels.** `hamming`, `jaccard`, `hellinger` and
+  `jensen_shannon` fell through to a Python double loop calling the metric once
+  per pair. Measured at 200×400, d=20: hamming 105×, jaccard 128×, hellinger
+  164×, jensen_shannon 53×. The default metric `hassanat` is 16× faster at
+  500×5000 (22.6 s → 1.4 s).
+- `energy` deliberately stays on `_pairwise`: broadcasting it needs an
+  `(n1, n2, d, d)` intermediate, larger than the work it saves.
+- `wasserstein` also stays on `_pairwise`, for a different reason. A correct
+  kernel exists but the *scalar* implementation is wrong (its CDF walk drops the
+  tail), so registering the kernel would make the two paths disagree and
+  matching them would mean reproducing the bug.
+
 ### Fixed
+
+- **Memory estimation ignored the intermediates that actually drive peak use.**
+  It counted only the `(n1, n2)` output, so the check passed and the kernel then
+  allocated far more than the check permitted — bypassing the very batching
+  logic meant to prevent it. Peak is now modelled per metric as
+  `output × (flat + per_feature × d)`. Two terms are needed because the kernels
+  split into families: `euclidean` peaks at ~3× the output regardless of `d`,
+  while `hassanat` peaks at ~96× at d=16. The table is fitted to `tracemalloc`
+  measurements, and two entries are re-verified by a test on every run.
+- `_auto_batch_size` let every batch consume the entire memory limit, leaving no
+  headroom for the result array that lives for the whole computation. It now
+  reserves the output first and applies the metric's multiplier.
+
+### Added
+
+- `safety_factor` (default 0.8) on `OptimizedDistanceMatrix`: the fraction of
+  the limit a batched computation plans against, leaving headroom for allocator
+  overhead the analytic estimate does not model.
+- A `performance` extra (`pip install 'oversampleqa[performance]'`) for `psutil`
+  and `tqdm`. Without `psutil`, available memory is assumed to be 1 GB whatever
+  the machine has — now logged once at INFO and documented, since it silently
+  changed behaviour depending on an optional dependency.
+- `scripts/profile_performance.py` records platform, Python, NumPy and CPU count
+  alongside timings, warns when a baseline was recorded elsewhere, and uses a
+  median of five runs rather than a single measurement.
+- A scheduled, explicitly non-blocking performance workflow. Timing checks on
+  shared runners produce false failures and train people to ignore red builds;
+  the reasoning is stated in the workflow file.
 
 - **`import oversampleqa` created a directory in the working directory.**
   `distance.py` built a `ValidationCache` at module scope and
