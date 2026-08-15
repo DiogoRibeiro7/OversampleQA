@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .inference import FriedmanNemenyiResult
+
 import logging
 
 import matplotlib
@@ -266,3 +271,89 @@ def plot_class_balance(
         plt.savefig(save_path)
     else:
         plt.close()
+
+
+def plot_critical_difference(
+    result: FriedmanNemenyiResult,
+    save_path: str | None = None,
+) -> None:
+    """Draw a critical-difference diagram (Demsar 2006).
+
+    Methods are placed on an axis by mean rank, best on the left. Methods whose
+    ranks differ by less than the critical difference are joined by a bar,
+    meaning the data does not separate them. The bar is the point of the
+    diagram: it shows how much of the apparent ordering is noise.
+
+    Args:
+        result: Outcome of :func:`~oversampleqa.inference.friedman_nemenyi`.
+        save_path: Where to write the figure. Closed without saving if omitted.
+    """
+    ranks = np.asarray(result.mean_ranks)
+    names = list(result.method_names)
+    order = np.argsort(ranks)
+
+    fig, ax = plt.subplots(figsize=(8, 2 + 0.35 * len(names)))
+    lo, hi = 0.5, len(names) + 0.5
+    ax.set_xlim(hi, lo)  # rank 1 (best) on the left
+    ax.set_ylim(0, len(names) + 2)
+    ax.set_yticks([])
+    ax.spines["left"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_position(("data", len(names) + 1))
+    ax.xaxis.set_ticks_position("top")
+    ax.xaxis.set_label_position("top")
+    ax.set_xlabel("Mean rank (lower is better)")
+
+    for row, idx in enumerate(order):
+        y = len(names) - row
+        ax.plot([ranks[idx], ranks[idx]], [y, len(names) + 1], color="0.4", lw=0.8)
+        ax.plot(
+            [ranks[idx], lo if row < len(names) / 2 else hi],
+            [y, y],
+            color="0.4",
+            lw=0.8,
+        )
+        ha = "left" if row < len(names) / 2 else "right"
+        ax.text(
+            lo if row < len(names) / 2 else hi,
+            y,
+            f"  {names[idx]} ({ranks[idx]:.2f})  ",
+            va="center",
+            ha=ha,
+        )
+
+    # Bars joining groups that the critical difference cannot separate.
+    cd = result.critical_difference
+    bar_y = 0.6
+    sorted_ranks = ranks[order]
+    drawn: list[tuple[float, float]] = []
+    for i in range(len(sorted_ranks)):
+        j = i
+        while j + 1 < len(sorted_ranks) and sorted_ranks[j + 1] - sorted_ranks[i] <= cd:
+            j += 1
+        if j > i and not any(
+            a <= sorted_ranks[i] and sorted_ranks[j] <= b for a, b in drawn
+        ):
+            ax.plot(
+                [sorted_ranks[i] - 0.03, sorted_ranks[j] + 0.03],
+                [bar_y, bar_y],
+                color="0.1",
+                lw=3,
+                solid_capstyle="butt",
+            )
+            drawn.append((sorted_ranks[i], sorted_ranks[j]))
+            bar_y += 0.35
+
+    ax.set_title(
+        f"Critical difference = {cd:.2f} "
+        f"(alpha={result.alpha}, {result.n_datasets} datasets)\n"
+        "Methods joined by a bar are not significantly different",
+        fontsize=9,
+        pad=28,
+    )
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path)
+        plt.close(fig)
+    else:
+        plt.close(fig)

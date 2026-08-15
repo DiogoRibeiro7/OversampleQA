@@ -254,3 +254,175 @@ def test_permutation_p_values_are_uniform_under_the_null():
     ks = stats.kstest(p_values, "uniform")
     assert ks.pvalue > 0.001, f"p-values look miscalibrated (KS p={ks.pvalue:.4g})"
     assert 0.01 < np.mean(np.array(p_values) < 0.05) < 0.15
+
+
+# --- multiple comparisons -------------------------------------------------
+
+
+@pytest.mark.parametrize("method", ["holm", "bh", "bonferroni"])
+def test_corrections_are_monotone(method):
+    """A less significant raw p must never correct to a smaller value.
+
+    Holm previously scaled each p-value by its rank without a running maximum,
+    so [0.01, 0.02, 0.03] corrected to [0.03, 0.04, 0.03] -- the least
+    significant comparison came out more significant than the middle one.
+    """
+    from oversampleqa.advanced_benchmark import StatisticalBenchmark
+
+    raw = {"a": 0.01, "b": 0.02, "c": 0.03, "d": 0.20, "e": 0.50}
+    corrected = StatisticalBenchmark(correction_method=method)._apply_correction(raw)
+    in_order = [corrected[k] for k in sorted(raw, key=raw.get)]
+    assert all(in_order[i] <= in_order[i + 1] + 1e-12 for i in range(len(in_order) - 1))
+
+
+def test_corrections_never_reduce_a_p_value():
+    from oversampleqa.advanced_benchmark import StatisticalBenchmark
+
+    raw = {"a": 0.01, "b": 0.04, "c": 0.30}
+    for method in ("holm", "bh", "bonferroni"):
+        corrected = StatisticalBenchmark(correction_method=method)._apply_correction(
+            raw
+        )
+        assert all(corrected[k] >= raw[k] - 1e-12 for k in raw)
+        assert all(corrected[k] <= 1.0 for k in raw)
+
+
+def test_bh_is_less_conservative_than_holm():
+    """FDR control is the point of BH; it should reject at least as much."""
+    from oversampleqa.advanced_benchmark import StatisticalBenchmark
+
+    raw = {f"c{i}": p for i, p in enumerate([0.001, 0.008, 0.02, 0.04, 0.3])}
+    holm = StatisticalBenchmark(correction_method="holm")._apply_correction(raw)
+    bh = StatisticalBenchmark(correction_method="bh")._apply_correction(raw)
+    assert all(bh[k] <= holm[k] + 1e-12 for k in raw)
+
+
+def test_empty_correction_is_a_no_op():
+    from oversampleqa.advanced_benchmark import StatisticalBenchmark
+
+    assert StatisticalBenchmark()._apply_correction({}) == {}
+
+
+# --- Friedman + Nemenyi ---------------------------------------------------
+
+
+def _ranked_scores(seed=0):
+    rng = np.random.default_rng(seed)
+    return np.array([0.05, 0.10, 0.12, 0.30]) + rng.normal(0, 0.01, (8, 4))
+
+
+def test_friedman_ranks_a_clear_ordering():
+    from oversampleqa.inference import friedman_nemenyi
+
+    result = friedman_nemenyi(_ranked_scores(), ["A", "B", "C", "D"])
+    assert result.p_value < 0.01
+    assert result.mean_ranks[0] == pytest.approx(1.0)
+    assert result.mean_ranks[3] == pytest.approx(4.0)
+
+
+def test_nemenyi_separates_only_wide_gaps():
+    from oversampleqa.inference import friedman_nemenyi
+
+    result = friedman_nemenyi(_ranked_scores(), ["A", "B", "C", "D"])
+    for first, second, gap in result.significant_pairs():
+        assert gap > result.critical_difference, (first, second)
+
+
+def test_critical_difference_shrinks_with_more_datasets():
+    """Few datasets cannot separate methods; that is a property, not a bug."""
+    from oversampleqa.inference import friedman_nemenyi
+
+    few = friedman_nemenyi(_ranked_scores()[:3], ["A", "B", "C", "D"])
+    many = friedman_nemenyi(_ranked_scores(), ["A", "B", "C", "D"])
+    assert many.critical_difference < few.critical_difference
+
+
+def test_friedman_rejects_degenerate_designs():
+    from oversampleqa.inference import friedman_nemenyi
+
+    with pytest.raises(ValueError, match="at least 3 methods"):
+        friedman_nemenyi(np.zeros((5, 2)), ["A", "B"])
+    with pytest.raises(ValueError, match="at least 2 datasets"):
+        friedman_nemenyi(np.zeros((1, 3)), ["A", "B", "C"])
+    with pytest.raises(ValueError, match="method_names"):
+        friedman_nemenyi(np.zeros((4, 3)), ["A", "B"])
+
+
+def test_lower_is_better_flips_the_ranking():
+    from oversampleqa.inference import friedman_nemenyi
+
+    scores = _ranked_scores()
+    low = friedman_nemenyi(scores, ["A", "B", "C", "D"], lower_is_better=True)
+    high = friedman_nemenyi(scores, ["A", "B", "C", "D"], lower_is_better=False)
+    assert low.mean_ranks[0] < low.mean_ranks[3]
+    assert high.mean_ranks[0] > high.mean_ranks[3]
+
+
+# --- error-rate intervals -------------------------------------------------
+
+
+def _dependent_errors(n_parents=40, children=5, seed=0):
+    """Children of a parent share their outcome -- SMOTE-like dependence."""
+    rng = np.random.default_rng(seed)
+    parents = np.repeat(np.arange(n_parents), children)
+    per_parent = rng.random(n_parents) < 0.3
+    return per_parent[parents], parents
+
+
+def test_block_bootstrap_is_wider_than_wilson():
+    """The naive interval treats dependent points as independent evidence.
+
+    Points sharing a parent lie in the same neighbourhood and are scored the
+    same way, so the effective sample size is nearer the number of parents than
+    the number of synthetic points.
+    """
+    from oversampleqa.inference import error_rate_interval
+
+    is_error, parents = _dependent_errors()
+    wilson = error_rate_interval(is_error, method="wilson")
+    block = error_rate_interval(
+        is_error, parents=parents, method="block_bootstrap", random_state=1
+    )
+    assert block.width > wilson.width * 1.5
+
+
+def test_both_intervals_contain_the_point_estimate():
+    from oversampleqa.inference import error_rate_interval
+
+    is_error, parents = _dependent_errors()
+    for interval in (
+        error_rate_interval(is_error, method="wilson"),
+        error_rate_interval(is_error, parents=parents, random_state=1),
+    ):
+        assert interval.lower <= interval.rate <= interval.upper
+
+
+def test_interval_is_deterministic_given_a_seed():
+    from oversampleqa.inference import error_rate_interval
+
+    is_error, parents = _dependent_errors()
+    a = error_rate_interval(is_error, parents=parents, random_state=7, n_resamples=200)
+    b = error_rate_interval(is_error, parents=parents, random_state=7, n_resamples=200)
+    assert (a.lower, a.upper) == (b.lower, b.upper)
+
+
+def test_interval_rejects_misaligned_parents():
+    from oversampleqa.inference import error_rate_interval
+
+    is_error, _ = _dependent_errors()
+    with pytest.raises(ValueError, match="parents has length"):
+        error_rate_interval(is_error, parents=np.arange(3))
+
+
+def test_interval_handles_empty_input():
+    from oversampleqa.inference import error_rate_interval
+
+    interval = error_rate_interval(np.array([], dtype=bool))
+    assert np.isnan(interval.rate)
+
+
+def test_unknown_interval_method_raises():
+    from oversampleqa.inference import error_rate_interval
+
+    with pytest.raises(ValueError, match="wilson"):
+        error_rate_interval(np.array([True, False]), method="jackknife")

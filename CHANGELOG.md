@@ -10,7 +10,56 @@ maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- **`oversampleqa.inference`: the error rate now has a reference scale.**
+  `null_error_rate` scores *real held-out minority points* through the identical
+  pipeline, which is the rate an ideal generator — one drawing from the true
+  minority distribution — would achieve. A ceiling from majority-drawn points
+  bounds the other end. An observed rate is reported as a z-score, a percentile
+  and a position on that scale, turning "0.13" into "0.13 against a null of
+  0.11 ± 0.02, indistinguishable from ideal".
+- Three nearest-neighbour two-sample tests, all with permutation p-values:
+  Schilling–Henze (`nn_two_sample_test`), Friedman–Rafsky MST
+  (`mst_two_sample_test`) and a greedy cross-match (`cross_match_test`). They
+  answer whether synthetic points are distributionally indistinguishable from
+  real ones. The pooled distance matrix is computed once and permutations only
+  relabel. Any registered metric works, so `hassanat` composes with them.
+- `error_rate_interval` with a **parent-block bootstrap**. A binomial interval
+  assumes independent trials; synthetic points sharing a SMOTE parent are
+  strongly dependent, so the effective sample size is nearer the parent count.
+  On 200 points from 40 parents the block interval is **2.3× wider** than
+  Wilson.
+- `friedman_nemenyi` plus `plot_critical_difference`: the Demšar (2006) protocol
+  for comparing methods across datasets, which is the benchmark's actual
+  question and was absent.
+- Benjamini–Hochberg (FDR) correction alongside Holm and Bonferroni.
+- `oversampleqa validate --calibrate` prints observed, null and ceiling.
+- `docs/inference.rst`, including an explicit *What these p-values do not tell
+  you* section.
+
 ### Fixed
+
+- **`wasserstein_1d_distance` did not compute the 1-D Wasserstein distance.**
+  It advanced the CDF before adding each interval's contribution, crediting
+  every interval with the value from *after* its right-hand jump. `[0, 1]` vs
+  `[0, 3]` returned 0.5 where the true W₁ is 1.0. It now matches
+  `scipy.stats.wasserstein_distance` on 300 random unequal-length trials. This
+  also unblocked the vectorised kernel, which could not be registered while the
+  scalar was wrong; `energy` is now the only metric without one.
+- **`StatisticalBenchmark._confidence_interval` returned two different
+  quantities.** Below 30 observations a Student-t interval for the mean; at 30
+  or more the 2.5th–97.5th percentiles of the observations, which describe
+  spread and do not narrow with more data. Both went into the same
+  `ci_lower`/`ci_upper` columns, so on σ = 0.05 data the width jumped 4.7× from
+  one extra observation. It is a t-interval for the mean at every size.
+- **Holm correction was not monotone.** It scaled each p-value by its rank
+  without a running maximum, so `[0.01, 0.02, 0.03]` corrected to
+  `[0.03, 0.04, 0.03]` — the least significant comparison came out more
+  significant than the middle one.
+- `scipy` moved from a dev dependency to a runtime one. `advanced_benchmark`
+  imports `scipy.stats` at module level, so the package could not be imported
+  without it; declaring it test-only was wrong.
 
 - **`ServiceRegistry.get` raised `ConfigurationError`, which was never defined
   or imported.** The error path itself raised `NameError`, replacing a clear

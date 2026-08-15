@@ -329,6 +329,7 @@ def run_validation_with_progress(
     verbose: bool,
     random_state: int | None = 42,
     n_repeats: int = 1,
+    calibrate: bool = False,
 ) -> dict[str, Any]:
     """Run validation with rich progress feedback.
 
@@ -341,6 +342,7 @@ def run_validation_with_progress(
         hidden_ratio: Fraction of majority to hide.
         random_state: Seed for the hold-out split.
         n_repeats: Number of independent hold-out splits.
+        calibrate: Whether to compute the null calibration.
         export_formats: Formats to export.
         resume: Whether to reuse cached results.
         output_dir: Output directory for artifacts.
@@ -465,6 +467,24 @@ def run_validation_with_progress(
                 random_state=random_state,
             )
         elapsed = time.perf_counter() - start
+
+        calibration: dict[str, Any] = {}
+        if calibrate:
+            from .inference import null_error_rate
+
+            result = null_error_rate(
+                np.asarray(X.values),
+                np.asarray(y.values),
+                minority_label,
+                float(error_rate),
+                hidden_ratio=hidden_ratio,
+                metric=metric,
+                random_state=random_state,
+            )
+            calibration = {
+                "calibration": result.to_dict(),
+                "calibration_reading": result.interpret(),
+            }
         progress.advance(task)
 
         progress.update(task, description=stages[4])
@@ -475,6 +495,7 @@ def run_validation_with_progress(
                 "hidden_ratio": hidden_ratio,
                 "random_state": random_state,
                 **dispersion,
+                **calibration,
                 "oversampler": oversampler_name,
                 "minority_label": minority_label,
                 "elapsed_seconds": elapsed,
@@ -624,6 +645,18 @@ def display_results(results: dict[str, Any]) -> None:
             f"Across {results['n_repeats']} splits",
             spread,
             "Spread of the hold-out split, not a population CI",
+        )
+    if results.get("calibration"):
+        cal = results["calibration"]
+        table.add_row(
+            "vs. ideal generator",
+            f"null {cal['null_mean']:.3f} (z={cal['z_score']:.2f})",
+            "Within null = indistinguishable from ideal",
+        )
+        table.add_row(
+            "vs. worst case",
+            f"ceiling {cal['ceiling_mean']:.3f}",
+            "Rate a wrong-distribution generator would score",
         )
     table.add_row(
         "Imbalance Ratio",
@@ -905,6 +938,11 @@ def cli(
     type=int,
     help="Independent hold-out splits; >1 reports mean and spread.",
 )
+@click.option(
+    "--calibrate",
+    is_flag=True,
+    help="Compare the error rate against ideal and worst-case references.",
+)
 @click.option("--export", multiple=True, help="Export formats (json|yaml|markdown).")
 @click.option(
     "--output",
@@ -933,6 +971,7 @@ def validate(
     hidden_ratio: float | None,
     random_state: int | None,
     n_repeats: int | None,
+    calibrate: bool,
     export: tuple[str, ...],
     output: Path | None,
     resume: bool | None,
@@ -951,6 +990,7 @@ def validate(
         hidden_ratio: Fraction of majority to hide.
         random_state: Seed for the hold-out split.
         n_repeats: Number of independent hold-out splits.
+        calibrate: Whether to calibrate the rate against null and ceiling.
         export: Export formats.
         output: Output directory.
         resume: Resume from cached results.
@@ -991,6 +1031,7 @@ def validate(
         hidden_ratio=hidden_ratio,
         random_state=random_state,
         n_repeats=n_repeats,
+        calibrate=calibrate,
         export_formats=export_formats,
         resume=resume,
         output_dir=output,

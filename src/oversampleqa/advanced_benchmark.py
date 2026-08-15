@@ -403,25 +403,58 @@ class StatisticalBenchmark:
     def _apply_correction(self, p_values: dict[str, float]) -> dict[str, float]:
         """Apply multiple-comparison correction to p-values.
 
+        With 8 oversamplers there are 28 pairwise comparisons, and uncorrected
+        p-values manufacture significance at that many looks.
+
         Args:
-            p_values: Raw p-values.
+            p_values: Raw p-values keyed by comparison.
 
         Returns:
-            Corrected p-values using the configured method.
+            Corrected p-values using the configured method: ``"holm"``
+            (family-wise error rate, the default and the right choice for small
+            families), ``"bh"`` / ``"fdr"`` (false discovery rate, better when
+            the family is large and some false positives are tolerable), or
+            ``"bonferroni"``.
+
+        Notes:
+            Both step procedures enforce **monotonicity**, which the previous
+            Holm implementation omitted: it scaled each p-value by its rank
+            without taking a running maximum, so raw p-values of
+            ``[0.01, 0.02, 0.03]`` corrected to ``[0.03, 0.04, 0.03]``. The
+            least significant comparison came out *more* significant than the
+            middle one, which is incoherent and can flip a decision at a fixed
+            alpha.
         """
         if not p_values:
             return p_values
-        if self.correction_method == "bonferroni":
-            factor = len(p_values)
-            return {k: min(v * factor, 1.0) for k, v in p_values.items()}
-        # default Holm-Bonferroni
-        sorted_items = sorted(p_values.items(), key=lambda item: item[1])
-        corrected: dict[str, float] = {}
-        m = len(sorted_items)
-        for rank, (key, p_val) in enumerate(sorted_items, start=1):
-            corrected_val = min((m - rank + 1) * p_val, 1.0)
-            corrected[key] = corrected_val
-        return corrected
+
+        keys = list(p_values)
+        raw = np.asarray([p_values[k] for k in keys], dtype=float)
+        m = len(raw)
+        method = self.correction_method.lower()
+
+        if method == "bonferroni":
+            adjusted = np.minimum(raw * m, 1.0)
+            return dict(zip(keys, (float(v) for v in adjusted), strict=True))
+
+        order = np.argsort(raw, kind="stable")
+
+        if method in {"bh", "fdr", "benjamini-hochberg"}:
+            # Step-up: scale by m / rank, then enforce monotonicity from the
+            # largest p-value downward.
+            ranks = np.arange(1, m + 1)
+            scaled = raw[order] * m / ranks
+            adjusted_sorted = np.minimum.accumulate(scaled[::-1])[::-1]
+        else:
+            # Holm step-down: scale by the number of remaining hypotheses, then
+            # enforce monotonicity from the smallest p-value upward.
+            scaled = raw[order] * (m - np.arange(m))
+            adjusted_sorted = np.maximum.accumulate(scaled)
+
+        adjusted_sorted = np.minimum(adjusted_sorted, 1.0)
+        adjusted = np.empty_like(adjusted_sorted)
+        adjusted[order] = adjusted_sorted
+        return dict(zip(keys, (float(v) for v in adjusted), strict=True))
 
     @staticmethod
     def _result_to_dict(result: BenchmarkResult) -> dict[str, Any]:

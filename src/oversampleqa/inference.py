@@ -33,8 +33,9 @@ multivariate distributions based on adjacency. *JRSS-B* 67(4).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,9 +50,13 @@ from .metrics import calculate_error_rate
 from .validator import prepare_validation_split, score_nearest_distances
 
 __all__ = [
+    "ErrorRateInterval",
+    "FriedmanNemenyiResult",
     "NullCalibration",
     "TwoSampleTestResult",
     "cross_match_test",
+    "error_rate_interval",
+    "friedman_nemenyi",
     "mst_two_sample_test",
     "nn_two_sample_test",
     "null_error_rate",
@@ -629,4 +634,324 @@ def cross_match_test(
         n_real=n2,
         n_permutations=n_permutations,
         null_statistics=tuple(float(v) for v in null_arr),
+    )
+
+
+@dataclass(frozen=True)
+class FriedmanNemenyiResult:
+    """Outcome of comparing several methods across several datasets.
+
+    This is the Demsar (2006) protocol, and it answers the benchmark's actual
+    question -- *which oversampler is best overall?* -- which pairwise tests on
+    each dataset separately do not.
+
+    Attributes
+    ----------
+    method_names:
+        Methods compared, in column order.
+    mean_ranks:
+        Average rank of each method across datasets. Rank 1 is best.
+    statistic, p_value:
+        Friedman test. A small p-value says the methods are not all equivalent;
+        it does **not** say which differ.
+    critical_difference:
+        Nemenyi critical difference at ``alpha``. Two methods differ
+        significantly only if their mean ranks are further apart than this.
+    n_datasets:
+        Blocks in the design. The critical difference shrinks as this grows,
+        which is why comparing over few datasets rarely separates anything.
+    """
+
+    method_names: tuple[str, ...]
+    mean_ranks: tuple[float, ...]
+    statistic: float
+    p_value: float
+    critical_difference: float
+    alpha: float
+    n_datasets: int
+
+    def significant_pairs(self) -> list[tuple[str, str, float]]:
+        """Method pairs whose mean ranks differ by more than the critical difference."""
+        pairs: list[tuple[str, str, float]] = []
+        for i, first in enumerate(self.method_names):
+            for j, second in enumerate(self.method_names):
+                if j <= i:
+                    continue
+                gap = abs(self.mean_ranks[i] - self.mean_ranks[j])
+                if gap > self.critical_difference:
+                    pairs.append((first, second, float(gap)))
+        return pairs
+
+    def to_dict(self) -> dict[str, Any]:
+        """Flat mapping for the reporting layer."""
+        return {
+            "test": "friedman_nemenyi",
+            "statistic": self.statistic,
+            "p_value": self.p_value,
+            "critical_difference": self.critical_difference,
+            "alpha": self.alpha,
+            "n_datasets": self.n_datasets,
+            "mean_ranks": dict(zip(self.method_names, self.mean_ranks, strict=True)),
+        }
+
+
+# Studentised range statistic q_alpha divided by sqrt(2), for the Nemenyi
+# critical difference, indexed by number of methods (Demsar 2006, Table 5).
+_NEMENYI_Q = {
+    0.05: {
+        2: 1.960,
+        3: 2.343,
+        4: 2.569,
+        5: 2.728,
+        6: 2.850,
+        7: 2.949,
+        8: 3.031,
+        9: 3.102,
+        10: 3.164,
+        11: 3.219,
+        12: 3.268,
+        13: 3.313,
+        14: 3.354,
+        15: 3.391,
+    },
+    0.10: {
+        2: 1.645,
+        3: 2.052,
+        4: 2.291,
+        5: 2.459,
+        6: 2.589,
+        7: 2.693,
+        8: 2.780,
+        9: 2.855,
+        10: 2.920,
+        11: 2.978,
+        12: 3.030,
+        13: 3.077,
+        14: 3.120,
+        15: 3.159,
+    },
+}
+
+
+def friedman_nemenyi(
+    scores: NDArray[np.floating],
+    method_names: Sequence[str],
+    *,
+    alpha: float = 0.05,
+    lower_is_better: bool = True,
+) -> FriedmanNemenyiResult:
+    """Compare methods across datasets: Friedman test with Nemenyi post-hoc.
+
+    The standard protocol for comparing methods over multiple datasets
+    (Demsar 2006). Running a separate test per dataset and counting wins does
+    not control error across the family and ignores that the datasets are
+    blocks.
+
+    Parameters
+    ----------
+    scores : ndarray
+        Shape ``(n_datasets, n_methods)``. One row per dataset, one column per
+        method.
+    method_names : sequence of str
+        Names in column order.
+    alpha : float, default=0.05
+        Level for the critical difference. Only 0.05 and 0.10 are tabulated.
+    lower_is_better : bool, default=True
+        True for error rates: the smallest score gets rank 1.
+
+    Returns
+    -------
+    FriedmanNemenyiResult
+
+    Raises
+    ------
+    ValueError
+        If the shapes disagree, or fewer than 3 methods or 2 datasets are given.
+
+    Notes
+    -----
+    A significant Friedman test says only that the methods are *not all* the
+    same. The Nemenyi critical difference is what identifies which pairs
+    differ, and it is wide unless there are many datasets -- with 5 methods
+    over 5 datasets, mean ranks must differ by roughly 2.7 out of a possible 4
+    before the difference is significant. Failing to separate methods usually
+    means too few datasets, not that the methods are equivalent.
+    """
+    scores = np.asarray(scores, dtype=float)
+    if scores.ndim != 2:
+        raise ValueError(f"scores must be 2-D (datasets x methods); got {scores.shape}")
+    n_datasets, n_methods = scores.shape
+    if len(method_names) != n_methods:
+        raise ValueError(
+            f"method_names has {len(method_names)} entries for {n_methods} columns"
+        )
+    if n_methods < 3:
+        raise ValueError("the Friedman test needs at least 3 methods")
+    if n_datasets < 2:
+        raise ValueError("the Friedman test needs at least 2 datasets")
+
+    ranked = scores if lower_is_better else -scores
+    ranks = np.apply_along_axis(stats.rankdata, 1, ranked)
+    mean_ranks = ranks.mean(axis=0)
+
+    statistic, p_value = stats.friedmanchisquare(
+        *[scores[:, i] for i in range(n_methods)]
+    )
+
+    table = _NEMENYI_Q.get(alpha)
+    if table is None:
+        raise ValueError(f"alpha must be one of {sorted(_NEMENYI_Q)}; got {alpha}")
+    q = table.get(n_methods)
+    if q is None:
+        raise ValueError(
+            f"Nemenyi critical values are tabulated for up to {max(table)} methods; "
+            f"got {n_methods}"
+        )
+    critical_difference = q * np.sqrt(n_methods * (n_methods + 1) / (6.0 * n_datasets))
+
+    return FriedmanNemenyiResult(
+        method_names=tuple(method_names),
+        mean_ranks=tuple(float(r) for r in mean_ranks),
+        statistic=float(statistic),
+        p_value=float(p_value),
+        critical_difference=float(critical_difference),
+        alpha=alpha,
+        n_datasets=n_datasets,
+    )
+
+
+@dataclass(frozen=True)
+class ErrorRateInterval:
+    """Interval for the error rate, with the assumption behind it recorded."""
+
+    rate: float
+    lower: float
+    upper: float
+    method: str
+    n_synthetic: int
+    n_resamples: int = 0
+
+    @property
+    def width(self) -> float:
+        """Interval width."""
+        return self.upper - self.lower
+
+    def to_dict(self) -> dict[str, Any]:
+        """Flat mapping for the reporting layer."""
+        return {
+            "rate": self.rate,
+            "ci_lower": self.lower,
+            "ci_upper": self.upper,
+            "method": self.method,
+            "width": self.width,
+            "n_synthetic": self.n_synthetic,
+            "n_resamples": self.n_resamples,
+        }
+
+
+def _wilson(rate: float, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval for a proportion."""
+    if n <= 0:
+        return (0.0, 1.0)
+    denominator = 1.0 + z**2 / n
+    centre = (rate + z**2 / (2 * n)) / denominator
+    margin = z * np.sqrt(rate * (1 - rate) / n + z**2 / (4 * n**2)) / denominator
+    return (max(0.0, centre - margin), min(1.0, centre + margin))
+
+
+def error_rate_interval(
+    is_error: NDArray[np.bool_],
+    *,
+    parents: NDArray[np.integer] | None = None,
+    method: Literal["wilson", "block_bootstrap"] = "block_bootstrap",
+    n_resamples: int = 2000,
+    confidence: float = 0.95,
+    random_state: RandomStateLike = 42,
+) -> ErrorRateInterval:
+    """Interval for the error rate, accounting for dependence between points.
+
+    ==================  ==========================================  ==============
+    method              assumes                                     when too narrow
+    ==================  ==========================================  ==============
+    ``wilson``          synthetic points are independent Bernoulli  almost always
+    ``block_bootstrap`` points sharing a parent move together       rarely
+    ==================  ==========================================  ==============
+
+    **Why the naive interval is too narrow.** SMOTE places each synthetic point
+    on a segment between a minority point and one of its neighbours. Points
+    sharing a parent lie in the same neighbourhood and are scored the same way,
+    so they are strongly dependent -- the effective sample size is closer to the
+    number of *parents* than the number of synthetic points. A binomial interval
+    counts every point as independent evidence and is correspondingly
+    over-confident.
+
+    The block bootstrap resamples **parents** with replacement, carrying all of
+    a parent's children along, so the dependence is preserved in every resample.
+
+    Parameters
+    ----------
+    is_error : ndarray of bool
+        Per-synthetic-point error indicator.
+    parents : ndarray of int, optional
+        Parent index per synthetic point. When ``None``, every point is treated
+        as its own parent, which makes the block bootstrap collapse to the
+        ordinary bootstrap -- and understate the width. Supply parents where the
+        sampler exposes them; approximate them by nearest real minority
+        neighbour otherwise, and say which was done.
+    method : {"wilson", "block_bootstrap"}, default="block_bootstrap"
+        Interval construction.
+    n_resamples : int, default=2000
+        Bootstrap resamples.
+    confidence : float, default=0.95
+        Coverage level.
+    random_state : int, Generator, SeedSequence or None, default=42
+        Seeds the resampling.
+
+    Returns
+    -------
+    ErrorRateInterval
+    """
+    is_error = np.asarray(is_error, dtype=bool)
+    n = len(is_error)
+    if n == 0:
+        return ErrorRateInterval(float("nan"), float("nan"), float("nan"), method, 0)
+
+    rate = float(is_error.mean())
+
+    if method == "wilson":
+        z = float(stats.norm.ppf(1 - (1 - confidence) / 2))
+        lower, upper = _wilson(rate, n, z)
+        return ErrorRateInterval(rate, lower, upper, "wilson", n)
+
+    if method != "block_bootstrap":
+        raise ValueError(
+            f"method must be 'wilson' or 'block_bootstrap'; got {method!r}"
+        )
+
+    if parents is None:
+        blocks = [np.array([i]) for i in range(n)]
+    else:
+        parents = np.asarray(parents)
+        if len(parents) != n:
+            raise ValueError(
+                f"parents has length {len(parents)} but there are {n} synthetic points"
+            )
+        blocks = [np.flatnonzero(parents == p) for p in np.unique(parents)]
+
+    rng = as_generator(random_state)
+    n_blocks = len(blocks)
+    draws = np.empty(n_resamples, dtype=float)
+    for r in range(n_resamples):
+        chosen = rng.integers(0, n_blocks, size=n_blocks)
+        sampled = np.concatenate([blocks[c] for c in chosen])
+        draws[r] = is_error[sampled].mean()
+
+    alpha = 1.0 - confidence
+    return ErrorRateInterval(
+        rate=rate,
+        lower=float(np.percentile(draws, 100 * alpha / 2)),
+        upper=float(np.percentile(draws, 100 * (1 - alpha / 2))),
+        method="block_bootstrap",
+        n_synthetic=n,
+        n_resamples=n_resamples,
     )
