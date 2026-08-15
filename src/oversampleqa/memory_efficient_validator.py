@@ -16,6 +16,7 @@ from numpy.typing import NDArray
 from sklearn.model_selection import train_test_split
 
 from .distance import _METRICS, hassanat_distance  # noqa: F401 - ensures registry populated
+from ._rng import RandomStateLike
 from .metrics import calculate_error_rate, duplication_rate
 from .types import ReferenceSet, ValidationDetails
 from .optimized_distance import OptimizedDistanceMatrix, get_available_memory_gb
@@ -66,6 +67,8 @@ class MemoryEfficientValidator:
         reference: ReferenceSet = "hidden_minority",
         minority_hidden_ratio: float | None = None,
         min_hidden: int = 5,
+        random_state: RandomStateLike = 42,
+        stratify_by: NDArray[Any] | None = None,
     ) -> float | ValidationDetails:
         """Validate oversampling with streaming-aware distance calculations.
 
@@ -107,6 +110,9 @@ class MemoryEfficientValidator:
                 "metric_kwargs": metric_kwargs,
                 "reference": reference,
                 "minority_hidden_ratio": minority_hidden_ratio,
+                "random_state": random_state
+                if isinstance(random_state, (int, type(None)))
+                else "generator",
             }
             params_hash = hashlib.sha256(pickle.dumps(payload)).hexdigest()
             cached = self.cache.load_validation_result(params_hash)
@@ -128,6 +134,8 @@ class MemoryEfficientValidator:
             reference=reference,
             minority_hidden_ratio=minority_hidden_ratio,
             min_hidden=min_hidden,
+            random_state=random_state,
+            stratify_by=stratify_by,
         )
         X_train = split.X_train
         y_train = split.y_train

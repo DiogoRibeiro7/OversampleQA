@@ -10,6 +10,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from ._rng import RandomStateLike, as_generator
 from .validator import validate_oversampling
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ def run_benchmark(
     hidden_ratios: List[float] | None = None,
     n_runs: int = 10,
     distance_metric: str = "hassanat",
-    random_state: int | None = None,
+    random_state: RandomStateLike = None,
 ) -> pd.DataFrame:
     """Run validation across datasets and oversampling methods.
 
@@ -65,7 +66,7 @@ def run_benchmark(
         hidden_ratios = [0.1, 0.25, 0.5]
 
     results = []
-    rng = np.random.default_rng(random_state)
+    rng = as_generator(random_state)
 
     logger.info("Starting benchmark with %d datasets", len(datasets))
 
@@ -77,6 +78,10 @@ def run_benchmark(
                 for run in range(n_runs):
                     rs = rng.integers(0, 1_000_000)
                     oversampler.random_state = rs
+                    # Vary the hold-out split per run as well. Reseeding only the
+                    # oversampler left every run sharing one split, so the spread
+                    # across runs omitted the largest source of variance.
+                    split_seed = int(rng.integers(0, 2**31 - 1))
                     try:
                         error = validate_oversampling(
                             X,
@@ -85,6 +90,7 @@ def run_benchmark(
                             oversampler,
                             hidden_ratio=ratio,
                             metric=distance_metric,
+                            random_state=split_seed,
                         )
                     except ValueError as exc:
                         # A dataset whose minority is too small to hold out from

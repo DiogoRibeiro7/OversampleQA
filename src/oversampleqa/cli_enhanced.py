@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import click
+import numpy as np
 import pandas as pd
 import yaml
 from rich.console import Console
@@ -38,6 +39,7 @@ from .advanced_benchmark import (
 from .benchmark import export_benchmark_results, load_standard_datasets
 from .config_templates import CONFIG_TEMPLATES, generate_config_file
 from .memory_efficient_validator import MemoryEfficientValidator
+from .types import ValidationDetails
 from .validator import validate_oversampling
 
 logger = logging.getLogger(__name__)
@@ -321,6 +323,8 @@ def run_validation_with_progress(
     mlflow_override: bool,
     mlflow_config: Optional[Dict[str, Any]],
     verbose: bool,
+    random_state: int | None = 42,
+    n_repeats: int = 1,
 ) -> Dict[str, Any]:
     """Run validation with rich progress feedback.
 
@@ -331,6 +335,8 @@ def run_validation_with_progress(
         oversampler_name: Oversampler class name.
         metric: Distance metric name.
         hidden_ratio: Fraction of majority to hide.
+        random_state: Seed for the hold-out split.
+        n_repeats: Number of independent hold-out splits.
         export_formats: Formats to export.
         resume: Whether to reuse cached results.
         output_dir: Output directory for artifacts.
@@ -406,6 +412,7 @@ def run_validation_with_progress(
 
         progress.update(task, description=stages[3])
         start = time.perf_counter()
+        dispersion: dict[str, Any] = {}
         if n_samples > 20_000:
             validator = MemoryEfficientValidator()
             error_rate = validator.validate_oversampling(
@@ -415,7 +422,34 @@ def run_validation_with_progress(
                 oversampler=oversampler,
                 hidden_ratio=hidden_ratio,
                 metric=metric,
+                random_state=random_state,
             )
+        elif n_repeats > 1:
+            details = validate_oversampling(
+                np.asarray(X.values),
+                np.asarray(y.values),
+                minority_label=minority_label,
+                oversampler=oversampler,
+                hidden_ratio=hidden_ratio,
+                metric=metric,
+                random_state=random_state,
+                n_repeats=n_repeats,
+                return_details=True,
+            )
+            # return_details=True always yields ValidationDetails; the runtime
+            # check narrows the union without suppressing the type.
+            if not isinstance(details, ValidationDetails):
+                raise TypeError(
+                    "validate_oversampling(return_details=True) must return "
+                    f"ValidationDetails, got {type(details).__name__}"
+                )
+            error_rate = details.error_rate
+            dispersion = {
+                "n_repeats": details.n_repeats,
+                "std": details.std,
+                "interval": list(details.interval) if details.interval else None,
+                "rates": list(details.rates),
+            }
         else:
             error_rate = validate_oversampling(
                 X.values,
@@ -424,6 +458,7 @@ def run_validation_with_progress(
                 oversampler=oversampler,
                 hidden_ratio=hidden_ratio,
                 metric=metric,
+                random_state=random_state,
             )
         elapsed = time.perf_counter() - start
         progress.advance(task)
@@ -434,6 +469,8 @@ def run_validation_with_progress(
                 "error_rate": float(error_rate),
                 "metric": metric,
                 "hidden_ratio": hidden_ratio,
+                "random_state": random_state,
+                **dispersion,
                 "oversampler": oversampler_name,
                 "minority_label": minority_label,
                 "elapsed_seconds": elapsed,
@@ -573,6 +610,17 @@ def display_results(results: Dict[str, Any]) -> None:
         f"{error_rate:.3f}",
         interpret_error_rate(error_rate),
     )
+    if results.get("n_repeats", 1) > 1:
+        std = results.get("std", float("nan"))
+        interval = results.get("interval")
+        spread = f"{error_rate:.3f} ± {std:.3f}"
+        if interval:
+            spread += f"  [{interval[0]:.3f}, {interval[1]:.3f}]"
+        table.add_row(
+            f"Across {results['n_repeats']} splits",
+            spread,
+            "Spread of the hold-out split, not a population CI",
+        )
     table.add_row(
         "Imbalance Ratio",
         f"{results['imbalance_ratio']:.3f}",
@@ -843,6 +891,16 @@ def cli(
 @click.option("--oversampler", help="Oversampler class (imbalanced-learn).")
 @click.option("--metric", help="Distance metric to use.")
 @click.option("--hidden-ratio", type=float, help="Hidden majority ratio.")
+@click.option(
+    "--random-state",
+    type=int,
+    help="Seed for the hold-out split. Changing it changes the result.",
+)
+@click.option(
+    "--n-repeats",
+    type=int,
+    help="Independent hold-out splits; >1 reports mean and spread.",
+)
 @click.option("--export", multiple=True, help="Export formats (json|yaml|markdown).")
 @click.option(
     "--output",
@@ -869,6 +927,8 @@ def validate(
     oversampler: Optional[str],
     metric: Optional[str],
     hidden_ratio: Optional[float],
+    random_state: int | None,
+    n_repeats: int | None,
     export: Tuple[str, ...],
     output: Optional[Path],
     resume: Optional[bool],
@@ -885,6 +945,8 @@ def validate(
         oversampler: Oversampler class name.
         metric: Distance metric name.
         hidden_ratio: Fraction of majority to hide.
+        random_state: Seed for the hold-out split.
+        n_repeats: Number of independent hold-out splits.
         export: Export formats.
         output: Output directory.
         resume: Resume from cached results.
@@ -909,6 +971,14 @@ def validate(
     hidden_ratio = (
         hidden_ratio if hidden_ratio is not None else defaults["hidden_ratio"]
     )
+    random_state = (
+        random_state
+        if random_state is not None
+        else defaults.get("random_state", 42)
+    )
+    n_repeats = (
+        n_repeats if n_repeats is not None else defaults.get("n_repeats", 1)
+    )
     export_formats = export or tuple(defaults.get("export", []))
     resume = defaults["resume"] if resume is None else resume
 
@@ -919,6 +989,8 @@ def validate(
         oversampler_name=oversampler,
         metric=metric,
         hidden_ratio=hidden_ratio,
+        random_state=random_state,
+        n_repeats=n_repeats,
         export_formats=export_formats,
         resume=resume,
         output_dir=output,

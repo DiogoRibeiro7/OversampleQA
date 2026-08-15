@@ -8,33 +8,111 @@ provenanced, and how the on-disk cache is keyed and invalidated.
 Sources of randomness
 ----------------------
 
-There are two independent sources of randomness in a validation run:
+Every source of randomness in a run, and the knob that controls it:
 
-1. **The hidden-majority split.** Internally, the validator hides a fraction of
-   the majority class (``hidden_ratio``) and asks whether synthetic samples look
-   more like the hidden majority or the real minority. This split is
-   **deterministic**: :func:`~oversampleqa.validate_oversampling` fixes the split
-   at ``random_state=42`` and
-   :func:`~oversampleqa.validate_multiclass_oversampling` seeds its generator with
-   ``numpy.random.default_rng(42)``. You do not configure it, and it does not
-   vary between runs on the same input.
+.. list-table::
+   :header-rows: 1
+   :widths: 45 55
 
-2. **The oversampler.** The oversampler is supplied by you, and its randomness is
-   your responsibility. Always construct it with an explicit seed::
+   * - Source
+     - Controlled by
+   * - Majority (and minority) hold-out split
+     - ``random_state`` on the validator
+   * - Oversampler's own generation
+     - ``random_state`` on the sampler instance; ``reseed_oversampler=True``
+       to vary it per repeat
+   * - Benchmark dataset generation
+     - fixed seeds inside
+       :func:`~oversampleqa.benchmark.load_standard_datasets`
+   * - Benchmark CV folds
+     - ``random_state`` on the runner
+   * - Cache keying
+     - content hash of the inputs (see below)
 
-       from imblearn.over_sampling import SMOTE
-       from oversampleqa import validate_oversampling
+Pin the oversampler as well as the validator. Without a seed, SMOTE, ADASYN and
+BorderlineSMOTE draw different synthetic samples on each run::
 
-       error_rate = validate_oversampling(
-           X=X, y=y, minority_label=1,
-           oversampler=SMOTE(random_state=42),  # pin the oversampler seed
-       )
+    from imblearn.over_sampling import SMOTE
+    from oversampleqa import validate_oversampling
 
-   Without a seed, methods such as SMOTE, ADASYN, and BorderlineSMOTE will draw
-   different synthetic samples on each run and the error rate will vary.
+    error_rate = validate_oversampling(
+        X=X, y=y, minority_label=1,
+        oversampler=SMOTE(random_state=42),  # the sampler's own randomness
+        random_state=42,                     # which points are hidden
+    )
 
-Because the hidden-majority split is fixed, **identical inputs plus an
-identically-seeded oversampler produce an identical error rate.**
+With both pinned, repeated runs on identical inputs return a bit-identical
+error rate.
+
+.. note::
+
+   ``random_state`` accepts an ``int``, a :class:`numpy.random.Generator`, a
+   :class:`numpy.random.SeedSequence`, or ``None``. Passing ``None`` draws fresh
+   entropy and is deliberately **not** reproducible. The default is ``42``.
+
+The seed is not a formality
+---------------------------
+
+Which majority points get hidden is the single largest driver of the error rate.
+Changing only the seed, with the data and the oversampler's own seed held fixed:
+
+.. code-block:: python
+
+   >>> validate_oversampling(X, y, 1, SMOTE(random_state=0), random_state=42)
+   0.2412
+   >>> validate_oversampling(X, y, 1, SMOTE(random_state=0), random_state=7)
+   0.4005
+
+The same configuration, differing only in which 10% of the majority was held
+out, gives error rates that differ by a factor of 1.7. A single run therefore
+tells you very little on its own, which is what ``n_repeats`` exists to address.
+
+Reporting a range instead of a point
+------------------------------------
+
+``n_repeats`` draws independent hold-out splits and reports the spread::
+
+    details = validate_oversampling(
+        X, y, minority_label=1,
+        oversampler=SMOTE(random_state=0),
+        n_repeats=20,
+        return_details=True,
+    )
+    print(details.mean, details.std, details.interval)
+    # 0.2920 0.0687 (0.2640, 0.3215)
+
+Repeat streams are spawned from a :class:`numpy.random.SeedSequence`. They are
+**not** derived as ``seed + i``, which produces correlated streams and would
+understate the dispersion.
+
+.. warning::
+
+   The reported interval is a percentile bootstrap over the per-repeat error
+   rates. It describes the variability of the **hold-out split**, conditional on
+   this dataset and on the oversampler's own seed.
+
+   It is *not* a confidence interval for a population quantity, and by default it
+   does not include the oversampler's own randomness at all. Pass
+   ``reseed_oversampler=True`` to give the sampler a fresh seed per repeat; the
+   dispersion then covers both sources together, which is a wider and different
+   decomposition. Say which one you used when reporting.
+
+   Synthetic points interpolated from shared parent points are not independent,
+   so a binomial interval on a single run's error rate would be too narrow.
+
+Unrepresentative hold-outs
+--------------------------
+
+An unstratified hold-out can miss a cluster entirely when the majority class has
+structure. Pass ``stratify_by`` with group labels aligned to ``y`` to take the
+fraction within each group instead::
+
+    validate_oversampling(
+        X, y, minority_label=1, oversampler=SMOTE(random_state=0),
+        stratify_by=cluster_ids,
+    )
+
+Strata are never inferred automatically — you know what grouping matters.
 
 Stable input ordering
 ----------------------
@@ -98,7 +176,9 @@ experiments do not share entries.
 Checklist for a reproducible run
 --------------------------------
 
-- Pin the oversampler seed (``random_state=...``).
+- Pin the validator seed (``random_state=...`` on ``validate_oversampling``).
+- Pin the oversampler seed (``random_state=...`` on the sampler).
+- Report ``n_repeats`` and the spread, not just a point estimate from one split.
 - Record the OversampleQA version alongside results.
 - Use a fixed ``random_state`` for the benchmark runner.
 - Keep input row order stable.

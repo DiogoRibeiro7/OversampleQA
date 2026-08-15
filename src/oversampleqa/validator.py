@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import logging
 import warnings
+from dataclasses import replace
 from typing import Any, NamedTuple
 
 import numpy as np
 from imblearn.over_sampling.base import BaseOverSampler
 from numpy.typing import NDArray
-from sklearn.model_selection import train_test_split
+from sklearn.base import clone
 
+from ._rng import RandomStateLike, as_generator, integer_seed, spawn_generators
 from .distance import distance_matrix
 from .metrics import calculate_error_rate, duplication_rate
 from .types import ReferenceSet, ValidationDetails
@@ -65,6 +67,44 @@ class ValidationSplit(NamedTuple):
     hid_majority: NDArray[np.floating]
     fit_minority: NDArray[np.floating]
     reference_minority: NDArray[np.floating]
+    hidden_majority_index: NDArray[np.integer]
+
+
+def _holdout_indices(
+    n: int,
+    ratio: float,
+    rng: np.random.Generator,
+    strata: NDArray[Any] | None = None,
+) -> tuple[NDArray[np.integer], NDArray[np.integer]]:
+    """Split ``n`` positions into ``(visible, hidden)`` index arrays.
+
+    Uses ``rng.permutation`` directly rather than ``train_test_split``: it keeps
+    the binary and multiclass code paths structurally identical, and it accepts
+    a ``Generator``, which scikit-learn's splitter does not.
+
+    When ``strata`` is given, the fraction is taken within each stratum, so a
+    hold-out cannot miss a group entirely.
+    """
+    if strata is None:
+        order = rng.permutation(n)
+        n_hidden = int(n * ratio)
+        return order[n_hidden:], order[:n_hidden]
+
+    strata = np.asarray(strata)
+    if len(strata) != n:
+        raise ValueError(
+            f"stratify_by has length {len(strata)} but the class being split has "
+            f"{n} samples; it must be aligned with that class."
+        )
+    visible_parts: list[NDArray[np.integer]] = []
+    hidden_parts: list[NDArray[np.integer]] = []
+    for value in np.unique(strata):
+        members = np.flatnonzero(strata == value)
+        order = rng.permutation(len(members))
+        n_hidden = int(len(members) * ratio)
+        hidden_parts.append(members[order[:n_hidden]])
+        visible_parts.append(members[order[n_hidden:]])
+    return np.concatenate(visible_parts), np.concatenate(hidden_parts)
 
 
 def prepare_validation_split(
@@ -77,23 +117,38 @@ def prepare_validation_split(
     reference: ReferenceSet = "hidden_minority",
     minority_hidden_ratio: float | None = None,
     min_hidden: int = 5,
-    random_state: int = 42,
+    random_state: RandomStateLike = 42,
+    stratify_by: NDArray[Any] | None = None,
 ) -> ValidationSplit:
     """Build the train/hidden split defining the validation estimand.
 
-    See :func:`validate_oversampling` for the meaning of ``reference``.
+    See :func:`validate_oversampling` for the meaning of ``reference``,
+    ``random_state`` and ``stratify_by``.
 
     Raises
     ------
     ValueError
         If the held-out minority would contain fewer than ``min_hidden``
-        points.
+        points, or if ``stratify_by`` is not aligned with the majority class.
     """
     minority, majority = _split_classes(X, y, minority_label)
+    rng = as_generator(random_state)
 
-    vis_majority, hid_majority = train_test_split(
-        majority, test_size=hidden_ratio, random_state=random_state
+    majority_strata = None
+    if stratify_by is not None:
+        stratify_by = np.asarray(stratify_by)
+        if len(stratify_by) != len(y):
+            raise ValueError(
+                f"stratify_by has length {len(stratify_by)} but y has {len(y)}; "
+                "it must be aligned with the full dataset."
+            )
+        majority_strata = stratify_by[y != minority_label]
+
+    vis_idx, hid_idx = _holdout_indices(
+        len(majority), hidden_ratio, rng, majority_strata
     )
+    vis_majority = majority[vis_idx]
+    hid_majority = majority[hid_idx]
 
     if reference == "hidden_minority":
         ratio = hidden_ratio if minority_hidden_ratio is None else minority_hidden_ratio
@@ -109,9 +164,9 @@ def prepare_validation_split(
                 "reference='train_minority' -- noting that it compares against "
                 "the oversampler's own training data and is biased toward zero."
             )
-        fit_minority, reference_minority = train_test_split(
-            minority, test_size=ratio, random_state=random_state
-        )
+        fit_idx, ref_idx = _holdout_indices(len(minority), ratio, rng)
+        fit_minority = minority[fit_idx]
+        reference_minority = minority[ref_idx]
     else:
         fit_minority = minority
         reference_minority = minority
@@ -124,7 +179,7 @@ def prepare_validation_split(
         ]
     )
     return ValidationSplit(
-        X_train, y_train, hid_majority, fit_minority, reference_minority
+        X_train, y_train, hid_majority, fit_minority, reference_minority, hid_idx
     )
 
 
@@ -224,6 +279,10 @@ def validate_oversampling(
     minority_hidden_ratio: float | None = None,
     min_hidden: int = 5,
     duplication_warn_threshold: float = 0.5,
+    random_state: RandomStateLike = 42,
+    stratify_by: NDArray[Any] | None = None,
+    n_repeats: int = 1,
+    reseed_oversampler: bool = False,
 ) -> float | ValidationDetails:
     """Validate oversampling using the hidden majority approach.
 
@@ -274,11 +333,29 @@ def validate_oversampling(
     duplication_warn_threshold : float, default=0.5
         Emit a ``UserWarning`` when this fraction of synthetic points coincide
         with a real point.
+    random_state : int, Generator, SeedSequence or None, default=42
+        Seeds the hold-out split. **Which** points get hidden is the single
+        largest driver of the error rate, so varying this varies the result.
+        The default of 42 reproduces previously documented numbers; ``None``
+        draws fresh entropy and is not reproducible.
+    stratify_by : ndarray, optional
+        Group labels aligned with ``y``. When given, the majority hold-out
+        takes ``hidden_ratio`` within each group, so a hold-out cannot miss a
+        cluster entirely. Strata are never inferred automatically.
+    n_repeats : int, default=1
+        Number of independent hold-out splits. Above 1, the returned details
+        carry the per-repeat vector and its dispersion. Repeat streams are
+        spawned from a ``SeedSequence`` rather than derived as ``seed + i``,
+        which would correlate them.
+    reseed_oversampler : bool, default=False
+        Give the oversampler a fresh seed on each repeat. This changes what the
+        dispersion covers -- see Notes.
 
     Returns
     -------
     float or ValidationDetails
         Error rate by default, ``nan`` if no synthetic samples were produced.
+        With ``n_repeats > 1`` the bare return is the mean across repeats.
 
     Raises
     ------
@@ -292,6 +369,20 @@ def validate_oversampling(
     The error rate is a **relative** quantity. Its scale depends on
     ``hidden_ratio``, on the density of the data, and on dimensionality, so
     values are not comparable across datasets. See :doc:`/concepts`.
+
+    **What the repeat interval covers.** With ``n_repeats > 1`` the reported
+    interval is a percentile bootstrap over the per-repeat error rates. It
+    describes the variability of the **hold-out split**, conditional on this
+    dataset and on the oversampler's own seed. It is *not* a confidence
+    interval for a population quantity, and with ``reseed_oversampler=False``
+    it does not include the oversampler's own randomness at all. Setting
+    ``reseed_oversampler=True`` clones the sampler with a fresh seed per
+    repeat, so the dispersion then covers both sources together -- a different,
+    wider decomposition.
+
+    Synthetic points generated from shared parent points are **not
+    independent**, so a binomial interval on the error rate would be too
+    narrow. Nothing here claims more than the repeat-level bootstrap supports.
     """
     _validate_hidden_ratio(hidden_ratio)
     labels = np.unique(y)
@@ -309,6 +400,29 @@ def validate_oversampling(
         )
     warn_reference_bias(reference, stacklevel=3)
 
+    if n_repeats < 1:
+        raise ValueError(f"n_repeats must be at least 1; got {n_repeats}")
+
+    if n_repeats > 1:
+        return _validate_repeated(
+            X,
+            y,
+            minority_label,
+            oversampler,
+            hidden_ratio=hidden_ratio,
+            metric=metric,
+            metric_kwargs=metric_kwargs,
+            return_details=return_details,
+            reference=reference,
+            minority_hidden_ratio=minority_hidden_ratio,
+            min_hidden=min_hidden,
+            duplication_warn_threshold=duplication_warn_threshold,
+            random_state=random_state,
+            stratify_by=stratify_by,
+            n_repeats=n_repeats,
+            reseed_oversampler=reseed_oversampler,
+        )
+
     minority, _ = _split_classes(X, y, minority_label)
     split = prepare_validation_split(
         X,
@@ -319,6 +433,8 @@ def validate_oversampling(
         reference=reference,
         minority_hidden_ratio=minority_hidden_ratio,
         min_hidden=min_hidden,
+        random_state=random_state,
+        stratify_by=stratify_by,
     )
     X_train = split.X_train
     y_train = split.y_train
@@ -412,6 +528,111 @@ def validate_oversampling(
     return rate
 
 
+def _reseeded(
+    oversampler: BaseOverSampler, rng: np.random.Generator
+) -> BaseOverSampler:
+    """Clone ``oversampler`` with a fresh seed, if it takes one.
+
+    Samplers without a ``random_state`` parameter are cloned unchanged rather
+    than being rejected -- a sampler can legitimately be deterministic.
+    """
+    clone_ = clone(oversampler)
+    if "random_state" in clone_.get_params(deep=False):
+        clone_.set_params(random_state=integer_seed(rng))
+    return clone_
+
+
+def _bootstrap_interval(
+    values: NDArray[np.floating],
+    rng: np.random.Generator,
+    *,
+    confidence: float = 0.95,
+    n_boot: int = 2000,
+) -> tuple[float, float]:
+    """Percentile bootstrap interval for the mean of ``values``."""
+    if len(values) < 2:
+        return (float("nan"), float("nan"))
+    draws = rng.choice(values, size=(n_boot, len(values)), replace=True).mean(axis=1)
+    alpha = 1.0 - confidence
+    lower = float(np.percentile(draws, 100 * alpha / 2))
+    upper = float(np.percentile(draws, 100 * (1 - alpha / 2)))
+    return lower, upper
+
+
+def _validate_repeated(
+    X: NDArray[np.floating],
+    y: NDArray[np.integer],
+    minority_label: int,
+    oversampler: BaseOverSampler,
+    *,
+    hidden_ratio: float,
+    metric: str,
+    metric_kwargs: dict[str, Any] | None,
+    return_details: bool,
+    reference: ReferenceSet,
+    minority_hidden_ratio: float | None,
+    min_hidden: int,
+    duplication_warn_threshold: float,
+    random_state: RandomStateLike,
+    stratify_by: NDArray[Any] | None,
+    n_repeats: int,
+    reseed_oversampler: bool,
+) -> float | ValidationDetails:
+    """Run ``n_repeats`` independent hold-out splits and summarise dispersion.
+
+    Child generators are spawned from a single ``SeedSequence`` so the repeat
+    streams are independent; ``seed + i`` would correlate them.
+    """
+    children = spawn_generators(random_state, n_repeats + 1)
+    split_rngs, boot_rng = children[:-1], children[-1]
+
+    rates: list[float] = []
+    last: ValidationDetails | None = None
+
+    for split_rng in split_rngs:
+        sampler = (
+            _reseeded(oversampler, split_rng) if reseed_oversampler else oversampler
+        )
+        details = validate_oversampling(
+            X,
+            y,
+            minority_label,
+            sampler,
+            hidden_ratio=hidden_ratio,
+            metric=metric,
+            metric_kwargs=metric_kwargs,
+            return_details=True,
+            reference=reference,
+            minority_hidden_ratio=minority_hidden_ratio,
+            min_hidden=min_hidden,
+            duplication_warn_threshold=duplication_warn_threshold,
+            random_state=split_rng,
+            stratify_by=stratify_by,
+            n_repeats=1,
+        )
+        assert isinstance(details, ValidationDetails)
+        rates.append(details.error_rate)
+        last = details
+
+    arr = np.asarray(rates, dtype=float)
+    finite = arr[np.isfinite(arr)]
+    mean = float(np.nanmean(arr)) if finite.size else float("nan")
+
+    if not return_details:
+        return mean
+
+    assert last is not None
+    return replace(
+        last,
+        error_rate=mean,
+        n_repeats=n_repeats,
+        rates=tuple(rates),
+        mean=mean,
+        std=float(np.nanstd(arr, ddof=1)) if finite.size > 1 else float("nan"),
+        interval=_bootstrap_interval(finite, boot_rng) if finite.size > 1 else None,
+    )
+
+
 def validate_multiclass_oversampling(
     X: NDArray[np.floating],
     y: NDArray[np.integer],
@@ -420,6 +641,8 @@ def validate_multiclass_oversampling(
     metric: str = "hassanat",
     metric_kwargs: dict[str, Any] | None = None,
     return_matrix: bool = False,
+    *,
+    random_state: RandomStateLike = 42,
 ) -> dict[int, float] | tuple[dict[int, float], NDArray[np.floating]]:
     """Validate oversampling for multi-class datasets.
 
@@ -446,6 +669,9 @@ def validate_multiclass_oversampling(
         Additional keyword arguments passed to :func:`distance_matrix`.
     return_matrix : bool, default=False
         If ``True`` also return the error matrix.
+    random_state : int, Generator, SeedSequence or None, default=42
+        Seeds the per-class hold-out. Defaults to 42, which reproduces
+        previously documented numbers.
 
     Returns
     -------
@@ -456,7 +682,7 @@ def validate_multiclass_oversampling(
 
     _validate_hidden_ratio(hidden_ratio)
     labels = np.unique(y)
-    rng = np.random.default_rng(42)
+    rng = as_generator(random_state)
 
     visible = {}
     hidden = {}
