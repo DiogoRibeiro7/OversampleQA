@@ -105,3 +105,43 @@ You can register custom metrics and validators:
        return 0.0
 
    register_metric("my_metric", my_metric)
+
+Memory limits and the ``psutil`` fallback
+-----------------------------------------
+
+Distance-matrix computation is memory-aware: it estimates the peak footprint of
+a computation and batches when it would not fit. The effective limit is
+``min(memory_limit_gb, available)``, where ``available`` is read from
+``psutil``.
+
+.. warning::
+
+   **Without ``psutil`` installed, available memory is assumed to be 1 GB**,
+   whatever the machine actually has. Batching is then more conservative than it
+   needs to be, and throughput differs from an otherwise identical environment
+   that has ``psutil`` — which makes performance reports hard to compare. The
+   fallback is logged once at ``INFO``.
+
+Install the optional extra to get the real figure::
+
+    pip install 'oversampleqa[performance]'
+
+That also pulls in ``tqdm`` for progress bars.
+
+Two further knobs on :class:`~oversampleqa.optimized_distance.OptimizedDistanceMatrix`:
+
+``memory_limit_gb`` (default 4.0)
+   Upper bound on what one computation may use.
+
+``safety_factor`` (default 0.8)
+   Fraction of the limit a batched computation plans against. The remainder is
+   headroom for allocator overhead and transient copies that the analytic
+   estimate does not model.
+
+The estimate accounts for the intermediates each kernel allocates, not just the
+output array. Kernels split into two families: ``euclidean`` and friends go
+through BLAS and peak at a few multiples of the output regardless of the feature
+dimension, while broadcasting kernels such as ``hassanat`` allocate
+``(n1, n2, d)`` arrays and peak near ``6 × d`` times the output. Ignoring that
+distinction is how an earlier version came to run the whole-input path when it
+should have batched.

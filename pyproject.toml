@@ -26,6 +26,13 @@ pydantic = "^2.9.2"
 # Resolves the per-user cache directory. The cache falls back to
 # ~/.cache/oversampleqa if this is absent, so it is not a hard requirement.
 platformdirs = ">=3.0"
+# Optional. psutil lets the memory-aware batching read the real available
+# memory instead of assuming 1 GB; tqdm adds progress bars.
+psutil = { version = ">=5.9", optional = true }
+tqdm = { version = ">=4.66", optional = true }
+
+[tool.poetry.extras]
+performance = ["psutil", "tqdm"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.0"
@@ -61,6 +68,9 @@ oversampleqa-validate = "oversampleqa.cli:main"
 oversampleqa = "oversampleqa.cli_enhanced:main"
 
 [tool.pytest.ini_options]
+markers = [
+    "slow: measures memory or timing; slower and more environment-sensitive",
+]
 filterwarnings = [
     "ignore:importing 'Const' from 'astroid' is deprecated.*:DeprecationWarning:asttokens.util",
     "ignore:.*The `disp` and `iprint` options of the L-BFGS-B solver are deprecated.*:DeprecationWarning",

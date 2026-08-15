@@ -24,6 +24,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import platform
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -36,22 +39,42 @@ from oversampleqa.optimized_distance import OptimizedDistanceMatrix
 from oversampleqa.validator import validate_oversampling
 
 
-def _timeit(func: Callable[[], object], loops: int = 3) -> float:
-    """Return the best wall-clock time over ``loops`` runs of ``func``.
+def environment() -> Dict[str, object]:
+    """Return the environment a timing baseline is only comparable within.
+
+    A baseline recorded on one machine says nothing about another. Recording
+    this alongside the timings makes an incomparable comparison detectable
+    instead of silently misleading.
+    """
+    return {
+        "platform": platform.platform(),
+        "processor": platform.processor(),
+        "python_version": platform.python_version(),
+        "numpy_version": np.__version__,
+        "cpu_count": os.cpu_count(),
+    }
+
+
+def _timeit(func: Callable[[], object], loops: int = 5) -> float:
+    """Return the median wall-clock time over ``loops`` runs of ``func``.
+
+    The median, not the minimum: a baseline is compared against later runs on
+    shared CI hardware, where the minimum is unstable in one direction and the
+    mean is dragged by outliers in the other.
 
     Args:
         func: Zero-argument callable to time.
-        loops: Number of repetitions; the minimum is returned to reduce noise.
+        loops: Number of repetitions.
 
     Returns:
-        The fastest observed run time in seconds.
+        Median run time in seconds.
     """
-    best = float("inf")
+    samples = []
     for _ in range(loops):
         start = time.perf_counter()
         func()
-        best = min(best, time.perf_counter() - start)
-    return best
+        samples.append(time.perf_counter() - start)
+    return statistics.median(samples)
 
 
 def run_profile(quick: bool = False) -> Dict[str, float]:
@@ -176,11 +199,28 @@ def main(argv: List[str] | None = None) -> int:
     print(_format_table(results))
 
     if args.save:
-        args.save.write_text(json.dumps(results, indent=2), encoding="utf-8")
+        payload = {"environment": environment(), "timings": results}
+        args.save.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         print(f"\nBaseline written to {args.save}")
 
     if args.check:
-        baseline = json.loads(args.check.read_text(encoding="utf-8"))
+        stored = json.loads(args.check.read_text(encoding="utf-8"))
+        # Accept both the current envelope and a bare timings mapping, so an
+        # older baseline still checks rather than crashing.
+        baseline = stored.get("timings", stored)
+        recorded_env = stored.get("environment")
+        if recorded_env:
+            current_env = environment()
+            differing = {
+                key: (recorded_env.get(key), current_env.get(key))
+                for key in current_env
+                if recorded_env.get(key) != current_env.get(key)
+            }
+            if differing:
+                print("\nWarning: baseline was recorded in a different environment.")
+                for key, (was, now) in differing.items():
+                    print(f"  {key}: baseline={was!r} current={now!r}")
+                print("  Timing comparisons across environments are not meaningful.")
         regressions = compare(results, baseline, args.tolerance)
         if regressions:
             print("\nPerformance regressions detected:")
