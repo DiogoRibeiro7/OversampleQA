@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 import logging
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -84,6 +86,20 @@ def run_benchmark(
                             hidden_ratio=ratio,
                             metric=distance_metric,
                         )
+                    except ValueError as exc:
+                        # A dataset whose minority is too small to hold out from
+                        # cannot support the estimand. Record it as a missing
+                        # measurement and carry on, rather than aborting the whole
+                        # sweep or -- worse -- recording a 0.0 that would read as a
+                        # perfect score. compute_ranking reports these as n_missing.
+                        warnings.warn(
+                            f"Skipping {data.get('name', 'dataset')} with "
+                            f"{oversampler.__class__.__name__} at hidden_ratio="
+                            f"{ratio}: {exc}",
+                            UserWarning,
+                            stacklevel=2,
+                        )
+                        error = float("nan")
                     except Exception:
                         logger.exception("Validation failed for %s", oversampler)
                         raise
@@ -324,9 +340,23 @@ def compute_ranking(results: pd.DataFrame) -> pd.DataFrame:
         results: Benchmark results dataframe.
 
     Returns:
-        Summary dataframe with mean, std, and rank.
+        Summary dataframe with ``mean``, ``std``, ``rank`` and ``n_missing``.
+
+    Notes:
+        ``validate_oversampling`` returns ``nan`` when a run produced no
+        synthetic samples. Those runs are excluded from the mean and standard
+        deviation rather than being counted as zero, and the number excluded is
+        reported in ``n_missing`` so a mean computed from very few runs is
+        visible rather than silent.
     """
-    summary = results.groupby("oversampler")["error_rate"].agg(["mean", "std"])
+    grouped = results.groupby("oversampler")["error_rate"]
+    # pandas skips NaN by default; state it explicitly so the behaviour is a
+    # decision rather than an accident.
+    summary = grouped.agg(
+        mean=lambda s: s.mean(skipna=True),
+        std=lambda s: s.std(skipna=True),
+    )
+    summary["n_missing"] = grouped.apply(lambda s: int(s.isna().sum()))
     summary["rank"] = summary["mean"].rank(method="min")
     return summary
 

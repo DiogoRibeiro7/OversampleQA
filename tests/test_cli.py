@@ -8,7 +8,7 @@ from sklearn.datasets import make_classification
 
 
 def test_cli_runs(tmp_path):
-    X, y = make_classification(n_samples=50, weights=[0.8, 0.2], random_state=0)
+    X, y = make_classification(n_samples=600, weights=[0.8, 0.2], random_state=0)
     df = pd.DataFrame(X)
     df['label'] = y
     csv_path = tmp_path / "data.csv"

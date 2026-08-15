@@ -17,6 +17,7 @@ from .types import (
     MetricName,
     OversamplerProtocol,
     ValidationConfig,
+    ValidationDetails,
     ValidationError,
     ValidationMode,
     ValidationResult,
@@ -246,7 +247,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
 
         try:
             if config.return_details:
-                error_rate, n_errors, dist_hidden, dist_min = validate_oversampling(
+                details = validate_oversampling(
                     X,
                     y,
                     minority_label,
@@ -254,16 +255,32 @@ class TypedValidator(BaseValidator[ValidationResult]):
                     hidden_ratio=config.hidden_ratio,
                     metric=config.metric,
                     return_details=True,
+                    reference=config.reference,
                 )
-                n_synthetic = dist_hidden.shape[0]
-                ci = self._wald_confidence_interval(error_rate, max(n_synthetic, 1))
+                # return_details=True always yields ValidationDetails; the
+                # runtime check narrows the union without suppressing the type.
+                if not isinstance(details, ValidationDetails):
+                    raise TypeError(
+                        "validate_oversampling(return_details=True) must return "
+                        f"ValidationDetails, got {type(details).__name__}"
+                    )
+                n_synthetic = details.n_synthetic
+                ci = self._wald_confidence_interval(
+                    details.error_rate, max(n_synthetic, 1)
+                )
                 return ValidationResult(
-                    error_rate=error_rate,
-                    n_errors=n_errors,
+                    error_rate=details.error_rate,
+                    n_errors=details.n_errors,
                     n_synthetic=n_synthetic,
                     confidence_interval=ci,
                     metadata={
-                        "distance_matrices": {"hidden": dist_hidden, "minority": dist_min}
+                        "distance_matrices": {
+                            "hidden": details.dist_hidden,
+                            "minority": details.dist_min,
+                        },
+                        "n_ties": details.n_ties,
+                        "duplication_rate": details.duplication_rate,
+                        "reference": details.reference,
                     },
                 )
             error_rate = validate_oversampling(
@@ -274,6 +291,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
                 hidden_ratio=config.hidden_ratio,
                 metric=config.metric,
                 return_details=False,
+                reference=config.reference,
             )
             ci = self._wald_confidence_interval(error_rate, len(y))
             return ValidationResult(

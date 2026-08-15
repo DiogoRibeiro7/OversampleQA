@@ -87,7 +87,9 @@ def run_profile(quick: bool = False) -> Dict[str, float]:
     # Validator hot path on an imbalanced dataset.
     Xv = rng.random((n, dim))
     yv = np.zeros(n, dtype=int)
-    yv[: max(10, n // 10)] = 1
+    # Keep the minority large enough that holding part of it out still leaves a
+    # meaningful reference set (see validate_oversampling's min_hidden guard).
+    yv[: max(60, n // 4)] = 1
     results["validate_oversampling[euclidean]"] = _timeit(
         lambda: validate_oversampling(
             Xv, yv, 1, SMOTE(random_state=0), metric="euclidean"

@@ -71,3 +71,21 @@ Repro checklist
 - Record dependency versions (Python, NumPy, scikit-learn, imbalanced-learn).
 - Save the exact CLI or typed config used for each run.
 - Use ``poetry.lock`` to pin versions when sharing results.
+
+Which oversamplers are supported?
+---------------------------------
+
+Any ``imbalanced-learn`` over-sampler that **appends** its synthetic rows to the
+data it was given: the SMOTE family (``SMOTE``, ``BorderlineSMOTE``,
+``SVMSMOTE``, ``KMeansSMOTE``, ``ADASYN``) and ``RandomOverSampler``.
+
+Synthetic samples are identified positionally — everything after the original
+rows is treated as new. Combined over/under-samplers such as ``SMOTEENN`` and
+``SMOTETomek`` **delete** original rows as part of their cleaning step, which
+breaks that assumption, so they are not supported and
+:func:`~oversampleqa.validate_oversampling` raises a ``ValueError`` naming them.
+
+A length check alone would not catch this: ``SMOTEENN`` can return more rows
+than it was given while still having removed some originals. The original rows
+are therefore compared element-wise, and a mismatch is an error rather than a
+silently wrong number.

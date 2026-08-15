@@ -41,6 +41,8 @@ from .advanced_benchmark import (
 )
 from .types import (
     ValidationConfig,
+    ValidationDetails,
+    ReferenceSet,
     BenchmarkConfig,
     ValidationMode,
     ValidationResult,
@@ -58,6 +60,7 @@ from .typed_validator import (
 from .plugin_system import plugin_manager, register_metric, register_validator
 from .metrics import (
     calculate_error_rate,
+    duplication_rate,
     confidence_ratio,
     local_density_divergence,
     minority_recall_loss,
@@ -128,6 +131,9 @@ __all__ = [
     "register_metric",
     "register_validator",
     "calculate_error_rate",
+    "duplication_rate",
+    "ValidationDetails",
+    "ReferenceSet",
     "confidence_ratio",
     "local_density_divergence",
     "minority_recall_loss",

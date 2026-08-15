@@ -49,7 +49,7 @@ def test_noise_sensitivity_diagnostic(tmp_path):
     from sklearn.datasets import make_classification
     from imblearn.over_sampling import SMOTE
 
-    X, y = make_classification(n_samples=50, weights=[0.8, 0.2], random_state=0)
+    X, y = make_classification(n_samples=600, weights=[0.8, 0.2], random_state=0)
     df = noise_sensitivity_diagnostic(
         X,
         y,

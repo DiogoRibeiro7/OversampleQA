@@ -27,6 +27,10 @@ IntArray = NDArray[np.integer]
 BoolArray = NDArray[np.bool_]
 
 
+ReferenceSet = Literal["hidden_minority", "train_minority"]
+"""Which minority set validation compares synthetic points against."""
+
+
 MetricName = Literal[
     "hassanat",
     "euclidean",
@@ -131,10 +135,53 @@ class ValidationConfig:
     metric: str = "hassanat"
     return_details: bool = False
     random_state: Optional[int] = None
+    reference: ReferenceSet = "hidden_minority"
 
     def __post_init__(self) -> None:
         if not 0 < self.hidden_ratio < 1:
             raise ValueError("hidden_ratio must be between 0 and 1")
+
+
+@dataclass(frozen=True)
+class ValidationDetails:
+    """Detailed outcome of a single validation run.
+
+    Replaces the former ``(error_rate, n_errors, dist_hidden, dist_min)``
+    4-tuple returned by ``return_details=True``.
+
+    Attributes
+    ----------
+    error_rate:
+        Fraction of synthetic points strictly closer to the hidden majority
+        than to the minority reference set. ``nan`` when no synthetic samples
+        were produced -- that is an absent measurement, not a perfect score.
+    n_errors:
+        Count behind ``error_rate``.
+    n_synthetic:
+        Number of synthetic points scored.
+    n_ties:
+        Points exactly equidistant from both reference sets. Counted
+        separately rather than scored as errors; a large value indicates
+        duplicated or heavily quantised features.
+    duplication_rate:
+        Fraction of synthetic points coinciding with a reference point. A
+        sampler that only duplicates scores 1.0, and its error rate carries
+        no information about synthesis quality.
+    reference:
+        Which minority set the comparison used.
+    dist_hidden, dist_min:
+        Distance matrices from synthetic points to the hidden majority and to
+        the minority reference set.
+    """
+
+    error_rate: float
+    n_errors: int
+    n_synthetic: int
+    n_ties: int
+    duplication_rate: float
+    reference: ReferenceSet
+    dist_hidden: FloatArray
+    dist_min: FloatArray
 
 
 @dataclass(frozen=True)

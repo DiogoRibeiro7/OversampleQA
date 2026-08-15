@@ -27,7 +27,7 @@ def main() -> None:
         weights=[0.9, 0.1],
         random_state=42,
     )
-    error_rate, _, dist_hidden, dist_min = validate_oversampling(
+    details = validate_oversampling(
         X,
         y,
         minority_label=1,
@@ -37,11 +37,11 @@ def main() -> None:
         return_details=True,
     )
     plot_distance_histogram(
-        dist_hidden,
-        dist_min,
+        details.dist_hidden,
+        details.dist_min,
         save_path=str(static_dir / "distance_histogram.png"),
     )
-    print(f"distance_histogram.png (error_rate={error_rate:.3f})")
+    print(f"distance_histogram.png (error_rate={details.error_rate:.3f})")
 
     # Class balance example
     oversampler = SMOTE(random_state=0)

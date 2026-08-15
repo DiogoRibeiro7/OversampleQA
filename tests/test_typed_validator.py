@@ -10,8 +10,13 @@ from oversampleqa.plugin_system import plugin_manager, register_metric
 
 
 def sample_data():
-    X = np.array([[0.0, 0.0], [0.1, 0.1], [1.0, 1.0], [1.1, 1.1]], dtype=float)
-    y = np.array([0, 0, 1, 1], dtype=int)
+    # Large enough that holding out part of the minority leaves a meaningful
+    # reference set; a 2-point minority cannot support the estimand.
+    rng = np.random.default_rng(0)
+    majority = rng.normal(loc=0.0, scale=0.5, size=(240, 2))
+    minority = rng.normal(loc=2.0, scale=0.5, size=(80, 2))
+    X = np.vstack([majority, minority]).astype(float)
+    y = np.array([0] * len(majority) + [1] * len(minority), dtype=int)
     return X, y
 
 
