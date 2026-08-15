@@ -8,11 +8,21 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Development happens on Windows, so Windows is in the matrix rather than
+    # being tested only by accident. Running every Python version on both
+    # platforms would double CI time for little signal, so Windows is covered
+    # on one version -- enough to catch path handling and shell assumptions,
+    # which is where the cross-platform breakage actually lives.
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12"]
-    
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+
     steps:
     - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
@@ -30,6 +40,8 @@ jobs:
       run: poetry run pytest --cov=oversampleqa --cov-report=xml
     
     - name: Upload coverage
+      # One upload is enough; the Windows job would only duplicate it.
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
       uses: codecov/codecov-action@v7
 
   docs:

@@ -1,5 +1,12 @@
 .PHONY: help setup install hooks test lint typecheck format coverage security clean docs profile
 
+# Every recipe below runs the same on Windows, macOS and Linux.
+#
+# `clean` used to call rm/find and `docs` used to `cd docs && make html`, neither
+# of which works in PowerShell -- while development happens on Windows. Shell
+# built-ins are replaced with Python equivalents, which are available wherever
+# the project itself can run.
+
 help:
 	@echo "Available commands:"
 	@echo "  setup       Install dependencies and git hooks"
@@ -12,7 +19,7 @@ help:
 	@echo "  coverage    Run tests with coverage"
 	@echo "  security    Run security checks"
 	@echo "  clean       Clean build artifacts"
-	@echo "  docs        Build documentation"
+	@echo "  docs        Build documentation (warnings are errors)"
 	@echo "  profile     Run optional performance profiling"
 
 setup: install hooks
@@ -31,27 +38,26 @@ coverage:
 	poetry run pytest tests/ --cov=oversampleqa --cov-report=html
 
 lint:
-	poetry run flake8 src/ tests/
 	poetry run ruff check src/ tests/
 
 typecheck:
 	poetry run mypy src/oversampleqa
 
 format:
-	poetry run black src/ tests/ examples/
-	poetry run isort src/ tests/ examples/
+	poetry run ruff format src/ tests/ examples/
+	poetry run ruff check --fix src/ tests/ examples/
 
 security:
 	poetry run bandit -r src/
 	poetry run safety check
 
 clean:
-	rm -rf build/ dist/ *.egg-info/
-	find . -type d -name __pycache__ -delete
-	find . -type f -name "*.pyc" -delete
+	poetry run python scripts/clean.py
 
+# -W matches CI: a docs warning is a build failure. Invoking sphinx-build
+# directly avoids the nested `make` that only exists on Unix.
 docs:
-	cd docs && poetry run make html
+	poetry run sphinx-build -b html docs docs/_build/html -W
 
 profile:
 	poetry run python scripts/profile_performance.py

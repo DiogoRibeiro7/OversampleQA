@@ -202,7 +202,9 @@ class StatisticalBenchmark:
                         metric=metric,
                     )
                 except Exception as exc:  # pragma: no cover - defensive
-                    warnings.warn(f"Validation failed for fold {fold}: {exc}", stacklevel=2)
+                    warnings.warn(
+                        f"Validation failed for fold {fold}: {exc}", stacklevel=2
+                    )
                     continue
                 if np.isnan(error):
                     continue

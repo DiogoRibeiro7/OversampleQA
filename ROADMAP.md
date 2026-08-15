@@ -15,16 +15,22 @@ This roadmap reflects a repo review completed on June 19, 2026. The test suite i
 What is working:
 
 - Core validation, benchmarking, reporting, plotting, and CLI flows are implemented.
-- `poetry run pytest` passes across 103 tests.
-- Docs build to HTML successfully in permissive mode.
+- `poetry run pytest` passes across 241 tests.
+- `make lint` (`ruff check src tests`) passes clean.
+- `make typecheck` (`mypy src`) passes clean. The numerical core is fully strict;
+  the CLI, plotting and benchmark modules carry scoped, documented relaxations
+  at their untyped third-party boundaries.
+- `make docs` passes with warnings treated as errors, enforced in CI.
+- Developer tooling runs on Windows and Linux, and both are in the CI matrix.
 
 What is not yet at release-ready quality:
 
-- `make lint` does not pass. The repo currently has a large backlog of `flake8`/`ruff` findings across both `src/` and `tests/`.
-- `make typecheck` is not in a healthy state. The typed validator module contains unresolved symbols and async-control-flow issues that should be fixed before claiming strict typing support.
-- `make docs` is not warning-clean. The Sphinx build currently succeeds with 66 warnings, mostly from gallery pages lacking resolvable titles/refs.
-- The `Makefile` is Unix-centric even though development is happening on Windows: `clean` uses `rm`/`find`, and the docs command shells through `cd docs && poetry run make html`.
-- Some advertised advanced surfaces are only partially real: async mode exists in `typed_validator.py`, but it is not production-safe yet.
+- Async mode in `typed_validator.py` is not a working execution mode. It now
+  raises a clear error rather than failing obscurely: the work is CPU-bound
+  NumPy, so an event loop offers it no concurrency. Real parallelism over
+  repeats and datasets is not implemented.
+- The statistical claims in `advanced_benchmark.py` do not hold. See the
+  findings below.
 
 ## Review Findings To Drive The Roadmap
 
@@ -37,7 +43,7 @@ What is not yet at release-ready quality:
   - `ValidationMode.ASYNC` calls `run_until_complete()`, which is unsafe when already inside a running event loop.
 - `docs/gallery/index.rst` and generated gallery pages cause unresolved-title and broken-cross-reference warnings, so the docs are not compatible with a `-W` build yet.
 - `Makefile` commands are not portable to Windows. `clean` is broken in a PowerShell-first environment, and the docs target depends on Unix shell chaining.
-- `src/oversampleqa/caching.py` uses `@lru_cache` on an instance method backed by mutable temporary state (`self._distance_args`). That is brittle for long-lived processes and likely unsafe under concurrent use.
+- ~~`src/oversampleqa/caching.py` uses `@lru_cache` on an instance method backed by mutable temporary state (`self._distance_args`).~~ **Resolved.** Replaced with a lock-guarded LRU keyed on the content hash; the thread-safety contract is now stated and tested.
 
 ### Improvements
 
@@ -64,26 +70,32 @@ Focus: correctness and release-gate credibility.
 
 Scope:
 
-- Fix typed-validator correctness bugs in `src/oversampleqa/typed_validator.py`:
-  - import/define missing symbols,
-  - remove exception-silencing control flow,
-  - make async mode safe under an existing event loop,
-  - add tests that exercise those paths.
-- Get `make lint` and `make typecheck` to pass, or narrow the configured rule set to what the project is actually prepared to enforce.
-- Make docs warning-clean:
-  - fix gallery title/reference generation,
-  - ensure the docs command is run with warnings treated as errors in CI.
-- Make developer tooling cross-platform:
-  - replace Unix-only `clean`/docs shell commands,
-  - verify workflow on Windows and Linux.
-- Audit caching behavior in `src/oversampleqa/caching.py` and either harden the current design or simplify it to a safer disk-cache-only path.
+Delivered:
+
+- Typed-validator correctness bugs fixed: the undefined `ConfigurationError`,
+  the unimported `Tuple`, the `return` inside `finally`, and the async mode that
+  threw under a running loop. The Wald interval was replaced with Wilson, which
+  does not degenerate near a zero error rate. All four paths now have tests.
+- `make lint` and `make typecheck` pass. Ruff had no configuration at all, so the
+  project inherited whatever the installed version defaulted to; the rule set is
+  now explicit, with every exemption carrying a reason.
+- Docs build warning-clean under `-W`, enforced in CI. 33 orphaned autosummary
+  stubs that duplicated the hand-written API pages were removed, along with the
+  `exclude_patterns` entry that existed only to hide them.
+- Tooling is cross-platform: `clean` is a Python script, docs invoke
+  `sphinx-build` directly, and Windows is in the CI matrix.
+- Caching was rebuilt: opt-in rather than constructed at import, no `lru_cache`
+  on an instance method, no live object in the disk key, enforced eviction, and
+  read-only returns.
+- Tooling consolidated on ruff; black, isort and flake8 are gone.
 
 Definition of Done:
 
-- `poetry run pytest`, `make lint`, and `make typecheck` all pass on a clean checkout.
-- `make docs` succeeds with warnings treated as errors.
-- Typed validator async/session paths have dedicated tests.
-- The documented developer commands work on both Windows and Linux.
+- `poetry run pytest`, `make lint`, and `make typecheck` all pass on a clean
+  checkout. **Met.**
+- `make docs` succeeds with warnings treated as errors. **Met.**
+- Typed validator async/session paths have dedicated tests. **Met.**
+- The documented developer commands work on both Windows and Linux. **Met.**
 
 ### v0.3.0 — target: September 30, 2026
 
