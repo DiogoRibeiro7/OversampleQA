@@ -16,8 +16,10 @@ from oversampleqa.advanced_benchmark import (
 
 def _toy_dataset():
     rng = np.random.default_rng(0)
-    minority = rng.normal(loc=2.0, scale=0.3, size=(20, 4))
-    majority = rng.normal(loc=0.0, scale=0.5, size=(60, 4))
+    # Sized so each cross-validation fold still leaves >= min_hidden minority
+    # points to hold out; a 20-point minority does not survive 5-fold CV.
+    minority = rng.normal(loc=2.0, scale=0.3, size=(160, 4))
+    majority = rng.normal(loc=0.0, scale=0.5, size=(480, 4))
     X = np.vstack([majority, minority])
     y = np.array([0] * len(majority) + [1] * len(minority))
     return {"name": "toy", "data": X, "target": y, "minority_label": 1}

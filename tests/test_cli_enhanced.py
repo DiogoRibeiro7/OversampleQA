@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 import yaml
@@ -11,11 +12,17 @@ from oversampleqa.config_templates import generate_config_file
 
 
 def build_dataset(tmp_path: Path) -> Path:
+    # Sized so holding out part of the minority still leaves a meaningful
+    # reference set; a 3-point minority cannot support the estimand.
+    rng = np.random.default_rng(0)
+    majority = rng.normal(loc=0.0, scale=0.4, size=(180, 2))
+    minority = rng.normal(loc=4.0, scale=0.4, size=(60, 2))
+    features = np.vstack([majority, minority])
     df = pd.DataFrame(
         {
-            "f1": [0.1, 0.2, 0.3, 4.2, 4.5, 4.8],
-            "f2": [1.0, 1.1, 1.2, 3.5, 3.6, 3.8],
-            "target": [0, 0, 0, 1, 1, 1],
+            "f1": features[:, 0],
+            "f2": features[:, 1],
+            "target": [0] * len(majority) + [1] * len(minority),
         }
     )
     csv_path = tmp_path / "data.csv"

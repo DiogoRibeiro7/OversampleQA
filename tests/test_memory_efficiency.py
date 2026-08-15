@@ -48,7 +48,17 @@ def test_memory_validator_streams_when_memory_capped(monkeypatch):
 
     invoked = {}
 
-    def fake_streaming(self, synthetic, hidden_majority, minority, metric, metric_kwargs, return_details):
+    def fake_streaming(
+        self,
+        synthetic,
+        hidden_majority,
+        minority,
+        metric,
+        metric_kwargs,
+        return_details,
+        reference="hidden_minority",
+        fit_minority=None,
+    ):
         invoked["called"] = True
         return 0.0
 

@@ -18,7 +18,7 @@ from oversampleqa.plotting import (
 
 
 def test_plot_sample_distribution_runs(tmp_path):
-    X, y = make_classification(n_samples=100, weights=[0.9, 0.1], random_state=0)
+    X, y = make_classification(n_samples=600, weights=[0.9, 0.1], random_state=0)
     oversampler = SMOTE(random_state=0)
     error = validate_oversampling(X, y, minority_label=1, oversampler=oversampler)
     assert 0.0 <= error <= 1.0
@@ -74,7 +74,7 @@ def test_plot_error_heatmap(tmp_path):
 
 
 def test_plot_noise_sensitivity(tmp_path):
-    X, y = make_classification(n_samples=100, weights=[0.9, 0.1], random_state=0)
+    X, y = make_classification(n_samples=600, weights=[0.9, 0.1], random_state=0)
     oversampler = SMOTE(random_state=0)
     results = noise_sensitivity_diagnostic(
         X, y, minority_label=1, oversampler=oversampler, noise_levels=[0.0, 0.1]
@@ -85,19 +85,19 @@ def test_plot_noise_sensitivity(tmp_path):
 
 
 def test_plot_distance_histogram(tmp_path):
-    X, y = make_classification(n_samples=100, weights=[0.9, 0.1], random_state=0)
+    X, y = make_classification(n_samples=600, weights=[0.9, 0.1], random_state=0)
     oversampler = SMOTE(random_state=0)
-    rate, errors, dist_hidden, dist_min = validate_oversampling(
+    details = validate_oversampling(
         X, y, minority_label=1, oversampler=oversampler, return_details=True
     )
-    assert 0.0 <= rate <= 1.0
+    assert 0.0 <= details.error_rate <= 1.0
     path = tmp_path / "hist.png"
-    plot_distance_histogram(dist_hidden, dist_min, save_path=path)
+    plot_distance_histogram(details.dist_hidden, details.dist_min, save_path=path)
     assert path.exists()
 
 
 def test_plot_class_balance(tmp_path):
-    X, y = make_classification(n_samples=100, weights=[0.9, 0.1], random_state=0)
+    X, y = make_classification(n_samples=600, weights=[0.9, 0.1], random_state=0)
     oversampler = SMOTE(random_state=0)
     X_res, y_res = oversampler.fit_resample(X, y)
     path = tmp_path / "balance.png"
