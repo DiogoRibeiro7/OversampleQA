@@ -41,6 +41,7 @@ from .distance import (
     minkowski_distance,
     wasserstein_1d_distance,
 )
+from .estimator import OversamplingValidator, validation_scorer
 from .fidelity import (
     BoundaryReport,
     FidelityReport,
@@ -81,8 +82,15 @@ from .plotting import (
     plot_noise_sensitivity,
     plot_sample_distribution,
 )
+from .plugin_contract import (
+    METRIC_DOMAINS,
+    AxiomReport,
+    MetricPlugin,
+    check_metric_axioms,
+)
 from .plugin_system import plugin_manager, register_metric, register_validator
 from .report import generate_report
+from .reports import SCHEMA_VERSION, RunMetadata, ValidationReport
 from .surrogate import evaluate_surrogate_models
 from .typed_validator import (
     PydanticValidationConfig,
@@ -109,6 +117,9 @@ from .validator import (
 )
 
 __all__ = [
+    "METRIC_DOMAINS",
+    "SCHEMA_VERSION",
+    "AxiomReport",
     "BenchmarkConfig",
     "BoundaryReport",
     "ConfigurationError",
@@ -118,11 +129,14 @@ __all__ = [
     "MemorisationReport",
     "MemoryEfficientValidator",
     "MetricError",
+    "MetricPlugin",
     "NullCalibration",
     "OptimizedDistanceMatrix",
     "OversampleQAError",
+    "OversamplingValidator",
     "PydanticValidationConfig",
     "ReferenceSet",
+    "RunMetadata",
     "StatisticalBenchmark",
     "TwoSampleTestResult",
     "TypedValidator",
@@ -131,12 +145,14 @@ __all__ = [
     "ValidationDetails",
     "ValidationError",
     "ValidationMode",
+    "ValidationReport",
     "ValidationResult",
     "boundary_violation_rate",
     "braycurtis_distance",
     "calculate_error_rate",
     "canberra_distance",
     "chebyshev_distance",
+    "check_metric_axioms",
     "check_model_fairness",
     "cli_main",
     "cluster_based_diagnostics",
@@ -186,6 +202,7 @@ __all__ = [
     "umap_manifold_distance",
     "validate_multiclass_oversampling",
     "validate_oversampling",
+    "validation_scorer",
     "validation_session",
     "wasserstein_1d_distance",
 ]

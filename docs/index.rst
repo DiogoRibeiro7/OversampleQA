@@ -53,6 +53,7 @@ Contents
    benchmarking
    inference
    fidelity
+   api_stability
    benchmark_results
    plotting
    visual_examples
