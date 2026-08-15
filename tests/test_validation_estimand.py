@@ -114,6 +114,67 @@ def test_stratify_by_reaches_the_split(imbalanced_data):
     assert counts.max() - counts.min() <= 2
 
 
+def test_reseed_oversampler_widens_the_dispersion(imbalanced_data):
+    """Reseeding the sampler per repeat adds a second variance source."""
+    X, y = imbalanced_data
+    split_only = validate_oversampling(
+        X, y, 1, SMOTE(random_state=0), n_repeats=8, return_details=True
+    )
+    both = validate_oversampling(
+        X,
+        y,
+        1,
+        SMOTE(random_state=0),
+        n_repeats=8,
+        reseed_oversampler=True,
+        return_details=True,
+    )
+    assert both.rates != split_only.rates
+    assert both.n_repeats == 8
+
+
+def test_reseed_tolerates_samplers_without_random_state(imbalanced_data):
+    """A deterministic sampler is cloned unchanged rather than rejected."""
+    from oversampleqa.validator import _reseeded
+
+    class Deterministic(SMOTE):
+        def get_params(self, deep=True):
+            params = super().get_params(deep=deep)
+            params.pop("random_state", None)
+            return params
+
+    sampler = Deterministic(random_state=0)
+    clone_ = _reseeded(sampler, np.random.default_rng(0))
+    assert isinstance(clone_, SMOTE)
+
+
+def test_n_repeats_must_be_positive(imbalanced_data):
+    X, y = imbalanced_data
+    with pytest.raises(ValueError, match="n_repeats must be at least 1"):
+        validate_oversampling(X, y, 1, SMOTE(random_state=0), n_repeats=0)
+
+
+def test_multiclass_accepts_random_state():
+    from oversampleqa.validator import validate_multiclass_oversampling
+
+    # Overlapping classes, so which points are hidden actually changes the
+    # attribution; well-separated clusters score 0.0 under every seed.
+    rng = np.random.default_rng(0)
+    X = np.vstack(
+        [
+            rng.normal(0.0, 1.0, (200, 4)),
+            rng.normal(0.7, 1.0, (120, 4)),
+            rng.normal(1.4, 1.0, (90, 4)),
+        ]
+    )
+    y = np.hstack([np.zeros(200), np.ones(120), np.full(90, 2)]).astype(int)
+    a = validate_multiclass_oversampling(X, y, SMOTE(random_state=0), random_state=1)
+    b = validate_multiclass_oversampling(X, y, SMOTE(random_state=0), random_state=1)
+    c = validate_multiclass_oversampling(X, y, SMOTE(random_state=0), random_state=99)
+    assert a == b
+    assert a != c
+
+
 def test_stratify_by_rejects_misaligned_input(imbalanced_data):
     from oversampleqa.validator import prepare_validation_split
 
