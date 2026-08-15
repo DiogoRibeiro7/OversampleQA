@@ -105,6 +105,7 @@ You can register custom metrics and validators:
        return 0.0
 
    register_metric("my_metric", my_metric)
+
 Memory limits and the ``psutil`` fallback
 -----------------------------------------
 
