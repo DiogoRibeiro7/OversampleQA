@@ -212,13 +212,29 @@ class StatisticalBenchmark:
         return errors
 
     def _confidence_interval(self, values: Sequence[float]) -> tuple[float, float]:
-        """Return a confidence interval for the provided values.
+        """Return a confidence interval for the **mean** of the provided values.
+
+        Always a confidence interval for the mean, at every sample size.
+
+        This previously switched formula at n = 30: a Student-t interval for the
+        mean below, and the 2.5th-97.5th percentiles of the observations at or
+        above. Those are different quantities. The t-interval narrows as
+        1/sqrt(n); the percentile range describes the spread of individual
+        observations and does not narrow at all. Both were written into the same
+        ``ci_lower`` / ``ci_upper`` columns, so on sigma = 0.05 data the reported
+        width jumped from 0.036 at n = 29 to 0.172 at n = 30 -- 4.7x wider from
+        one extra observation -- and intervals could not be compared across
+        configurations with different fold counts.
+
+        The t-interval is used throughout. It is exact for normally distributed
+        values and asymptotically valid otherwise, and it is what a reader
+        assumes a "confidence interval" means.
 
         Args:
             values: Sample values.
 
         Returns:
-            Lower and upper bounds for the configured confidence level.
+            Lower and upper bounds for the mean, at the configured level.
         """
         if len(values) < 2:
             return (
@@ -228,14 +244,12 @@ class StatisticalBenchmark:
         arr = np.asarray(values, dtype=float)
         mean = float(arr.mean())
         alpha = 1 - self.confidence_level
-        if len(arr) < 30:
-            se = stats.sem(arr)
-            t_val = stats.t.ppf(1 - alpha / 2, len(arr) - 1)
-            margin = t_val * se
-            return mean - margin, mean + margin
-        lower = float(np.percentile(arr, alpha / 2 * 100))
-        upper = float(np.percentile(arr, (1 - alpha / 2) * 100))
-        return lower, upper
+        standard_error = float(stats.sem(arr))
+        if standard_error == 0.0:
+            # Every observation identical: the mean is known exactly.
+            return (mean, mean)
+        margin = float(stats.t.ppf(1 - alpha / 2, len(arr) - 1)) * standard_error
+        return (mean - margin, mean + margin)
 
     def _recommended_sample_size(
         self, values: Sequence[float], target_power: float = 0.8
@@ -389,25 +403,58 @@ class StatisticalBenchmark:
     def _apply_correction(self, p_values: dict[str, float]) -> dict[str, float]:
         """Apply multiple-comparison correction to p-values.
 
+        With 8 oversamplers there are 28 pairwise comparisons, and uncorrected
+        p-values manufacture significance at that many looks.
+
         Args:
-            p_values: Raw p-values.
+            p_values: Raw p-values keyed by comparison.
 
         Returns:
-            Corrected p-values using the configured method.
+            Corrected p-values using the configured method: ``"holm"``
+            (family-wise error rate, the default and the right choice for small
+            families), ``"bh"`` / ``"fdr"`` (false discovery rate, better when
+            the family is large and some false positives are tolerable), or
+            ``"bonferroni"``.
+
+        Notes:
+            Both step procedures enforce **monotonicity**, which the previous
+            Holm implementation omitted: it scaled each p-value by its rank
+            without taking a running maximum, so raw p-values of
+            ``[0.01, 0.02, 0.03]`` corrected to ``[0.03, 0.04, 0.03]``. The
+            least significant comparison came out *more* significant than the
+            middle one, which is incoherent and can flip a decision at a fixed
+            alpha.
         """
         if not p_values:
             return p_values
-        if self.correction_method == "bonferroni":
-            factor = len(p_values)
-            return {k: min(v * factor, 1.0) for k, v in p_values.items()}
-        # default Holm-Bonferroni
-        sorted_items = sorted(p_values.items(), key=lambda item: item[1])
-        corrected: dict[str, float] = {}
-        m = len(sorted_items)
-        for rank, (key, p_val) in enumerate(sorted_items, start=1):
-            corrected_val = min((m - rank + 1) * p_val, 1.0)
-            corrected[key] = corrected_val
-        return corrected
+
+        keys = list(p_values)
+        raw = np.asarray([p_values[k] for k in keys], dtype=float)
+        m = len(raw)
+        method = self.correction_method.lower()
+
+        if method == "bonferroni":
+            adjusted = np.minimum(raw * m, 1.0)
+            return dict(zip(keys, (float(v) for v in adjusted), strict=True))
+
+        order = np.argsort(raw, kind="stable")
+
+        if method in {"bh", "fdr", "benjamini-hochberg"}:
+            # Step-up: scale by m / rank, then enforce monotonicity from the
+            # largest p-value downward.
+            ranks = np.arange(1, m + 1)
+            scaled = raw[order] * m / ranks
+            adjusted_sorted = np.minimum.accumulate(scaled[::-1])[::-1]
+        else:
+            # Holm step-down: scale by the number of remaining hypotheses, then
+            # enforce monotonicity from the smallest p-value upward.
+            scaled = raw[order] * (m - np.arange(m))
+            adjusted_sorted = np.maximum.accumulate(scaled)
+
+        adjusted_sorted = np.minimum(adjusted_sorted, 1.0)
+        adjusted = np.empty_like(adjusted_sorted)
+        adjusted[order] = adjusted_sorted
+        return dict(zip(keys, (float(v) for v in adjusted), strict=True))
 
     @staticmethod
     def _result_to_dict(result: BenchmarkResult) -> dict[str, Any]:

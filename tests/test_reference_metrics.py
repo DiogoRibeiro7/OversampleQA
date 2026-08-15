@@ -171,23 +171,12 @@ def test_energy_and_wasserstein_are_sample_based():
     assert not np.isclose(euclidean_distance(x, y), euclidean_distance(x_shuffled, y))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "wasserstein_1d_distance does not integrate |F1 - F2| correctly: its "
-        "loop stops when either sample is exhausted, dropping the tail, and it "
-        "advances the CDF before adding the interval contribution. Out of scope "
-        "for the Hassanat correction; fixing it changes numeric output and "
-        "needs its own changelog incomparability note."
-    ),
-)
 def test_wasserstein_agrees_with_scipy():
-    """Known-failing: pins the discrepancy so it cannot be forgotten.
+    """The CDF walk credited each interval with the wrong side of its jump.
 
-    ``[0, 1]`` vs ``[0, 3]`` has true W1 = 1.0 (SciPy and the equal-size closed
-    form ``mean|sort(x) - sort(y)|`` both agree); this implementation returns
-    0.5. When the implementation is fixed, this test flips to passing and the
-    strict xfail turns that into a failure, prompting removal of the marker.
+    It advanced the CDF before adding the interval contribution, so [0, 1] vs
+    [0, 3] returned 0.5 where the true W1 is 1.0. This was a strict xfail from
+    the Hassanat correction until the integration was fixed.
     """
     a = np.array([0.0, 1.0])
     b = np.array([0.0, 3.0])

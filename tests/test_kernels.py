@@ -65,13 +65,17 @@ def test_every_metric_is_accounted_for(metric):
 
 
 def test_unvectorised_metrics_are_deliberate(optimizer):
-    """energy and wasserstein are the only metrics left on _pairwise.
+    """energy is the only metric left on _pairwise.
 
-    energy needs an (n1, n2, d, d) intermediate; wasserstein's scalar form is
-    numerically wrong, so a correct kernel would disagree with it.
+    Broadcasting it needs an (n1, n2, d, d) intermediate, larger than the work
+    it saves at any realistic size.
+
+    wasserstein was also excluded until its scalar CDF integration was
+    corrected: a correct kernel would have disagreed with an incorrect scalar,
+    and matching it would have meant reproducing the bug.
     """
     missing = set(_METRICS) - set(optimizer._vectorized_dispatch)
-    assert missing == {"energy", "wasserstein"}
+    assert missing == {"energy"}
 
 
 def test_memory_estimate_accounts_for_intermediates(optimizer):

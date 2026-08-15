@@ -26,6 +26,10 @@ pydantic = "^2.9.2"
 # Resolves the per-user cache directory. The cache falls back to
 # ~/.cache/oversampleqa if this is absent, so it is not a hard requirement.
 platformdirs = ">=3.0"
+# Runtime, not test-only. advanced_benchmark imports scipy.stats at module
+# level and inference.py needs scipy.sparse.csgraph, so the package cannot be
+# imported without it. It was briefly declared dev-only, which was wrong.
+scipy = "^1.14"
 # Optional. psutil lets the memory-aware batching read the real available
 # memory instead of assuming 1 GB; tqdm adds progress bars.
 psutil = { version = ">=5.9", optional = true }
@@ -37,9 +41,6 @@ performance = ["psutil", "tqdm"]
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.0"
 pytest-cov = "^7.0.0"
-# Test-only: independent reference for the distance-metric audit. Deliberately
-# not a runtime dependency.
-scipy = "^1.14"
 ruff = ">=0.15,<0.17"
 bandit = "^1.7.9"
 mypy = ">=1.18,<3.0"

@@ -51,6 +51,7 @@ Contents
    distances
    metrics
    benchmarking
+   inference
    benchmark_results
    plotting
    visual_examples
