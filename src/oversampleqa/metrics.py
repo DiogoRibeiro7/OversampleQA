@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 
 def calculate_error_rate(errors: int, total: int) -> float:
@@ -14,11 +15,60 @@ def calculate_error_rate(errors: int, total: int) -> float:
         total: Total number of samples.
 
     Returns:
-        Error rate in the range [0, 1].
+        Error rate in the range [0, 1], or ``nan`` when ``total`` is zero.
+
+    Notes:
+        A zero denominator means nothing was measured. Returning ``0.0`` in
+        that case would be indistinguishable from a perfect score, so ``nan``
+        is returned instead. Callers that aggregate error rates must use
+        ``nan``-aware reductions (``np.nanmean``) deliberately.
     """
     if total == 0:
-        return 0.0
+        return float("nan")
     return errors / total
+
+
+def duplication_rate(
+    synthetic: NDArray[np.floating],
+    reference: NDArray[np.floating],
+    *,
+    atol: float = 0.0,
+) -> float:
+    """Fraction of synthetic points that coincide with a reference point.
+
+    Parameters
+    ----------
+    synthetic : ndarray
+        Synthetic samples of shape ``(n_synthetic, n_features)``.
+    reference : ndarray
+        Real samples the synthetic points may have been copied from.
+    atol : float, default=0.0
+        Absolute tolerance for treating a synthetic point as a duplicate.
+        The default of ``0.0`` requires exact equality.
+
+    Returns
+    -------
+    float
+        Value in ``[0, 1]``; ``nan`` when there are no synthetic samples.
+
+    Notes
+    -----
+    An oversampler that duplicates rather than synthesises -- such as
+    ``RandomOverSampler`` -- scores ``1.0``. Its validation error rate is then
+    uninformative about synthesis quality, because every "synthetic" point sits
+    exactly on top of a real one.
+    """
+    if len(synthetic) == 0:
+        return float("nan")
+    if len(reference) == 0:
+        return 0.0
+
+    matches = 0
+    for point in synthetic:
+        deltas = np.abs(reference - point).max(axis=1)
+        if bool(np.any(deltas <= atol)):
+            matches += 1
+    return matches / len(synthetic)
 
 
 def confidence_ratio(dist_min: float, dist_maj: float) -> float:
