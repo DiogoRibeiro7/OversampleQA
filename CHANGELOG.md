@@ -10,6 +10,42 @@ maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`import oversampleqa` created a directory in the working directory.**
+  `distance.py` built a `ValidationCache` at module scope and
+  `ValidationCache.__init__` called `mkdir`, so merely importing the package
+  created `.oversampleqa_cache` wherever the process happened to be — a home
+  directory, a repo root, a container's `/` — and then accumulated pickled
+  distance matrices there indefinitely. Nothing is constructed at import time
+  now, and the directory is created lazily on first write.
+- `lru_cache` on an instance method held a strong reference to `self` forever,
+  was shared across every instance of the class, and was fed unhashable
+  arguments through a mutable `_distance_args` side channel that two threads
+  could interleave. On a cache hit the stored arguments were popped without
+  being read, so a hit could return a matrix computed with a different
+  `batch_size`. Replaced with a lock-guarded LRU keyed on the content hash.
+- The joblib disk key hashed the `OptimizedDistanceMatrix` instance, so the key
+  depended on optimizer state that cannot affect the result, and any
+  locally-defined or `lambda` plugin metric hashed unstably. The optimizer is no
+  longer part of the key.
+- `memory_mb` was converted to `bytes_limit` and never read — the store grew
+  without bound. Eviction is now enforced, oldest-first, against both a byte
+  budget and an entry count, with `cache.size_bytes` and `cache.clear()`.
+- Cached arrays were returned by reference, so one in-place operation downstream
+  would silently corrupt every later hit. They are returned read-only.
+- `batch_size` was dropped on the no-cache path of `compute_distance_matrix`, so
+  an explicit batch size was ignored whenever caching was off.
+
+### Changed
+
+- **Caching is opt-in.** `distance_matrix` takes `cache=...`; without it nothing
+  is written to disk. The default directory is the platform per-user cache
+  directory (`platformdirs`, added as a runtime dependency with a
+  `~/.cache/oversampleqa` fallback), never the working directory.
+- `ValidationCache` documents its concurrency contract: safe through one
+  instance, not process-safe.
+
 ### Added
 
 - `random_state` on `validate_oversampling`, `validate_multiclass_oversampling`,

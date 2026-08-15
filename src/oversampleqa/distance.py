@@ -175,8 +175,11 @@ _METRICS: dict[str, MetricFunc] = {
     "jensen_shannon": jensen_shannon_distance,
 }
 
-_CACHE = ValidationCache()
-_OPTIMIZER = OptimizedDistanceMatrix(metric_registry=_METRICS, cache=_CACHE)
+# Constructed without a cache. Importing this package must not touch the
+# filesystem, and an always-on cache is the wrong default anyway: content
+# hashing reads every input byte, which costs more than recomputing a
+# BLAS-backed metric. Pass an explicit ValidationCache when it pays.
+_OPTIMIZER = OptimizedDistanceMatrix(metric_registry=_METRICS, cache=None)
 
 
 def distance_matrix(
@@ -185,6 +188,7 @@ def distance_matrix(
     metric: str = "hassanat",
     *,
     batch_size: int | str = "auto",
+    cache: ValidationCache | None = None,
     **metric_kwargs: Any,
 ) -> NDArray[np.floating]:
     """Compute pairwise distance matrix using the given metric.
@@ -199,15 +203,31 @@ def distance_matrix(
         Controls batching strategy. ``"auto"`` selects a batch size that fits
         ``memory_limit_gb`` of :class:`OptimizedDistanceMatrix`. ``"stream"``
         forces row-wise streaming when memory is constrained.
+    cache : ValidationCache, optional
+        Opt-in cache. Caching is off by default: nothing is written to disk and
+        no directory is created unless you supply one. Worth it for expensive
+        metrics such as ``hassanat``; a net loss for ``euclidean``, where
+        hashing the inputs costs more than recomputing the result.
     **metric_kwargs :
         Additional keyword arguments are forwarded to the metric function. This
         enables configuration of metrics that require extra parameters, such as
         the inverse covariance matrix for Mahalanobis distance.
+
+    Returns
+    -------
+    ndarray
+        Distance matrix. When ``cache`` is supplied the array is **read-only**;
+        call ``.copy()`` before modifying it.
     """
     if metric not in _METRICS:
         raise ValueError(f"Unsupported metric '{metric}'")
     metric_kwargs = metric_kwargs or {}
-    return _OPTIMIZER.compute_distance_matrix(
+    optimizer = (
+        _OPTIMIZER
+        if cache is None
+        else OptimizedDistanceMatrix(metric_registry=_METRICS, cache=cache)
+    )
+    return optimizer.compute_distance_matrix(
         X1,
         X2,
         metric=metric,
