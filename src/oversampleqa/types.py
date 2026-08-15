@@ -321,20 +321,15 @@ class Dataset(ABC):
         ...
 
 
-class OversampleQAError(Exception):
-    """Base exception for oversampleqa."""
-
-
-class ValidationError(OversampleQAError):
-    """Validation-specific error."""
-
-
-class ConfigurationError(OversampleQAError):
-    """Configuration-related errors."""
-
-
-class MetricError(OversampleQAError):
-    """Distance metric computation errors."""
+# The exception hierarchy lives in oversampleqa.exceptions. These re-exports
+# keep `from oversampleqa.types import ValidationError` working for existing
+# callers; new code should import from oversampleqa.exceptions directly.
+from .exceptions import ConfigurationError as ConfigurationError
+from .exceptions import MetricError as MetricError
+from .exceptions import OversampleQAError as OversampleQAError
+from .exceptions import PluginError as PluginError
+from .exceptions import UnsupportedSamplerError as UnsupportedSamplerError
+from .exceptions import ValidationError as ValidationError
 
 
 class ValidatorFactory(Protocol):
