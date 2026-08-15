@@ -52,6 +52,7 @@ Contents
    metrics
    benchmarking
    inference
+   fidelity
    benchmark_results
    plotting
    visual_examples

@@ -12,6 +12,32 @@ maintained manually.
 
 ### Added
 
+- **`oversampleqa.fidelity`: separates "realistic" from "diverse".** The error
+  rate is one scalar covering two failures that need opposite fixes —
+  generating implausible points, and merely copying the training minority.
+  `RandomOverSampler` is the clean case: it scores an error rate comparable to
+  SMOTE's (0.242 vs 0.204) while contributing no information at all, and only
+  the memorisation ratio separates them (0.000 vs 0.401).
+- `precision_recall_density_coverage` implements the k-NN manifold estimators.
+  Density and coverage are the more reliable pair: precision saturates at 1 and
+  one real outlier with a large sphere can certify every synthetic point, while
+  density counts spheres and keeps resolving past that.
+- `sweep_k` recomputes across several `k`, because these metrics are k-sensitive
+  and reporting one value would repeat the error rate's original sin.
+- `memorisation_report`, whose headline is the ratio of median distance-to-training
+  against median nearest-neighbour distance *within* the real minority. The
+  denominator is the natural spacing of real data, so the number is scale-free.
+- `boundary_violation_rate` in strict and graded form. It needs no hold-out, so
+  it still reports when the minority is too small for the hold-out guard. It does
+  not overlap `noise_sensitivity_diagnostic`, which measures response to injected
+  label noise.
+- `downstream_utility` (TSTR) via `imblearn.pipeline.Pipeline`, so the sampler
+  runs **inside** each fold. A test builds the leaky version deliberately and
+  asserts it scores higher, pinning the correct construction by evidence.
+  Defaults to average precision, never accuracy.
+- `fidelity_report` returning one dataclass with `to_dict()`, `to_frame()` and
+  `interpret()`, and `docs/fidelity.rst` with the interpretation table.
+
 - **`oversampleqa.inference`: the error rate now has a reference scale.**
   `null_error_rate` scores *real held-out minority points* through the identical
   pipeline, which is the rate an ideal generator — one drawing from the true

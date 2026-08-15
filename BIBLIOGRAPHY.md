@@ -45,6 +45,14 @@ This bibliography lists the primary references for algorithms and techniques use
 - **Comparing Methods Across Datasets** – J. Demšar, "Statistical Comparisons of Classifiers over Multiple Data Sets," *JMLR*, 7, 2006.
 - **False Discovery Rate** – Y. Benjamini and Y. Hochberg, "Controlling the False Discovery Rate," *JRSS-B*, 57(1), 1995.
 
+## Fidelity and Diversity of Synthetic Data
+
+- **Precision and Recall for Generative Models** – M. S. M. Sajjadi et al., "Assessing Generative Models via Precision and Recall," *NeurIPS*, 2018.
+  - T. Kynkäänniemi et al., "Improved Precision and Recall Metric for Assessing Generative Models," *NeurIPS*, 2019.
+- **Density and Coverage** – M. F. Naeem et al., "Reliable Fidelity and Diversity Metrics for Generative Models," *ICML*, 2020.
+- **Synthetic Data Faithfulness** – A. Alaa et al., "How Faithful Is Your Synthetic Data?" *ICML*, 2022.
+- **Fidelity–Privacy Trade-off** – B. van Breugel et al., "Beyond Privacy: Navigating the Fidelity–Privacy Trade-off in Synthetic Data," 2023.
+
 ## Fairness and Noise Diagnostics
 
 - **Equality of Opportunity** – M. Hardt, E. Price, and N. Srebro, "Equality of Opportunity in Supervised Learning," 2016.
