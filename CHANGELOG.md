@@ -10,6 +10,8 @@ maintained manually.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-16
+
 ### Added
 
 - **`oversampleqa.fidelity`: separates "realistic" from "diverse".** The error
@@ -64,100 +66,6 @@ maintained manually.
 - `docs/inference.rst`, including an explicit *What these p-values do not tell
   you* section.
 
-### Fixed
-
-- **`wasserstein_1d_distance` did not compute the 1-D Wasserstein distance.**
-  It advanced the CDF before adding each interval's contribution, crediting
-  every interval with the value from *after* its right-hand jump. `[0, 1]` vs
-  `[0, 3]` returned 0.5 where the true W₁ is 1.0. It now matches
-  `scipy.stats.wasserstein_distance` on 300 random unequal-length trials. This
-  also unblocked the vectorised kernel, which could not be registered while the
-  scalar was wrong; `energy` is now the only metric without one.
-- **`StatisticalBenchmark._confidence_interval` returned two different
-  quantities.** Below 30 observations a Student-t interval for the mean; at 30
-  or more the 2.5th–97.5th percentiles of the observations, which describe
-  spread and do not narrow with more data. Both went into the same
-  `ci_lower`/`ci_upper` columns, so on σ = 0.05 data the width jumped 4.7× from
-  one extra observation. It is a t-interval for the mean at every size.
-- **Holm correction was not monotone.** It scaled each p-value by its rank
-  without a running maximum, so `[0.01, 0.02, 0.03]` corrected to
-  `[0.03, 0.04, 0.03]` — the least significant comparison came out more
-  significant than the middle one.
-- `scipy` moved from a dev dependency to a runtime one. `advanced_benchmark`
-  imports `scipy.stats` at module level, so the package could not be imported
-  without it; declaring it test-only was wrong.
-
-- **`ServiceRegistry.get` raised `ConfigurationError`, which was never defined
-  or imported.** The error path itself raised `NameError`, replacing a clear
-  "not registered" message with a confusing one. The hierarchy now lives in
-  `oversampleqa.exceptions` (`OversampleQAError` and its subclasses), is
-  exported from the package root, and `oversampleqa.types` re-exports it so
-  existing imports keep working.
-- `TypedValidator._wald_confidence_interval` annotated `Tuple` without importing
-  it — a latent `NameError` surfacing only through `typing.get_type_hints`,
-  Pydantic, or Sphinx autodoc.
-- `validation_session` had `return` inside `finally`, which swallowed any
-  exception raised inside the session body.
-- `ValidationMode.ASYNC` called `run_until_complete`, which raises whenever an
-  event loop is already running — Jupyter and every async host.
-
-### Changed
-
-- **The Wald confidence interval is now Wilson.** Wald is symmetric about the
-  estimate, so at an error rate near zero it collapses to zero width and can
-  extend below zero. Error rates near zero are the common case here. The
-  docstring records that both assume independent Bernoulli trials, which
-  synthetic points sharing parent points are not.
-- `ValidationMode.ASYNC` raises a `ConfigurationError` explaining that
-  validation is CPU-bound NumPy, so an event loop offers it no concurrency, and
-  directing async callers to `await validate_async(...)`.
-- **Tooling consolidated on ruff.** `black`, `isort` and `flake8` are removed
-  from dev dependencies and the pre-commit hooks; `ruff format` and
-  `ruff check` cover the same ground in one tool with no rule conflicts.
-- Ruff had no configuration at all, so the project inherited whatever the
-  installed version defaulted to — which is how ~270 findings accumulated that
-  nobody was expected to clear. The rule set is now explicit and every exemption
-  carries a reason. `ruff check src tests` exits clean.
-- `mypy src` exits clean. The numerical core is fully strict with no exemptions;
-  `cli_enhanced`, `plotting` and the benchmark modules carry scoped per-code
-  relaxations naming the untyped third-party boundary responsible, so a new
-  class of error there still fails.
-- The `Makefile` works on Windows: `clean` is now `scripts/clean.py` and `docs`
-  invokes `sphinx-build` directly instead of a nested Unix-only `make`. Windows
-  is in the CI matrix.
-- Removed 33 orphaned autosummary stubs from `docs/api/` that duplicated the
-  hand-written module pages, along with the `exclude_patterns` entry that
-  existed only to keep them out of the build.
-
-### Performance
-
-- **Vectorised five more kernels.** `hamming`, `jaccard`, `hellinger` and
-  `jensen_shannon` fell through to a Python double loop calling the metric once
-  per pair. Measured at 200×400, d=20: hamming 105×, jaccard 128×, hellinger
-  164×, jensen_shannon 53×. The default metric `hassanat` is 16× faster at
-  500×5000 (22.6 s → 1.4 s).
-- `energy` deliberately stays on `_pairwise`: broadcasting it needs an
-  `(n1, n2, d, d)` intermediate, larger than the work it saves.
-- `wasserstein` also stays on `_pairwise`, for a different reason. A correct
-  kernel exists but the *scalar* implementation is wrong (its CDF walk drops the
-  tail), so registering the kernel would make the two paths disagree and
-  matching them would mean reproducing the bug.
-
-### Fixed
-
-- **Memory estimation ignored the intermediates that actually drive peak use.**
-  It counted only the `(n1, n2)` output, so the check passed and the kernel then
-  allocated far more than the check permitted — bypassing the very batching
-  logic meant to prevent it. Peak is now modelled per metric as
-  `output × (flat + per_feature × d)`. Two terms are needed because the kernels
-  split into families: `euclidean` peaks at ~3× the output regardless of `d`,
-  while `hassanat` peaks at ~96× at d=16. The table is fitted to `tracemalloc`
-  measurements, and two entries are re-verified by a test on every run.
-- `_auto_batch_size` let every batch consume the entire memory limit, leaving no
-  headroom for the result array that lives for the whole computation. It now
-  reserves the output first and applies the metric's multiplier.
-
-### Added
 
 - `safety_factor` (default 0.8) on `OptimizedDistanceMatrix`: the fraction of
   the limit a batched computation plans against, leaving headroom for allocator
@@ -198,16 +106,6 @@ maintained manually.
 - `batch_size` was dropped on the no-cache path of `compute_distance_matrix`, so
   an explicit batch size was ignored whenever caching was off.
 
-### Changed
-
-- **Caching is opt-in.** `distance_matrix` takes `cache=...`; without it nothing
-  is written to disk. The default directory is the platform per-user cache
-  directory (`platformdirs`, added as a runtime dependency with a
-  `~/.cache/oversampleqa` fallback), never the working directory.
-- `ValidationCache` documents its concurrency contract: safe through one
-  instance, not process-safe.
-
-### Added
 
 - `random_state` on `validate_oversampling`, `validate_multiclass_oversampling`,
   `MemoryEfficientValidator`, `TypedValidator` and the benchmark runners,
@@ -228,7 +126,65 @@ maintained manually.
   the `production` and `research` config templates. The rich summary shows
   mean ± sd and the interval when `n_repeats > 1`.
 
+
+- `reference`, `minority_hidden_ratio` and `min_hidden` parameters on
+  `validate_oversampling`. `min_hidden` (default 5) raises when the held-out
+  minority would be too small for a nearest-neighbour comparison to mean
+  anything, instead of returning a plausible-looking number.
+- `duplication_rate` in `oversampleqa.metrics`: the fraction of synthetic points
+  that are exact copies of real ones. `validate_oversampling` warns above 0.5.
+  `RandomOverSampler` scores 1.0 — it only duplicates, so its error rate says
+  nothing about synthesis quality, yet it previously scored a perfect 0.000 and
+  ranked first.
+- `ValidationDetails` and `ReferenceSet` exported from the package root.
+- A cross-validator equivalence test covering all three validators. Its absence
+  is why they had drifted apart.
+
+
+- `hassanat` now has a vectorised kernel in
+  `OptimizedDistanceMatrix._vectorized_dispatch`. It was previously absent, so
+  the default metric always fell through to a Python double loop calling the
+  metric once per pair.
+- Distance-metric audit: every metric in the registry is now checked against
+  SciPy or an independent closed form, not merely against itself. SciPy is a
+  new **dev-only** dependency for this.
+
 ### Changed
+
+- **The Wald confidence interval is now Wilson.** Wald is symmetric about the
+  estimate, so at an error rate near zero it collapses to zero width and can
+  extend below zero. Error rates near zero are the common case here. The
+  docstring records that both assume independent Bernoulli trials, which
+  synthetic points sharing parent points are not.
+- `ValidationMode.ASYNC` raises a `ConfigurationError` explaining that
+  validation is CPU-bound NumPy, so an event loop offers it no concurrency, and
+  directing async callers to `await validate_async(...)`.
+- **Tooling consolidated on ruff.** `black`, `isort` and `flake8` are removed
+  from dev dependencies and the pre-commit hooks; `ruff format` and
+  `ruff check` cover the same ground in one tool with no rule conflicts.
+- Ruff had no configuration at all, so the project inherited whatever the
+  installed version defaulted to — which is how ~270 findings accumulated that
+  nobody was expected to clear. The rule set is now explicit and every exemption
+  carries a reason. `ruff check src tests` exits clean.
+- `mypy src` exits clean. The numerical core is fully strict with no exemptions;
+  `cli_enhanced`, `plotting` and the benchmark modules carry scoped per-code
+  relaxations naming the untyped third-party boundary responsible, so a new
+  class of error there still fails.
+- The `Makefile` works on Windows: `clean` is now `scripts/clean.py` and `docs`
+  invokes `sphinx-build` directly instead of a nested Unix-only `make`. Windows
+  is in the CI matrix.
+- Removed 33 orphaned autosummary stubs from `docs/api/` that duplicated the
+  hand-written module pages, along with the `exclude_patterns` entry that
+  existed only to keep them out of the build.
+
+
+- **Caching is opt-in.** `distance_matrix` takes `cache=...`; without it nothing
+  is written to disk. The default directory is the platform per-user cache
+  directory (`platformdirs`, added as a runtime dependency with a
+  `~/.cache/oversampleqa` fallback), never the working directory.
+- `ValidationCache` documents its concurrency contract: safe through one
+  instance, not process-safe.
+
 
 - **The hold-out split now uses a `Generator` permutation instead of
   `train_test_split`.** This makes the binary and multiclass paths structurally
@@ -277,22 +233,67 @@ maintained manually.
   `validate_oversampling` through `prepare_validation_split` and
   `score_nearest_distances`, instead of each carrying its own copy of the logic.
 
-### Added
 
-- `reference`, `minority_hidden_ratio` and `min_hidden` parameters on
-  `validate_oversampling`. `min_hidden` (default 5) raises when the held-out
-  minority would be too small for a nearest-neighbour comparison to mean
-  anything, instead of returning a plausible-looking number.
-- `duplication_rate` in `oversampleqa.metrics`: the fraction of synthetic points
-  that are exact copies of real ones. `validate_oversampling` warns above 0.5.
-  `RandomOverSampler` scores 1.0 — it only duplicates, so its error rate says
-  nothing about synthesis quality, yet it previously scored a perfect 0.000 and
-  ranked first.
-- `ValidationDetails` and `ReferenceSet` exported from the package root.
-- A cross-validator equivalence test covering all three validators. Its absence
-  is why they had drifted apart.
+- `energy` and `wasserstein` are documented as **sample-based** metrics rather
+  than point metrics, in their docstrings and in `docs/distances.rst`. They
+  treat the input vector as a set of observations, not as a point in feature
+  space, so they answer a different question from the rest of the registry.
+- The reference benchmark in `docs/benchmark_results.rst` now seeds the
+  oversamplers. Without that, the "pinned" run was not reproducible: the same
+  configuration produced 0.003894, 0.003894 and 0.003186 on three consecutive
+  trials, because `StatisticalBenchmark(random_state=...)` seeds the
+  cross-validation splits but not the oversampler's own sampling.
 
 ### Fixed
+
+- **`wasserstein_1d_distance` did not compute the 1-D Wasserstein distance.**
+  It advanced the CDF before adding each interval's contribution, crediting
+  every interval with the value from *after* its right-hand jump. `[0, 1]` vs
+  `[0, 3]` returned 0.5 where the true W₁ is 1.0. It now matches
+  `scipy.stats.wasserstein_distance` on 300 random unequal-length trials. This
+  also unblocked the vectorised kernel, which could not be registered while the
+  scalar was wrong; `energy` is now the only metric without one.
+- **`StatisticalBenchmark._confidence_interval` returned two different
+  quantities.** Below 30 observations a Student-t interval for the mean; at 30
+  or more the 2.5th–97.5th percentiles of the observations, which describe
+  spread and do not narrow with more data. Both went into the same
+  `ci_lower`/`ci_upper` columns, so on σ = 0.05 data the width jumped 4.7× from
+  one extra observation. It is a t-interval for the mean at every size.
+- **Holm correction was not monotone.** It scaled each p-value by its rank
+  without a running maximum, so `[0.01, 0.02, 0.03]` corrected to
+  `[0.03, 0.04, 0.03]` — the least significant comparison came out more
+  significant than the middle one.
+- `scipy` moved from a dev dependency to a runtime one. `advanced_benchmark`
+  imports `scipy.stats` at module level, so the package could not be imported
+  without it; declaring it test-only was wrong.
+
+- **`ServiceRegistry.get` raised `ConfigurationError`, which was never defined
+  or imported.** The error path itself raised `NameError`, replacing a clear
+  "not registered" message with a confusing one. The hierarchy now lives in
+  `oversampleqa.exceptions` (`OversampleQAError` and its subclasses), is
+  exported from the package root, and `oversampleqa.types` re-exports it so
+  existing imports keep working.
+- `TypedValidator._wald_confidence_interval` annotated `Tuple` without importing
+  it — a latent `NameError` surfacing only through `typing.get_type_hints`,
+  Pydantic, or Sphinx autodoc.
+- `validation_session` had `return` inside `finally`, which swallowed any
+  exception raised inside the session body.
+- `ValidationMode.ASYNC` called `run_until_complete`, which raises whenever an
+  event loop is already running — Jupyter and every async host.
+
+
+- **Memory estimation ignored the intermediates that actually drive peak use.**
+  It counted only the `(n1, n2)` output, so the check passed and the kernel then
+  allocated far more than the check permitted — bypassing the very batching
+  logic meant to prevent it. Peak is now modelled per metric as
+  `output × (flat + per_feature × d)`. Two terms are needed because the kernels
+  split into families: `euclidean` peaks at ~3× the output regardless of `d`,
+  while `hassanat` peaks at ~96× at d=16. The table is fitted to `tracemalloc`
+  measurements, and two entries are re-verified by a test on every run.
+- `_auto_batch_size` let every batch consume the entire memory limit, leaving no
+  headroom for the result array that lives for the whole computation. It now
+  reserves the output first and applies the metric's multiplier.
+
 
 - `extract_synthetic_samples` verifies that the oversampler preserved the
   original rows as a prefix, instead of assuming it. `SMOTEENN` and
@@ -322,27 +323,19 @@ maintained manually.
   - `docs/_static/distance_histogram.png` and
     `docs/_static/multiclass_heatmap.png` — both plotted with `metric="hassanat"`.
 
-### Added
+### Performance
 
-- `hassanat` now has a vectorised kernel in
-  `OptimizedDistanceMatrix._vectorized_dispatch`. It was previously absent, so
-  the default metric always fell through to a Python double loop calling the
-  metric once per pair.
-- Distance-metric audit: every metric in the registry is now checked against
-  SciPy or an independent closed form, not merely against itself. SciPy is a
-  new **dev-only** dependency for this.
-
-### Changed
-
-- `energy` and `wasserstein` are documented as **sample-based** metrics rather
-  than point metrics, in their docstrings and in `docs/distances.rst`. They
-  treat the input vector as a set of observations, not as a point in feature
-  space, so they answer a different question from the rest of the registry.
-- The reference benchmark in `docs/benchmark_results.rst` now seeds the
-  oversamplers. Without that, the "pinned" run was not reproducible: the same
-  configuration produced 0.003894, 0.003894 and 0.003186 on three consecutive
-  trials, because `StatisticalBenchmark(random_state=...)` seeds the
-  cross-validation splits but not the oversampler's own sampling.
+- **Vectorised five more kernels.** `hamming`, `jaccard`, `hellinger` and
+  `jensen_shannon` fell through to a Python double loop calling the metric once
+  per pair. Measured at 200×400, d=20: hamming 105×, jaccard 128×, hellinger
+  164×, jensen_shannon 53×. The default metric `hassanat` is 16× faster at
+  500×5000 (22.6 s → 1.4 s).
+- `energy` deliberately stays on `_pairwise`: broadcasting it needs an
+  `(n1, n2, d, d)` intermediate, larger than the work it saves.
+- `wasserstein` also stays on `_pairwise`, for a different reason. A correct
+  kernel exists but the *scalar* implementation is wrong (its CDF walk drops the
+  tail), so registering the kernel would make the two paths disagree and
+  matching them would mean reproducing the bug.
 
 ## [0.2.0] - 2026-08-14
 
@@ -405,6 +398,7 @@ Initial release.
 - Plugin system for custom metrics and validators.
 - Sphinx documentation, examples gallery, and tutorials.
 
-[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.3.0
 [0.2.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.2.0
 [0.1.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.1.0
