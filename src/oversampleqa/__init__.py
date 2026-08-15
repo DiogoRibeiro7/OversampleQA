@@ -41,6 +41,16 @@ from .distance import (
     minkowski_distance,
     wasserstein_1d_distance,
 )
+from .fidelity import (
+    BoundaryReport,
+    FidelityReport,
+    ManifoldMetrics,
+    MemorisationReport,
+    boundary_violation_rate,
+    fidelity_report,
+    memorisation_report,
+    precision_recall_density_coverage,
+)
 from .inference import (
     NullCalibration,
     TwoSampleTestResult,
@@ -100,8 +110,12 @@ from .validator import (
 
 __all__ = [
     "BenchmarkConfig",
+    "BoundaryReport",
     "ConfigurationError",
     "DatasetRepository",
+    "FidelityReport",
+    "ManifoldMetrics",
+    "MemorisationReport",
     "MemoryEfficientValidator",
     "MetricError",
     "NullCalibration",
@@ -118,6 +132,7 @@ __all__ = [
     "ValidationError",
     "ValidationMode",
     "ValidationResult",
+    "boundary_violation_rate",
     "braycurtis_distance",
     "calculate_error_rate",
     "canberra_distance",
@@ -136,6 +151,7 @@ __all__ = [
     "evaluate_surrogate_models",
     "export_benchmark_results",
     "extract_synthetic_samples",
+    "fidelity_report",
     "format_statistical_summary",
     "generate_report",
     "hamming_distance",
@@ -146,6 +162,7 @@ __all__ = [
     "load_standard_datasets",
     "local_density_divergence",
     "mahalanobis_distance",
+    "memorisation_report",
     "minkowski_distance",
     "minority_recall_loss",
     "mst_two_sample_test",
@@ -161,6 +178,7 @@ __all__ = [
     "plot_noise_sensitivity",
     "plot_sample_distribution",
     "plugin_manager",
+    "precision_recall_density_coverage",
     "register_metric",
     "register_validator",
     "registry",
