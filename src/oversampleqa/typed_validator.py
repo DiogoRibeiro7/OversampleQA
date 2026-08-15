@@ -256,6 +256,8 @@ class TypedValidator(BaseValidator[ValidationResult]):
                     metric=config.metric,
                     return_details=True,
                     reference=config.reference,
+                    random_state=config.random_state,
+                    n_repeats=config.n_repeats,
                 )
                 # return_details=True always yields ValidationDetails; the
                 # runtime check narrows the union without suppressing the type.
@@ -281,6 +283,11 @@ class TypedValidator(BaseValidator[ValidationResult]):
                         "n_ties": details.n_ties,
                         "duplication_rate": details.duplication_rate,
                         "reference": details.reference,
+                        "random_state": config.random_state,
+                        "n_repeats": details.n_repeats,
+                        "rates": details.rates,
+                        "std": details.std,
+                        "repeat_interval": details.interval,
                     },
                 )
             error_rate = validate_oversampling(
@@ -292,6 +299,8 @@ class TypedValidator(BaseValidator[ValidationResult]):
                 metric=config.metric,
                 return_details=False,
                 reference=config.reference,
+                random_state=config.random_state,
+                n_repeats=config.n_repeats,
             )
             ci = self._wald_confidence_interval(error_rate, len(y))
             return ValidationResult(

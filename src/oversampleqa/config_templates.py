@@ -13,6 +13,8 @@ CONFIG_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "params": {
             "hidden_ratios": [0.1, 0.25, 0.5],
             "n_runs": 50,
+            "random_state": 42,
+            "n_repeats": 20,
             "metrics": ["hassanat", "euclidean", "mahalanobis"],
             "include_plots": True,
             "statistical_tests": True,
@@ -24,6 +26,8 @@ CONFIG_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "params": {
             "hidden_ratios": [0.1],
             "n_runs": 5,
+            "random_state": 42,
+            "n_repeats": 5,
             "metrics": ["euclidean"],
             "include_plots": False,
             "cache_results": True,

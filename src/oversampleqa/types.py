@@ -134,8 +134,9 @@ class ValidationConfig:
     hidden_ratio: float = 0.1
     metric: str = "hassanat"
     return_details: bool = False
-    random_state: Optional[int] = None
+    random_state: Optional[int] = 42
     reference: ReferenceSet = "hidden_minority"
+    n_repeats: int = 1
 
     def __post_init__(self) -> None:
         if not 0 < self.hidden_ratio < 1:
@@ -182,6 +183,16 @@ class ValidationDetails:
     reference: ReferenceSet
     dist_hidden: FloatArray
     dist_min: FloatArray
+    n_repeats: int = 1
+    rates: tuple[float, ...] = ()
+    mean: float = float("nan")
+    std: float = float("nan")
+    interval: tuple[float, float] | None = None
+
+    @property
+    def has_dispersion(self) -> bool:
+        """Whether more than one hold-out split was drawn."""
+        return self.n_repeats > 1
 
 
 @dataclass(frozen=True)

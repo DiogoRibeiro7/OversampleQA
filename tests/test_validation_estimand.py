@@ -41,15 +41,87 @@ def test_default_reference_is_hidden_minority(imbalanced_data):
     assert details.reference == "hidden_minority"
 
 
-def test_train_minority_reproduces_old_numbers_and_warns(imbalanced_data):
-    """The legacy estimand stays available, but says so."""
+def test_train_minority_is_available_and_warns(imbalanced_data):
+    """The legacy estimand stays available, but says so.
+
+    The pinned value changed when the hold-out split moved from
+    ``train_test_split`` to a ``Generator`` permutation: the same seed selects
+    different points under a different splitter, so this no longer reproduces
+    the pre-0.2 number. The estimand itself is unchanged -- it still compares
+    against the full minority class -- which is what this pins.
+    """
     X, y = imbalanced_data
     with pytest.warns(FutureWarning, match="biases the error rate"):
         rate = validate_oversampling(
             X, y, 1, SMOTE(random_state=0), reference="train_minority"
         )
-    # Value recorded from the implementation before the estimand changed.
-    assert rate == pytest.approx(0.009523809523809525)
+    assert rate == pytest.approx(0.007125890736342043)
+
+
+def test_same_seed_is_bit_identical(imbalanced_data):
+    X, y = imbalanced_data
+    a = validate_oversampling(X, y, 1, SMOTE(random_state=0), random_state=123)
+    b = validate_oversampling(X, y, 1, SMOTE(random_state=0), random_state=123)
+    assert a == b
+
+
+def test_different_seed_changes_the_result(imbalanced_data):
+    """Which points are hidden is the dominant driver of the error rate."""
+    X, y = imbalanced_data
+    a = validate_oversampling(X, y, 1, SMOTE(random_state=0), random_state=42)
+    b = validate_oversampling(X, y, 1, SMOTE(random_state=0), random_state=7)
+    assert a != b
+
+
+def test_repeats_give_distinct_splits(imbalanced_data):
+    """Assert on the split indices, not just the rates."""
+    from oversampleqa._rng import spawn_generators
+    from oversampleqa.validator import prepare_validation_split
+
+    X, y = imbalanced_data
+    seen = set()
+    for gen in spawn_generators(42, 20):
+        split = prepare_validation_split(X, y, 1, 0, 0.1, random_state=gen)
+        seen.add(tuple(sorted(split.hidden_majority_index.tolist())))
+    assert len(seen) == 20
+
+
+def test_repeats_report_dispersion(imbalanced_data):
+    X, y = imbalanced_data
+    details = validate_oversampling(
+        X, y, 1, SMOTE(random_state=0), n_repeats=10, return_details=True
+    )
+    assert details.n_repeats == 10
+    assert len(details.rates) == 10
+    assert details.std > 0
+    assert details.interval is not None
+    assert details.interval[0] < details.mean < details.interval[1]
+
+
+def test_stratify_by_reaches_the_split(imbalanced_data):
+    from oversampleqa.validator import prepare_validation_split
+
+    X, y = imbalanced_data
+    strata = np.arange(len(y)) % 3
+    split = prepare_validation_split(
+        X, y, 1, 0, 0.3, random_state=1, stratify_by=strata
+    )
+    majority_strata = strata[y != 1]
+    held = majority_strata[split.hidden_majority_index]
+    counts = np.bincount(held, minlength=3)
+    # Each stratum contributes its own share, so none can be missed entirely.
+    assert counts.min() > 0
+    assert counts.max() - counts.min() <= 2
+
+
+def test_stratify_by_rejects_misaligned_input(imbalanced_data):
+    from oversampleqa.validator import prepare_validation_split
+
+    X, y = imbalanced_data
+    with pytest.raises(ValueError, match="aligned with the full dataset"):
+        prepare_validation_split(
+            X, y, 1, 0, 0.1, random_state=1, stratify_by=np.arange(5)
+        )
 
 
 def test_hidden_minority_differs_from_train_minority(imbalanced_data):

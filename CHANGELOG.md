@@ -10,7 +10,40 @@ maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- `random_state` on `validate_oversampling`, `validate_multiclass_oversampling`,
+  `MemoryEfficientValidator`, `TypedValidator` and the benchmark runners,
+  defaulting to `42`. It accepts an `int`, `Generator`, `SeedSequence` or `None`,
+  normalised by a single shared helper in `oversampleqa._rng` so seeding cannot
+  drift between validators again. Previously the seed governing the dominant
+  source of variance was hard-coded and could not be set at all.
+- `n_repeats` on `validate_oversampling`. Above 1 it draws independent hold-out
+  splits and returns `rates`, `mean`, `std` and a percentile bootstrap
+  `interval` on `ValidationDetails`. Repeat streams are spawned from a
+  `SeedSequence` rather than derived as `seed + i`, which would correlate them.
+- `reseed_oversampler` to give the sampler a fresh seed per repeat, so the
+  dispersion covers the sampler's randomness as well as the split's.
+- `stratify_by` on `validate_oversampling`, taking the hold-out fraction within
+  each group so a split cannot miss a cluster entirely. Strata are never
+  inferred.
+- `--random-state` and `--n-repeats` on `oversampleqa validate`, both present in
+  the `production` and `research` config templates. The rich summary shows
+  mean ± sd and the interval when `n_repeats > 1`.
+
 ### Changed
+
+- **The hold-out split now uses a `Generator` permutation instead of
+  `train_test_split`.** This makes the binary and multiclass paths structurally
+  identical and lets them accept a `Generator`, which scikit-learn's splitter
+  does not. A consequence: the same seed selects different points than before,
+  so **error rates from before this release are not reproducible with
+  `random_state=42`**, even though 42 remains the default.
+- `run_benchmark` varies the hold-out split per run. It previously reseeded only
+  the oversampler, so every one of its `n_runs` repetitions shared a single
+  hold-out split and the spread across runs omitted the largest variance source.
+- `ValidationConfig.random_state` now defaults to `42` rather than `None`, and
+  gained `n_repeats`.
 
 - **`validate_oversampling` now measures a different quantity by default.** It
   compared each synthetic point's distance to the held-out majority against its
