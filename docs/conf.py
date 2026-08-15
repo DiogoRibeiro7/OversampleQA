@@ -25,8 +25,10 @@ exclude_patterns = [
     '_build',
     'Thumbs.db',
     '.DS_Store',
-    'api.rst',
-    'api/oversampleqa.*.rst',
+    # api.rst and api/oversampleqa.*.rst used to be excluded here: they were
+    # orphaned autosummary stubs duplicating the hand-written api/<module>.rst
+    # pages, kept out of the build by this pattern rather than deleted. They are
+    # gone now, so the pattern is too.
     'gallery/*.ipynb',
     'gallery_examples/GALLERY_HEADER.rst',
 ]

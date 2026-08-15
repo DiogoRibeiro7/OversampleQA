@@ -1,24 +1,35 @@
+# Consolidated on ruff.
+#
+# black, isort and flake8 were doing work that `ruff format` and `ruff check`
+# now do, in one tool, with no rule conflicts between them and a fraction of the
+# hook runtime. The rule set ruff enforces is configured in pyproject.toml.
 repos:
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
     hooks:
-      - id: black
-        language_version: python3.10
+      # Several docs files had no trailing newline, so appending a section ran
+      # it onto the preceding block and broke the Sphinx build under -W. This
+      # hook removes that whole class of failure.
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
     hooks:
-      - id: isort
-        args: ["--profile", "black"]
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        args: [--max-line-length=88, --extend-ignore=E203,W503]
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.3.0
+    rev: v1.18.2
     hooks:
       - id: mypy
-        additional_dependencies: [types-all]
+        files: ^src/
+        additional_dependencies:
+          - numpy
+          - pandas-stubs
+          - types-PyYAML

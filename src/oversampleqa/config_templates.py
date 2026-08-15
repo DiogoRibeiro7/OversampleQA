@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
-CONFIG_TEMPLATES: Dict[str, Dict[str, Any]] = {
+CONFIG_TEMPLATES: dict[str, dict[str, Any]] = {
     "research": {
         "description": "Comprehensive validation for research purposes",
         "params": {
@@ -66,9 +66,11 @@ def generate_config_file(template_name: str, output_path: str) -> Path:
 
     if template_name not in CONFIG_TEMPLATES:
         available = ", ".join(sorted(CONFIG_TEMPLATES))
-        raise ValueError(f"Unknown template '{template_name}'. Choose from: {available}")
+        raise ValueError(
+            f"Unknown template '{template_name}'. Choose from: {available}"
+        )
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "template": template_name,
         "description": CONFIG_TEMPLATES[template_name]["description"],
         "profiles": {

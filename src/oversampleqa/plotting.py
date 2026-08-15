@@ -65,14 +65,14 @@ def plot_sample_distribution(
     plt.figure()
     plt.scatter(comps[:n_maj, 0], comps[:n_maj, 1], label="majority", alpha=0.5)
     plt.scatter(
-        comps[n_maj:n_maj + n_min, 0],
-        comps[n_maj:n_maj + n_min, 1],
+        comps[n_maj : n_maj + n_min, 0],
+        comps[n_maj : n_maj + n_min, 1],
         label="minority",
         alpha=0.5,
     )
     plt.scatter(
-        comps[n_maj + n_min:, 0],
-        comps[n_maj + n_min:, 1],
+        comps[n_maj + n_min :, 0],
+        comps[n_maj + n_min :, 1],
         label="synthetic",
         alpha=0.5,
     )
@@ -145,7 +145,9 @@ def plot_error_heatmap(
         closed and not displayed.
     """
 
-    labels = class_labels if class_labels is not None else list(range(len(error_matrix)))
+    labels = (
+        class_labels if class_labels is not None else list(range(len(error_matrix)))
+    )
     df = pd.DataFrame(error_matrix, index=labels, columns=labels)
     plt.figure()
     sns.heatmap(df, annot=True, fmt="d", cmap="Blues")
@@ -180,9 +182,7 @@ def plot_error_ranking(
     plt.close()
 
 
-def plot_noise_sensitivity(
-    results: pd.DataFrame, save_path: str | None = None
-) -> None:
+def plot_noise_sensitivity(results: pd.DataFrame, save_path: str | None = None) -> None:
     """Line plot showing error rate as label noise increases.
 
     Parameters
@@ -223,9 +223,7 @@ def plot_distance_histogram(
     """
 
     hidden_nearest = dist_hidden.min(axis=1) if dist_hidden.size else np.array([])
-    minority_nearest = (
-        dist_minority.min(axis=1) if dist_minority.size else np.array([])
-    )
+    minority_nearest = dist_minority.min(axis=1) if dist_minority.size else np.array([])
 
     plt.figure()
     if hidden_nearest.size:

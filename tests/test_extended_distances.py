@@ -1,13 +1,14 @@
 import numpy as np
+
 from oversampleqa.distance import (
-    minkowski_distance,
-    manhattan_distance,
-    euclidean_distance,
     chebyshev_distance,
-    jaccard_distance,
-    hellinger_distance,
-    jensen_shannon_distance,
     distance_matrix,
+    euclidean_distance,
+    hellinger_distance,
+    jaccard_distance,
+    jensen_shannon_distance,
+    manhattan_distance,
+    minkowski_distance,
 )
 
 

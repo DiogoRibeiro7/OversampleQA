@@ -3,27 +3,30 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import math
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Dict, Optional, Union, cast, overload
+from typing import Any, cast, overload
 
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
+from .distance import _METRICS
+from .exceptions import ConfigurationError, MetricError, ValidationError
 from .types import (
+    BaseValidator,
     FloatArray,
     IntArray,
-    MetricError,
     MetricName,
     OversamplerProtocol,
     ValidationConfig,
     ValidationDetails,
-    ValidationError,
     ValidationMode,
     ValidationResult,
-    BaseValidator,
 )
-from .distance import _METRICS
+
+logger = logging.getLogger(__name__)
 
 
 class PydanticValidationConfig(BaseModel):
@@ -32,7 +35,7 @@ class PydanticValidationConfig(BaseModel):
     hidden_ratio: float = Field(default=0.1, gt=0.0, lt=1.0)
     metric: str = Field(default="hassanat")
     return_details: bool = Field(default=False)
-    random_state: Optional[int] = Field(default=None)
+    random_state: int | None = Field(default=None)
 
     @field_validator("metric")
     def validate_metric(cls, value: str) -> str:
@@ -50,7 +53,7 @@ class PydanticValidationConfig(BaseModel):
         return value
 
     @field_validator("random_state")
-    def validate_random_state(cls, value: Optional[int]) -> Optional[int]:
+    def validate_random_state(cls, value: int | None) -> int | None:
         """Validate random_state bounds when provided.
 
         Args:
@@ -91,7 +94,6 @@ class TypedValidator(BaseValidator[ValidationResult]):
         Returns:
             ValidationResult.
         """
-        ...
 
     @overload
     def validate(
@@ -104,7 +106,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
         hidden_ratio: float = 0.1,
         metric: str = "hassanat",
         return_details: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> ValidationResult:
         """Validate using keyword configuration parameters.
 
@@ -121,7 +123,6 @@ class TypedValidator(BaseValidator[ValidationResult]):
         Returns:
             ValidationResult.
         """
-        ...
 
     def validate(
         self,
@@ -129,7 +130,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
         y: IntArray,
         minority_label: int,
         oversampler: OversamplerProtocol,
-        config: Optional[ValidationConfig] = None,
+        config: ValidationConfig | None = None,
         **kwargs: Any,
     ) -> ValidationResult:
         """Validate oversampling with typed configuration.
@@ -163,8 +164,23 @@ class TypedValidator(BaseValidator[ValidationResult]):
             # Future: add parallel implementation
             return self._validate_standard(X, y, minority_label, oversampler, config)
         if self.mode == ValidationMode.ASYNC:
-            return asyncio.get_event_loop().run_until_complete(
-                self.validate_async(X, y, minority_label, oversampler, config)
+            # Deliberately raises rather than driving a loop.
+            #
+            # This used to call get_event_loop().run_until_complete(), which
+            # throws if a loop is already running -- so it broke in Jupyter and
+            # in any async host, exactly where someone would reach for it.
+            #
+            # Driving it correctly would not help either: the work is CPU-bound
+            # NumPy, so asyncio buys no concurrency at all. It only moves the
+            # call onto an executor thread and waits for it. Callers who want
+            # a coroutine should await validate_async directly; callers who want
+            # parallelism want processes, not an event loop.
+            raise ConfigurationError(
+                "ValidationMode.ASYNC cannot be driven from a synchronous call. "
+                "Validation is CPU-bound NumPy, so asyncio provides no "
+                "concurrency for it. Await `validate_async(...)` directly from "
+                "async code, or use ValidationMode.STANDARD here and parallelise "
+                "across repeats or datasets instead."
             )
         return self._validate_standard(X, y, minority_label, oversampler, config)
 
@@ -267,7 +283,7 @@ class TypedValidator(BaseValidator[ValidationResult]):
                         f"ValidationDetails, got {type(details).__name__}"
                     )
                 n_synthetic = details.n_synthetic
-                ci = self._wald_confidence_interval(
+                ci = self._wilson_confidence_interval(
                     details.error_rate, max(n_synthetic, 1)
                 )
                 return ValidationResult(
@@ -302,7 +318,11 @@ class TypedValidator(BaseValidator[ValidationResult]):
                 random_state=config.random_state,
                 n_repeats=config.n_repeats,
             )
-            ci = self._wald_confidence_interval(error_rate, len(y))
+            if isinstance(error_rate, ValidationDetails):  # pragma: no cover
+                raise ValidationError(
+                    "validate_oversampling(return_details=False) must return a float"
+                )
+            ci = self._wilson_confidence_interval(error_rate, len(y))
             return ValidationResult(
                 error_rate=error_rate,
                 n_errors=0,
@@ -314,8 +334,26 @@ class TypedValidator(BaseValidator[ValidationResult]):
             raise ValidationError(f"Validation failed: {exc}") from exc
 
     @staticmethod
-    def _wald_confidence_interval(rate: float, n: int, z: float = 1.96) -> Tuple[float, float]:
-        """Compute a Wald confidence interval for a binomial proportion.
+    def _wilson_confidence_interval(
+        rate: float, n: int, z: float = 1.96
+    ) -> tuple[float, float]:
+        """Compute a Wilson score interval for a binomial proportion.
+
+        Replaces the previous Wald interval, which is unreliable exactly where
+        this package spends most of its time. Wald is symmetric around the
+        estimate, so near ``rate = 0`` it produces a degenerate zero-width
+        interval (its standard error vanishes) and can extend below zero. Error
+        rates near zero are the common case here. Wilson stays inside ``[0, 1]``
+        and keeps sensible width at the boundaries.
+
+        .. warning::
+
+           This assumes **independent Bernoulli trials**. Synthetic points
+           interpolated from shared parent points are not independent, so a real
+           interval is wider than this one. Treat it as a lower bound on
+           uncertainty. Proper inference is not yet implemented; see
+           :func:`~oversampleqa.validate_oversampling`'s ``n_repeats``, which
+           measures the variability of the hold-out split instead.
 
         Args:
             rate: Estimated proportion.
@@ -323,14 +361,14 @@ class TypedValidator(BaseValidator[ValidationResult]):
             z: Z-score for the confidence level.
 
         Returns:
-            Lower and upper confidence bounds.
+            Lower and upper confidence bounds, both within ``[0, 1]``.
         """
         if n <= 0:
             return (0.0, 1.0)
-        se = math.sqrt(rate * (1 - rate) / n)
-        lower = max(0.0, rate - z * se)
-        upper = min(1.0, rate + z * se)
-        return (lower, upper)
+        denominator = 1.0 + z**2 / n
+        centre = (rate + z**2 / (2 * n)) / denominator
+        margin = z * math.sqrt(rate * (1 - rate) / n + z**2 / (4 * n**2)) / denominator
+        return (max(0.0, centre - margin), min(1.0, centre + margin))
 
 
 @asynccontextmanager
@@ -347,14 +385,17 @@ async def validation_session(config: ValidationConfig) -> AsyncIterator[TypedVal
     try:
         yield validator
     finally:
-        return
+        # No `return` here. A bare return inside `finally` swallows whatever
+        # exception was in flight, so a failure inside the session body
+        # disappeared silently and the caller saw a clean exit.
+        logger.debug("validation_session closed")
 
 
 class ServiceRegistry:
     """Minimal dependency injection container."""
 
     def __init__(self) -> None:
-        self._services: Dict[type, Any] = {}
+        self._services: dict[type, Any] = {}
 
     def register(self, service_type: type, implementation: Any) -> None:
         """Register a service implementation by type.

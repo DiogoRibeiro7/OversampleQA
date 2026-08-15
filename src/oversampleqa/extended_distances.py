@@ -7,20 +7,18 @@ with proper validation and testing strategies.
 
 import numpy as np
 from numpy.typing import NDArray
-from typing import Union, Callable
-import warnings
 
 
 def minkowski_distance(x1: np.ndarray, x2: np.ndarray, p: float = 3.0) -> float:
     """Compute Minkowski distance between two vectors.
-    
+
     Parameters
     ----------
     x1, x2 : np.ndarray
         Input vectors of same shape
     p : float, default=3.0
         Order of the norm (p >= 1)
-        
+
     Returns
     -------
     float
@@ -32,21 +30,21 @@ def minkowski_distance(x1: np.ndarray, x2: np.ndarray, p: float = 3.0) -> float:
         raise ValueError("Input vectors must have the same shape")
     if p < 1:
         raise ValueError("p must be >= 1")
-    
+
     diff = np.abs(x1 - x2)
-    return float(np.sum(diff ** p) ** (1/p))
+    return float(np.sum(diff**p) ** (1 / p))
 
 
 def chebyshev_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute Chebyshev (L-infinity) distance between two vectors.
-    
+
     This is the maximum absolute difference across all dimensions.
     """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
-    
+
     return float(np.max(np.abs(x1 - x2)))
 
 
@@ -56,14 +54,14 @@ def mahalanobis_distance(
     cov_inv: NDArray[np.floating] | None = None,
 ) -> float:
     """Compute Mahalanobis distance between two vectors.
-    
+
     Parameters
     ----------
     x1, x2 : np.ndarray
         Input vectors
     cov_inv : np.ndarray, optional
         Inverse covariance matrix. If None, uses identity (equivalent to Euclidean)
-        
+
     Returns
     -------
     float
@@ -73,19 +71,19 @@ def mahalanobis_distance(
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
-    
+
     diff = x1 - x2
-    
+
     if cov_inv is None:
         # Fall back to Euclidean if no covariance provided
         return float(np.sqrt(np.dot(diff, diff)))
-    
+
     return float(np.sqrt(np.dot(diff, np.dot(cov_inv, diff))))
 
 
 def canberra_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute Canberra distance between two vectors.
-    
+
     Canberra distance is a weighted version of Manhattan distance,
     useful when dealing with features of different scales.
     """
@@ -93,20 +91,20 @@ def canberra_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
-    
+
     numerator = np.abs(x1 - x2)
     denominator = np.abs(x1) + np.abs(x2)
-    
+
     # Handle division by zero
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         ratio = np.where(denominator == 0, 0.0, numerator / denominator)
-    
+
     return float(np.sum(ratio))
 
 
 def hamming_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute Hamming distance between two vectors.
-    
+
     Counts the number of positions where elements differ.
     Useful for categorical or binary features.
     """
@@ -114,13 +112,13 @@ def hamming_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     x2 = np.asarray(x2)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
-    
+
     return float(np.sum(x1 != x2))
 
 
 def jaccard_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute Jaccard distance between two binary vectors.
-    
+
     Jaccard distance = 1 - Jaccard similarity
     where Jaccard similarity = :math:`|intersection| / |union|`
     """
@@ -128,55 +126,58 @@ def jaccard_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     x2 = np.asarray(x2, dtype=bool)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
-    
+
     intersection = np.sum(x1 & x2)
     union = np.sum(x1 | x2)
-    
+
     if union == 0:
         return 0.0  # Both vectors are all zeros
-    
-    return 1.0 - (intersection / union)
+
+    similarity: float = intersection / union
+    return 1.0 - similarity
 
 
 def braycurtis_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute Bray-Curtis distance between two vectors.
-    
+
     Often used in ecology and environmental science.
     """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
-    
+
     numerator = np.sum(np.abs(x1 - x2))
     denominator = np.sum(np.abs(x1 + x2))
-    
+
     if denominator == 0:
         return 0.0
-    
-    return numerator / denominator
+
+    ratio: float = numerator / denominator
+    return ratio
 
 
 def correlation_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     """Compute correlation distance between two vectors.
-    
+
     Correlation distance = 1 - Pearson correlation coefficient
     """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
-    
+
     if len(x1) < 2:
         return 0.0
-    
+
     corr_coef = np.corrcoef(x1, x2)[0, 1]
-    
+
     # Handle NaN correlation (constant vectors)
     if np.isnan(corr_coef):
         return 0.0
 
-    return 1.0 - corr_coef
+    coefficient: float = corr_coef
+    return 1.0 - coefficient
 
 
 def hellinger_distance(x1: np.ndarray, x2: np.ndarray) -> float:

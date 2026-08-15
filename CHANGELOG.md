@@ -10,6 +10,50 @@ maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`ServiceRegistry.get` raised `ConfigurationError`, which was never defined
+  or imported.** The error path itself raised `NameError`, replacing a clear
+  "not registered" message with a confusing one. The hierarchy now lives in
+  `oversampleqa.exceptions` (`OversampleQAError` and its subclasses), is
+  exported from the package root, and `oversampleqa.types` re-exports it so
+  existing imports keep working.
+- `TypedValidator._wald_confidence_interval` annotated `Tuple` without importing
+  it — a latent `NameError` surfacing only through `typing.get_type_hints`,
+  Pydantic, or Sphinx autodoc.
+- `validation_session` had `return` inside `finally`, which swallowed any
+  exception raised inside the session body.
+- `ValidationMode.ASYNC` called `run_until_complete`, which raises whenever an
+  event loop is already running — Jupyter and every async host.
+
+### Changed
+
+- **The Wald confidence interval is now Wilson.** Wald is symmetric about the
+  estimate, so at an error rate near zero it collapses to zero width and can
+  extend below zero. Error rates near zero are the common case here. The
+  docstring records that both assume independent Bernoulli trials, which
+  synthetic points sharing parent points are not.
+- `ValidationMode.ASYNC` raises a `ConfigurationError` explaining that
+  validation is CPU-bound NumPy, so an event loop offers it no concurrency, and
+  directing async callers to `await validate_async(...)`.
+- **Tooling consolidated on ruff.** `black`, `isort` and `flake8` are removed
+  from dev dependencies and the pre-commit hooks; `ruff format` and
+  `ruff check` cover the same ground in one tool with no rule conflicts.
+- Ruff had no configuration at all, so the project inherited whatever the
+  installed version defaulted to — which is how ~270 findings accumulated that
+  nobody was expected to clear. The rule set is now explicit and every exemption
+  carries a reason. `ruff check src tests` exits clean.
+- `mypy src` exits clean. The numerical core is fully strict with no exemptions;
+  `cli_enhanced`, `plotting` and the benchmark modules carry scoped per-code
+  relaxations naming the untyped third-party boundary responsible, so a new
+  class of error there still fails.
+- The `Makefile` works on Windows: `clean` is now `scripts/clean.py` and `docs`
+  invokes `sphinx-build` directly instead of a nested Unix-only `make`. Windows
+  is in the CI matrix.
+- Removed 33 orphaned autosummary stubs from `docs/api/` that duplicated the
+  hand-written module pages, along with the `exclude_patterns` entry that
+  existed only to keep them out of the build.
+
 ### Performance
 
 - **Vectorised five more kernels.** `hamming`, `jaccard`, `hellinger` and

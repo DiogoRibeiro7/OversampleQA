@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
@@ -131,7 +133,8 @@ def local_density_divergence(
 
     if mean_ref == 0:
         return 0.0
-    return (mean_syn - mean_ref) / mean_ref
+    divergence: float = (mean_syn - mean_ref) / mean_ref
+    return divergence
 
 
 def minority_recall_loss(
@@ -155,7 +158,8 @@ def minority_recall_loss(
     from sklearn.metrics import recall_score
 
     recall = recall_score(y_true == minority_label, y_pred == minority_label)
-    return 1.0 - recall
+    achieved: float = recall
+    return 1.0 - achieved
 
 
 def umap_manifold_distance(
@@ -177,6 +181,7 @@ def umap_manifold_distance(
     """
 
     from umap import UMAP
+
     from .extended_distances import wasserstein_1d_distance
 
     if len(synthetic) == 0 or len(real) == 0:
@@ -228,7 +233,9 @@ def check_model_fairness(
             recalls.append(0.0)
         else:
             recalls.append(
-                recall_score(y_true[mask] == minority_label, y_pred[mask] == minority_label)
+                recall_score(
+                    y_true[mask] == minority_label, y_pred[mask] == minority_label
+                )
             )
 
     return abs(recalls[0] - recalls[1])
@@ -238,7 +245,7 @@ def noise_sensitivity_diagnostic(
     X: np.ndarray,
     y: np.ndarray,
     minority_label: int,
-    oversampler,
+    oversampler: Any,
     noise_levels: list[float] | None = None,
     hidden_ratio: float = 0.1,
     metric: str = "hassanat",

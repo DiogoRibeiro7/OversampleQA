@@ -132,15 +132,21 @@ poetry run pre-commit install --hook-type commit-msg
 ## Quality Checks
 
 ```bash
-# Fast lint + typecheck
+# Lint and typecheck -- both pass clean
 make lint typecheck
 # Run tests with coverage
 make coverage
 # Security audit
 make security
+# Build docs the way CI does, with warnings as errors
+make docs
 # Full pre-commit suite
 poetry run pre-commit run --all-files
 ```
+
+Linting and formatting are handled by [ruff](https://docs.astral.sh/ruff/) alone;
+the enforced rule set lives in `pyproject.toml`. These commands work on Windows
+and Linux alike.
 
 ## Citation
 

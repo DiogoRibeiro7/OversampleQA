@@ -16,8 +16,8 @@ from sklearn.datasets import make_classification
 
 from oversampleqa.memory_efficient_validator import MemoryEfficientValidator
 from oversampleqa.metrics import calculate_error_rate, duplication_rate
-from oversampleqa.types import ValidationConfig, ValidationDetails
 from oversampleqa.typed_validator import TypedValidator
+from oversampleqa.types import ValidationConfig, ValidationDetails
 from oversampleqa.validator import extract_synthetic_samples, validate_oversampling
 
 

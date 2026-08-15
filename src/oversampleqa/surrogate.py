@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 import logging
+
 import numpy as np
 from sklearn.base import clone
+from sklearn.metrics import f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, recall_score, precision_score
 
 from .validator import extract_synthetic_samples
 
@@ -23,7 +22,7 @@ def evaluate_surrogate_models(
     model,
     test_size: float = 0.3,
     random_state: int | None = None,
-) -> Dict[str, Dict[str, float]]:
+) -> dict[str, dict[str, float]]:
     """Evaluate model performance with and without synthetic data.
 
     The function trains the provided ``model`` under three scenarios:
@@ -90,7 +89,7 @@ def evaluate_surrogate_models(
     model_syn.fit(X_syn, y_syn)
     pred_syn = model_syn.predict(X_test)
 
-    def _scores(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    def _scores(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         mask_true = y_true == minority_label
         mask_pred = y_pred == minority_label
         return {

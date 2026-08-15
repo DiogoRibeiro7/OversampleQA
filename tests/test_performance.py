@@ -29,6 +29,8 @@ def test_vectorized_euclidean_speedup():
     optimizer = OptimizedDistanceMatrix(metric_registry=_METRICS, cache=None)
 
     baseline = _timeit(lambda: _naive_distance_matrix(X1, X2, "euclidean"), loops=2)
-    optimized = _timeit(lambda: optimizer.compute_distance_matrix(X1, X2, metric="euclidean"), loops=2)
+    optimized = _timeit(
+        lambda: optimizer.compute_distance_matrix(X1, X2, metric="euclidean"), loops=2
+    )
 
     assert baseline > optimized * 2.0

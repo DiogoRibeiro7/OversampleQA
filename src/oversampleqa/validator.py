@@ -37,7 +37,7 @@ def _validate_hidden_ratio(hidden_ratio: float) -> None:
 
 def _split_classes(
     X: NDArray[np.floating], y: NDArray[np.integer], minority_label: int
-):
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Split features into minority and majority subsets.
 
     Args:
@@ -262,7 +262,8 @@ def extract_synthetic_samples(
             "This is expected for combined over/under-samplers such as SMOTEENN "
             "and SMOTETomek, which are not supported by validate_oversampling."
         )
-    return X_resampled[n:][y_resampled[n:] == minority_label]
+    synthetic: NDArray[np.floating] = X_resampled[n:][y_resampled[n:] == minority_label]
+    return synthetic
 
 
 def validate_oversampling(
@@ -697,8 +698,8 @@ def validate_multiclass_oversampling(
         hidden[label] = cls_samples[idx[:n_hidden]]
         visible[label] = cls_samples[idx[n_hidden:]]
 
-    X_train = np.vstack([visible[l] for l in labels])
-    y_train = np.hstack([[l] * len(visible[l]) for l in labels])
+    X_train = np.vstack([visible[lbl] for lbl in labels])
+    y_train = np.hstack([[lbl] * len(visible[lbl]) for lbl in labels])
 
     try:
         X_res, y_res = oversampler.fit_resample(X_train, y_train)

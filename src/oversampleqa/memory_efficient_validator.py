@@ -13,20 +13,22 @@ from typing import Any
 import numpy as np
 from imblearn.over_sampling.base import BaseOverSampler
 from numpy.typing import NDArray
-from sklearn.model_selection import train_test_split
 
-from .distance import _METRICS, hassanat_distance  # noqa: F401 - ensures registry populated
 from ._rng import RandomStateLike
+from .caching import ValidationCache
+from .distance import (  # noqa: F401 - ensures registry populated
+    _METRICS,
+    hassanat_distance,
+)
 from .metrics import calculate_error_rate, duplication_rate
-from .types import ReferenceSet, ValidationDetails
 from .optimized_distance import OptimizedDistanceMatrix, get_available_memory_gb
+from .types import ReferenceSet, ValidationDetails
 from .validator import (
     extract_synthetic_samples,
     prepare_validation_split,
     score_nearest_distances,
     warn_reference_bias,
 )
-from .caching import ValidationCache
 
 
 class MemoryEfficientValidator:
@@ -42,7 +44,9 @@ class MemoryEfficientValidator:
     ) -> None:
         self.memory_limit_gb = memory_limit_gb
         self.batch_size = batch_size
-        self.temp_root = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()) / "oversampleqa"
+        self.temp_root = (
+            Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()) / "oversampleqa"
+        )
         self.temp_root.mkdir(parents=True, exist_ok=True)
         self.cache = cache or ValidationCache()
         self.distance_computer = OptimizedDistanceMatrix(
@@ -181,12 +185,14 @@ class MemoryEfficientValidator:
             warnings.warn(
                 "Distance matrices exceed configured memory limit; activating streaming mode.",
                 ResourceWarning,
+                stacklevel=2,
             )
             requires_stream = True
         elif est_hidden > available or est_minority > available:
             warnings.warn(
                 "Estimated distance matrices exceed available system memory; switching to streaming mode.",
                 ResourceWarning,
+                stacklevel=2,
             )
             requires_stream = True
 
@@ -218,7 +224,9 @@ class MemoryEfficientValidator:
         )
 
         nearest_hidden = (
-            dist_hidden.min(axis=1) if dist_hidden.size else np.full(len(synthetic), np.inf)
+            dist_hidden.min(axis=1)
+            if dist_hidden.size
+            else np.full(len(synthetic), np.inf)
         )
         nearest_min = (
             dist_min.min(axis=1) if dist_min.size else np.full(len(synthetic), np.inf)
@@ -285,7 +293,9 @@ class MemoryEfficientValidator:
         min_store = None
 
         if return_details:
-            temp_dir = Path(tempfile.mkdtemp(prefix="oversampleqa_stream_", dir=self.temp_root))
+            temp_dir = Path(
+                tempfile.mkdtemp(prefix="oversampleqa_stream_", dir=self.temp_root)
+            )
             self._stream_dirs.append(temp_dir)
             if n_hidden > 0:
                 hidden_store = np.memmap(
@@ -351,8 +361,16 @@ class MemoryEfficientValidator:
                 hidden_store.flush()
             if isinstance(min_store, np.memmap):
                 min_store.flush()
-            hidden_return = hidden_store if hidden_store is not None else np.empty((n_syn, 0), dtype=dtype)
-            min_return = min_store if min_store is not None else np.empty((n_syn, 0), dtype=dtype)
+            hidden_return = (
+                hidden_store
+                if hidden_store is not None
+                else np.empty((n_syn, 0), dtype=dtype)
+            )
+            min_return = (
+                min_store
+                if min_store is not None
+                else np.empty((n_syn, 0), dtype=dtype)
+            )
             dup = (
                 duplication_rate(synthetic, fit_minority)
                 if fit_minority is not None

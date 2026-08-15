@@ -8,7 +8,7 @@ import pickle
 import threading
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import joblib
 import numpy as np
@@ -79,12 +79,14 @@ class ValidationCache:
         memory_mb: int = 1000,
         max_entries: int = 128,
     ) -> None:
-        self.cache_dir = Path(cache_dir) if cache_dir is not None else default_cache_dir()
+        self.cache_dir = (
+            Path(cache_dir) if cache_dir is not None else default_cache_dir()
+        )
         self.bytes_limit = memory_mb * 1024 * 1024
         self.max_entries = max_entries
         self._memory: joblib.Memory | None = None
         self._lock = threading.Lock()
-        self._store: "OrderedDict[str, np.ndarray]" = OrderedDict()
+        self._store: OrderedDict[str, np.ndarray] = OrderedDict()
         self._nbytes = 0
 
     def _ensure_dir(self) -> None:
@@ -148,12 +150,13 @@ class ValidationCache:
         """
         path = self.cache_dir / f"validation_{params_hash}.pkl"
         if path.exists():
-            return joblib.load(path)
+            cached: float = joblib.load(path)
+            return cached
         return None
 
     def cached_distance_matrix(
         self,
-        optimizer: "OptimizedDistanceMatrix",
+        optimizer: OptimizedDistanceMatrix,
         X1: np.ndarray,
         X2: np.ndarray,
         metric: str,
@@ -193,7 +196,7 @@ class ValidationCache:
                 self._store.move_to_end(key)
                 return hit
 
-        result = optimizer._compute_uncached(  # type: ignore[attr-defined]
+        result = optimizer._compute_uncached(
             X1, X2, metric=metric, batch_size=batch_size, **kwargs
         )
         result.setflags(write=False)
@@ -224,7 +227,7 @@ class ValidationCache:
         X1: np.ndarray,
         X2: np.ndarray,
         metric: str,
-        kwargs: Dict[str, Any],
+        kwargs: dict[str, Any],
     ) -> str:
         """Return a stable key for distance matrix caching.
 
@@ -247,7 +250,7 @@ class ValidationCache:
         return hasher.hexdigest()
 
     @staticmethod
-    def _update_hasher(hasher: "hashlib._Hash", arr: np.ndarray) -> None:
+    def _update_hasher(hasher: hashlib._Hash, arr: np.ndarray) -> None:
         """Update the hasher with array shape, dtype, and data bytes.
 
         Args:

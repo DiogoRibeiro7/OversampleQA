@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from oversampleqa.distance import _METRICS, distance_matrix
 from oversampleqa.caching import ValidationCache
+from oversampleqa.distance import _METRICS, distance_matrix
 from oversampleqa.optimized_distance import OptimizedDistanceMatrix
 
 
@@ -17,7 +17,9 @@ def _naive_matrix(X1: np.ndarray, X2: np.ndarray, metric: str) -> np.ndarray:
     return matrix
 
 
-@pytest.mark.parametrize("metric", ["euclidean", "manhattan", "cosine", "canberra", "chebyshev", "hassanat"])
+@pytest.mark.parametrize(
+    "metric", ["euclidean", "manhattan", "cosine", "canberra", "chebyshev", "hassanat"]
+)
 def test_distance_matrix_matches_naive(metric):
     rng = np.random.default_rng(123)
     X1 = rng.random((12, 6))

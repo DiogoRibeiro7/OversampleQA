@@ -1,5 +1,6 @@
 import numpy as np
-from oversampleqa.distance import hassanat_distance, distance_matrix, cosine_distance
+
+from oversampleqa.distance import cosine_distance, distance_matrix, hassanat_distance
 
 
 def test_hassanat_distance_zero():

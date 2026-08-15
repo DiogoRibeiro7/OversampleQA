@@ -173,7 +173,7 @@ def test_concurrent_use_of_one_instance_is_consistent(tmp_path):
             for _ in range(20):
                 got = distance_matrix(X1, X2, "euclidean", cache=cache)
                 assert np.array_equal(got, expected)
-        except BaseException as exc:  # noqa: BLE001 - surfaced below
+        except BaseException as exc:
             errors.append(exc)
 
     threads = [threading.Thread(target=worker) for _ in range(8)]

@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 
 from oversampleqa.distance import (
+    distance_matrix,
     hellinger_distance,
     jensen_shannon_distance,
-    distance_matrix,
 )
 
 
@@ -47,9 +47,11 @@ def test_probability_distance_matrix_normalizes() -> None:
     p = X1[0] / X1[0].sum()
     q0 = X2[0] / X2[0].sum()
     q1 = X2[1] / X2[1].sum()
-    expected = np.array([
-        jensen_shannon_distance(p, q0),
-        jensen_shannon_distance(p, q1),
-    ])
+    expected = np.array(
+        [
+            jensen_shannon_distance(p, q0),
+            jensen_shannon_distance(p, q1),
+        ]
+    )
     assert dm.shape == (1, 2)
     assert np.allclose(dm[0], expected)

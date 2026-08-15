@@ -4,22 +4,24 @@ from scipy import stats as scipy_stats
 from scipy.spatial import distance as scipy_distance
 
 from oversampleqa.distance import (
-    hassanat_distance,
-    euclidean_distance,
-    manhattan_distance,
-    cosine_distance,
-    chebyshev_distance,
-    minkowski_distance,
-    canberra_distance,
     braycurtis_distance,
+    canberra_distance,
+    chebyshev_distance,
     correlation_distance,
-    energy_distance as pkg_energy_distance,
-    jaccard_distance,
+    cosine_distance,
+    euclidean_distance,
     hamming_distance,
-    wasserstein_1d_distance,
-    mahalanobis_distance,
+    hassanat_distance,
     hellinger_distance,
+    jaccard_distance,
     jensen_shannon_distance,
+    mahalanobis_distance,
+    manhattan_distance,
+    minkowski_distance,
+    wasserstein_1d_distance,
+)
+from oversampleqa.distance import (
+    energy_distance as pkg_energy_distance,
 )
 
 
@@ -30,7 +32,7 @@ def reference_hassanat(a: np.ndarray, b: np.ndarray) -> float:
     cross-check rather than a restatement of the vectorised implementation.
     """
     total = 0.0
-    for ai, bi in zip(a, b):
+    for ai, bi in zip(a, b, strict=True):
         mn = min(ai, bi)
         mx = max(ai, bi)
         if mn >= 0:
@@ -122,18 +124,14 @@ def test_metrics_agree_with_scipy():
     assert np.isclose(
         minkowski_distance(x, y, p=3), scipy_distance.minkowski(x, y, p=3)
     )
-    assert np.isclose(
-        correlation_distance(x, y), scipy_distance.correlation(x, y)
-    )
+    assert np.isclose(correlation_distance(x, y), scipy_distance.correlation(x, y))
     assert np.isclose(
         mahalanobis_distance(x, y, cov_inv=cov_inv),
         scipy_distance.mahalanobis(x, y, cov_inv),
     )
 
     # Bray-Curtis: SciPy divides by sum|x_i + y_i|, matching this package.
-    assert np.isclose(
-        braycurtis_distance(x, y), scipy_distance.braycurtis(x, y)
-    )
+    assert np.isclose(braycurtis_distance(x, y), scipy_distance.braycurtis(x, y))
 
     # Hamming: SciPy returns the *fraction* of differing components; this
     # package returns the raw count. Scale to compare.
@@ -148,9 +146,7 @@ def test_metrics_agree_with_scipy():
     # divergence) with natural log when base is unset, matching this package.
     p = np.abs(x) / np.abs(x).sum()
     q = np.abs(y) / np.abs(y).sum()
-    assert np.isclose(
-        jensen_shannon_distance(p, q), scipy_distance.jensenshannon(p, q)
-    )
+    assert np.isclose(jensen_shannon_distance(p, q), scipy_distance.jensenshannon(p, q))
 
 
 def test_energy_and_wasserstein_are_sample_based():
@@ -213,4 +209,3 @@ def test_probability_metrics_reject_negative_inputs():
         hellinger_distance(x, y)
     with pytest.raises(ValueError, match="non-negative"):
         jensen_shannon_distance(x, y)
-

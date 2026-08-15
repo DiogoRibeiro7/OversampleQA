@@ -7,8 +7,8 @@ samples to detect overlap of synthetic data with majority regions.
 from __future__ import annotations
 
 import logging
+
 import numpy as np
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def cluster_based_diagnostics(
     eps: float = 0.5,
     min_samples: int = 5,
     random_state: int | None = None,
-) -> Tuple[np.ndarray, float]:
+) -> tuple[np.ndarray, float]:
     """Flag synthetic samples that fall in majority-dominated clusters.
 
     Parameters
@@ -51,14 +51,16 @@ def cluster_based_diagnostics(
     if len(synthetic) == 0:
         return np.array([], dtype=bool), 0.0
 
-    from sklearn.cluster import KMeans, DBSCAN
+    from sklearn.cluster import DBSCAN, KMeans
     from sklearn.metrics import silhouette_score
 
     X = np.vstack([majority, synthetic])
 
     try:
         if algorithm == "kmeans":
-            labels = KMeans(n_clusters=n_clusters, random_state=random_state).fit_predict(X)
+            labels = KMeans(
+                n_clusters=n_clusters, random_state=random_state
+            ).fit_predict(X)
         elif algorithm == "dbscan":
             labels = DBSCAN(eps=eps, min_samples=min_samples).fit_predict(X)
         else:
@@ -71,7 +73,7 @@ def cluster_based_diagnostics(
     synth_labels = labels[len(majority) :]
 
     flagged = np.zeros(len(synthetic), dtype=bool)
-    unique_labels = [l for l in np.unique(labels) if l != -1]
+    unique_labels = [lbl for lbl in np.unique(labels) if lbl != -1]
 
     for lbl in unique_labels:
         maj_mask = maj_labels == lbl

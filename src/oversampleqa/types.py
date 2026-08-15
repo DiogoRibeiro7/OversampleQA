@@ -7,20 +7,22 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
     Any,
-    Dict,
     Generic,
-    List,
     Literal,
-    Optional,
     Protocol,
-    Tuple,
-    TypeVar,
     TypedDict,
-    Union,
+    TypeVar,
 )
 
 import numpy as np
 from numpy.typing import NDArray
+
+from .exceptions import ConfigurationError as ConfigurationError
+from .exceptions import MetricError as MetricError
+from .exceptions import OversampleQAError as OversampleQAError
+from .exceptions import PluginError as PluginError
+from .exceptions import UnsupportedSamplerError as UnsupportedSamplerError
+from .exceptions import ValidationError as ValidationError
 
 FloatArray = NDArray[np.floating]
 IntArray = NDArray[np.integer]
@@ -63,14 +65,13 @@ class ValidationMode(Enum):
 class DistanceMetricProtocol(Protocol):
     """Protocol for distance metric callables."""
 
-    def __call__(self, x1: FloatArray, x2: FloatArray, **kwargs: Any) -> float:
-        ...
+    def __call__(self, x1: FloatArray, x2: FloatArray, **kwargs: Any) -> float: ...
 
 
 class OversamplerProtocol(Protocol):
     """Protocol for oversampler-like objects."""
 
-    def fit_resample(self, X: FloatArray, y: IntArray) -> Tuple[FloatArray, IntArray]:
+    def fit_resample(self, X: FloatArray, y: IntArray) -> tuple[FloatArray, IntArray]:
         """Fit and resample the dataset, returning resampled arrays.
 
         Args:
@@ -83,7 +84,7 @@ class OversamplerProtocol(Protocol):
         ...
 
     @property
-    def random_state(self) -> Optional[int]:
+    def random_state(self) -> int | None:
         """Return the random state, if supported.
 
         Returns:
@@ -92,7 +93,7 @@ class OversamplerProtocol(Protocol):
         ...
 
     @random_state.setter
-    def random_state(self, value: Optional[int]) -> None:
+    def random_state(self, value: int | None) -> None:
         """Set the random state, if supported.
 
         Args:
@@ -134,7 +135,7 @@ class ValidationConfig:
     hidden_ratio: float = 0.1
     metric: str = "hassanat"
     return_details: bool = False
-    random_state: Optional[int] = 42
+    random_state: int | None = 42
     reference: ReferenceSet = "hidden_minority"
     n_repeats: int = 1
 
@@ -200,8 +201,8 @@ class BenchmarkConfig:
     """Configuration for benchmarking experiments."""
 
     n_runs: int = 10
-    hidden_ratios: List[float] = field(default_factory=lambda: [0.1, 0.25, 0.5])
-    metrics: List[str] = field(default_factory=lambda: ["hassanat", "euclidean"])
+    hidden_ratios: list[float] = field(default_factory=lambda: [0.1, 0.25, 0.5])
+    metrics: list[str] = field(default_factory=lambda: ["hassanat", "euclidean"])
     validation_mode: ValidationMode = ValidationMode.STANDARD
     n_jobs: int = 1
 
@@ -218,8 +219,8 @@ class ValidationResult(TypedDict, total=False):
     error_rate: float
     n_errors: int
     n_synthetic: int
-    confidence_interval: Tuple[float, float]
-    metadata: Dict[str, Any]
+    confidence_interval: tuple[float, float]
+    metadata: dict[str, Any]
 
 
 T = TypeVar("T")
@@ -321,26 +322,12 @@ class Dataset(ABC):
         ...
 
 
-class OversampleQAError(Exception):
-    """Base exception for oversampleqa."""
-
-
-class ValidationError(OversampleQAError):
-    """Validation-specific error."""
-
-
-class ConfigurationError(OversampleQAError):
-    """Configuration-related errors."""
-
-
-class MetricError(OversampleQAError):
-    """Distance metric computation errors."""
-
-
 class ValidatorFactory(Protocol):
     """Factory for validators."""
 
-    def create_validator(self, mode: ValidationMode, **kwargs: Any) -> BaseValidator[Any]:
+    def create_validator(
+        self, mode: ValidationMode, **kwargs: Any
+    ) -> BaseValidator[Any]:
         """Create a validator instance for the given mode.
 
         Args:

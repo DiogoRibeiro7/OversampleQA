@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
 import logging
 import warnings
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 _SKLEARN_LICENSE = "BSD-3-Clause (scikit-learn synthetic generator)"
 
 
-def _synthetic_provenance(generator: str, **params: Any) -> Dict:
+def _synthetic_provenance(generator: str, **params: Any) -> dict:
     """Build provenance metadata for a scikit-learn synthetic dataset.
 
     Args:
@@ -42,9 +41,9 @@ def _synthetic_provenance(generator: str, **params: Any) -> Dict:
 
 
 def run_benchmark(
-    datasets: List[Dict],
-    oversamplers: List,
-    hidden_ratios: List[float] | None = None,
+    datasets: list[dict],
+    oversamplers: list,
+    hidden_ratios: list[float] | None = None,
     n_runs: int = 10,
     distance_metric: str = "hassanat",
     random_state: RandomStateLike = None,
@@ -121,7 +120,7 @@ def run_benchmark(
     return pd.DataFrame(results)
 
 
-def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
+def load_standard_datasets(include_openml: bool = False) -> list[dict]:
     """Return a list of simple synthetic datasets for benchmarking.
 
     Parameters
@@ -140,13 +139,13 @@ def load_standard_datasets(include_openml: bool = False) -> List[Dict]:
     """
 
     from sklearn.datasets import (
+        make_blobs,
         make_circles,
         make_classification,
         make_moons,
-        make_blobs,
     )
 
-    datasets: List[Dict] = []
+    datasets: list[dict] = []
 
     if include_openml:
         from sklearn.datasets import fetch_openml
