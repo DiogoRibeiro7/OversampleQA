@@ -178,22 +178,13 @@ class OptimizedDistanceMatrix:
             "jaccard": self._vectorized_jaccard,
             "hellinger": self._vectorized_hellinger,
             "jensen_shannon": self._vectorized_jensen_shannon,
+            "wasserstein": self._vectorized_wasserstein,
             # "energy" is deliberately absent. It is a sample-based metric whose
             # scalar form computes three pairwise-norm terms per (i, j) -- the
             # cross term plus a within-term for each input row. Broadcasting that
             # needs an (n1, n2, d, d) intermediate, which is larger than the work
             # it saves at any realistic size, so it stays on _pairwise.
             #
-            # "wasserstein" is also absent, for a different reason. A vectorised
-            # kernel exists below and is correct -- it uses the equal-length
-            # closed form mean|sort(x) - sort(y)|, which agrees with SciPy. The
-            # scalar wasserstein_1d_distance does not: its CDF walk drops the
-            # tail once either sample is exhausted and advances the CDF before
-            # adding each interval, so [0,1] vs [0,3] returns 0.5 where the true
-            # W1 is 1.0 (see the strict xfail in tests/test_reference_metrics).
-            # Registering the kernel would make the two paths disagree; matching
-            # them would mean reproducing the bug. It stays on _pairwise until
-            # the scalar is fixed, which is task 07's scope.
             "euclidean": self._vectorized_euclidean,
             "manhattan": self._vectorized_manhattan,
             "cosine": self._vectorized_cosine,

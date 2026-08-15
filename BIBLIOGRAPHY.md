@@ -36,6 +36,15 @@ This bibliography lists the primary references for algorithms and techniques use
 
 - **Hidden Majority Validation** – A. B. Hassanat et al., "Stop Oversampling for Class Imbalance Learning: A Critical Review," 2022.
 
+## Statistical Inference
+
+- **Nearest-Neighbour Two-Sample Test** – M. F. Schilling, "Multivariate Two-Sample Tests Based on Nearest Neighbors," *JASA*, 81(395), 1986.
+  - N. Henze, "A Multivariate Two-Sample Test Based on the Number of Nearest Neighbor Type Coincidences," *Annals of Statistics*, 16(2), 1988.
+- **Minimum Spanning Tree Test** – J. H. Friedman and L. C. Rafsky, "Multivariate Generalizations of the Wald–Wolfowitz and Smirnov Two-Sample Tests," *Annals of Statistics*, 7(4), 1979.
+- **Cross-Match Test** – P. R. Rosenbaum, "An Exact Distribution-Free Test Comparing Two Multivariate Distributions Based on Adjacency," *JRSS-B*, 67(4), 2005.
+- **Comparing Methods Across Datasets** – J. Demšar, "Statistical Comparisons of Classifiers over Multiple Data Sets," *JMLR*, 7, 2006.
+- **False Discovery Rate** – Y. Benjamini and Y. Hochberg, "Controlling the False Discovery Rate," *JRSS-B*, 57(1), 1995.
+
 ## Fairness and Noise Diagnostics
 
 - **Equality of Opportunity** – M. Hardt, E. Price, and N. Srebro, "Equality of Opportunity in Supervised Learning," 2016.

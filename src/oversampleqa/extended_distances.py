@@ -291,35 +291,46 @@ def wasserstein_1d_distance(x1: np.ndarray, x2: np.ndarray) -> float:
 
     n = len(x1)
     m = len(x2)
+    if n == 0 or m == 0:
+        return 0.0
+
     i = j = 0
     cdf1 = cdf2 = 0.0
-    last_x = min(x1[0] if n else 0.0, x2[0] if m else 0.0)
+    last_x = min(x1[0], x2[0])
     dist = 0.0
 
+    # W1 = integral of |F1(t) - F2(t)| dt. Between consecutive sorted points the
+    # two CDFs are flat, so each interval [last_x, x) contributes
+    # |F1 - F2| * (x - last_x) using the CDF values that hold *across* it --
+    # that is, the values before the jump at x.
+    #
+    # The previous version advanced the CDF first and then added, crediting each
+    # interval with the value from after its right-hand jump. On [0, 1] vs
+    # [0, 3] that returned 0.5 where the true W1 is 1.0.
     while i < n and j < m:
-        if x1[i] <= x2[j]:
-            x = x1[i]
-            cdf1 = (i + 1) / n
-            i += 1
-        else:
-            x = x2[j]
-            cdf2 = (j + 1) / m
-            j += 1
+        x = x1[i] if x1[i] <= x2[j] else x2[j]
         dist += abs(cdf1 - cdf2) * (x - last_x)
         last_x = x
+        # Advance every tie at this position before moving on.
+        while i < n and x1[i] == x:
+            i += 1
+            cdf1 = i / n
+        while j < m and x2[j] == x:
+            j += 1
+            cdf2 = j / m
 
     while i < n:
         x = x1[i]
-        cdf1 = (i + 1) / n
         dist += abs(cdf1 - cdf2) * (x - last_x)
         last_x = x
         i += 1
+        cdf1 = i / n
 
     while j < m:
         x = x2[j]
-        cdf2 = (j + 1) / m
         dist += abs(cdf1 - cdf2) * (x - last_x)
         last_x = x
         j += 1
+        cdf2 = j / m
 
     return float(dist)

@@ -212,13 +212,29 @@ class StatisticalBenchmark:
         return errors
 
     def _confidence_interval(self, values: Sequence[float]) -> tuple[float, float]:
-        """Return a confidence interval for the provided values.
+        """Return a confidence interval for the **mean** of the provided values.
+
+        Always a confidence interval for the mean, at every sample size.
+
+        This previously switched formula at n = 30: a Student-t interval for the
+        mean below, and the 2.5th-97.5th percentiles of the observations at or
+        above. Those are different quantities. The t-interval narrows as
+        1/sqrt(n); the percentile range describes the spread of individual
+        observations and does not narrow at all. Both were written into the same
+        ``ci_lower`` / ``ci_upper`` columns, so on sigma = 0.05 data the reported
+        width jumped from 0.036 at n = 29 to 0.172 at n = 30 -- 4.7x wider from
+        one extra observation -- and intervals could not be compared across
+        configurations with different fold counts.
+
+        The t-interval is used throughout. It is exact for normally distributed
+        values and asymptotically valid otherwise, and it is what a reader
+        assumes a "confidence interval" means.
 
         Args:
             values: Sample values.
 
         Returns:
-            Lower and upper bounds for the configured confidence level.
+            Lower and upper bounds for the mean, at the configured level.
         """
         if len(values) < 2:
             return (
@@ -228,14 +244,12 @@ class StatisticalBenchmark:
         arr = np.asarray(values, dtype=float)
         mean = float(arr.mean())
         alpha = 1 - self.confidence_level
-        if len(arr) < 30:
-            se = stats.sem(arr)
-            t_val = stats.t.ppf(1 - alpha / 2, len(arr) - 1)
-            margin = t_val * se
-            return mean - margin, mean + margin
-        lower = float(np.percentile(arr, alpha / 2 * 100))
-        upper = float(np.percentile(arr, (1 - alpha / 2) * 100))
-        return lower, upper
+        standard_error = float(stats.sem(arr))
+        if standard_error == 0.0:
+            # Every observation identical: the mean is known exactly.
+            return (mean, mean)
+        margin = float(stats.t.ppf(1 - alpha / 2, len(arr) - 1)) * standard_error
+        return (mean - margin, mean + margin)
 
     def _recommended_sample_size(
         self, values: Sequence[float], target_power: float = 0.8

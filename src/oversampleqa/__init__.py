@@ -41,6 +41,14 @@ from .distance import (
     minkowski_distance,
     wasserstein_1d_distance,
 )
+from .inference import (
+    NullCalibration,
+    TwoSampleTestResult,
+    cross_match_test,
+    mst_two_sample_test,
+    nn_two_sample_test,
+    null_error_rate,
+)
 from .memory_efficient_validator import MemoryEfficientValidator
 from .metrics import (
     calculate_error_rate,
@@ -96,11 +104,13 @@ __all__ = [
     "DatasetRepository",
     "MemoryEfficientValidator",
     "MetricError",
+    "NullCalibration",
     "OptimizedDistanceMatrix",
     "OversampleQAError",
     "PydanticValidationConfig",
     "ReferenceSet",
     "StatisticalBenchmark",
+    "TwoSampleTestResult",
     "TypedValidator",
     "ValidationCache",
     "ValidationConfig",
@@ -119,6 +129,7 @@ __all__ = [
     "confidence_ratio",
     "correlation_distance",
     "create_benchmark_report",
+    "cross_match_test",
     "distance_matrix",
     "duplication_rate",
     "energy_distance",
@@ -137,7 +148,10 @@ __all__ = [
     "mahalanobis_distance",
     "minkowski_distance",
     "minority_recall_loss",
+    "mst_two_sample_test",
+    "nn_two_sample_test",
     "noise_sensitivity_diagnostic",
+    "null_error_rate",
     "plot_class_balance",
     "plot_distance_histogram",
     "plot_error_boxplot",
