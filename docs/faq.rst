@@ -71,6 +71,7 @@ Repro checklist
 - Record dependency versions (Python, NumPy, scikit-learn, imbalanced-learn).
 - Save the exact CLI or typed config used for each run.
 - Use ``poetry.lock`` to pin versions when sharing results.
+
 Which oversamplers are supported?
 ---------------------------------
 

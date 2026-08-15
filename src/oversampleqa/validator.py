@@ -291,7 +291,7 @@ def validate_oversampling(
     -----
     The error rate is a **relative** quantity. Its scale depends on
     ``hidden_ratio``, on the density of the data, and on dimensionality, so
-    values are not comparable across datasets. See :doc:`concepts`.
+    values are not comparable across datasets. See :doc:`/concepts`.
     """
     _validate_hidden_ratio(hidden_ratio)
     labels = np.unique(y)
