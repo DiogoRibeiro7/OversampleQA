@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 
+from .plugin_contract import MetricDomain
 from .types import DistanceMetricProtocol, FloatArray, ValidatorProtocol
 
 
@@ -21,15 +22,95 @@ class PluginManager:
         self._validator_plugins: dict[str, type[ValidatorProtocol]] = {}
 
     def register_metric(
-        self, name: str, metric_cls: type[DistanceMetricProtocol]
+        self,
+        name: str,
+        metric_cls: type[DistanceMetricProtocol],
+        *,
+        domain: MetricDomain = "real",
+        check_axioms: bool = True,
+        metric_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Register a metric class by name.
+        """Register a metric class by name, after checking it behaves like one.
+
+        Registration used to be a bare dictionary assignment: any object could
+        be registered under any name, silently replacing a built-in, and a
+        metric that violated the axioms would be discovered only by whoever
+        eventually distrusted its numbers.
+
+        Three checks now run, each raising :class:`~oversampleqa.PluginError`:
+
+        1. **Name collision.** A name already taken by a built-in or another
+           plugin is refused rather than overwritten.
+        2. **Signature.** The callable must accept two positional arguments.
+        3. **Axioms.** ``d(x, x) == 0``, ``d(x, y) > 0`` for distinct points,
+           symmetry, non-negativity and finiteness on random input.
+
+        The third is not hypothetical. The built-in ``hassanat`` shipped for
+        this project's entire history scoring ``[-5]`` and ``[5]`` as distance
+        zero, because it compared absolute values -- it was not a metric, and
+        nothing checked. This is that check.
 
         Args:
             name: Metric identifier.
-            metric_cls: Metric class implementing ``__call__``.
+            metric_cls: Metric callable or class implementing ``__call__``.
+            domain: Input the metric is defined on. See
+                :data:`~oversampleqa.plugin_contract.METRIC_DOMAINS`.
+            check_axioms: Run the axiom smoke check. Disable only for a metric
+                you have verified another way, and say why.
+            metric_kwargs: Extra arguments the metric needs, such as
+                ``cov_inv`` for Mahalanobis.
+
+        Raises:
+            PluginError: On collision, bad signature, or axiom failure.
         """
+        from .distance import _METRICS
+        from .exceptions import PluginError
+        from .plugin_contract import check_metric_axioms, validate_metric_signature
+
+        if name in _METRICS:
+            raise PluginError(
+                f"metric {name!r} is already a built-in. Registering over it "
+                "would silently change results for every caller using that "
+                "name; choose a different one."
+            )
+        if name in self._metric_plugins:
+            raise PluginError(
+                f"metric {name!r} is already registered by another plugin. "
+                "Unregister it first if replacement is intended."
+            )
+
+        candidate = metric_cls() if isinstance(metric_cls, type) else metric_cls
+        validate_metric_signature(candidate, name)
+
+        if check_axioms:
+            report = check_metric_axioms(
+                candidate, name, domain=domain, **(metric_kwargs or {})
+            )
+            if not report.ok:
+                detail = "\n  ".join(report.failures)
+                raise PluginError(
+                    f"metric {name!r} does not satisfy the distance axioms:\n"
+                    f"  {detail}\n"
+                    "A metric that violates these produces numbers that look "
+                    "plausible and mean nothing."
+                )
+
         self._metric_plugins[name] = metric_cls
+
+    def unregister_metric(self, name: str) -> None:
+        """Remove a registered metric plugin.
+
+        Args:
+            name: Metric identifier.
+
+        Raises:
+            PluginError: If no plugin is registered under that name.
+        """
+        from .exceptions import PluginError
+
+        if name not in self._metric_plugins:
+            raise PluginError(f"no metric plugin registered as {name!r}")
+        del self._metric_plugins[name]
 
     def register_validator(
         self, name: str, validator_cls: type[ValidatorProtocol]
@@ -99,16 +180,27 @@ class PluginManager:
 
     @staticmethod
     def _implements_metric(cls: type) -> bool:
-        """Return True if class looks like a metric callable.
+        """Return True if instances of ``cls`` are callable.
 
         Args:
             cls: Class object.
 
         Returns:
-            ``True`` if the class defines ``__call__``.
+            ``True`` if the class, or one of its bases, defines ``__call__``.
+
+        Notes:
+            This used to be ``callable(getattr(cls, "__call__", None))``, which
+            is ``True`` for **every** class: ``SomeClass.__call__`` resolves to
+            ``type.__call__``, the metaclass hook used to instantiate it, and
+            that is callable. Module discovery therefore classified every class
+            as a metric, and the validator branch below was unreachable -- no
+            validator has ever been discovered from a module.
+
+            Walking ``__mro__`` and looking in each ``__dict__`` asks the right
+            question: does the class itself define ``__call__``? ``object`` does
+            not, and the metaclass is not in the MRO.
         """
-        # `callable(cls)` would be True for any class, so probe the attribute.
-        return callable(getattr(cls, "__call__", None))
+        return any("__call__" in klass.__dict__ for klass in cls.__mro__)
 
     @staticmethod
     def _implements_validator(cls: type) -> bool:

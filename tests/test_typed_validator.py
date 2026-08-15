@@ -63,10 +63,15 @@ def test_validation_session_async():
 
 
 def test_plugin_registration():
-    @register_metric("unit_distance")
-    class UnitMetric:
-        def __call__(self, x1, x2, **kwargs):
-            return 1.0
+    @register_metric("scaled_manhattan")
+    class ScaledManhattan:
+        """A real metric. A constant 1.0 is not one: d(x, x) must be 0."""
 
-    metric_cls = plugin_manager.get_metric("unit_distance")
+        def __call__(self, x1, x2, **kwargs):
+            import numpy as np
+
+            return float(np.abs(np.asarray(x1) - np.asarray(x2)).sum())
+
+    metric_cls = plugin_manager.get_metric("scaled_manhattan")
     assert metric_cls()([0.0], [1.0]) == 1.0
+    assert metric_cls()([0.0], [0.0]) == 0.0

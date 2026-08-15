@@ -195,6 +195,28 @@ class ValidationDetails:
         """Whether more than one hold-out split was drawn."""
         return self.n_repeats > 1
 
+    def to_dict(self) -> dict[str, Any]:
+        """Flat, JSON-safe mapping.
+
+        ``dist_hidden`` and ``dist_min`` are deliberately excluded: they are
+        working arrays of shape ``(n_synthetic, n_reference)``, often megabytes,
+        and they are inputs to the summary rather than part of it. Callers that
+        need them have the dataclass.
+        """
+        return {
+            "error_rate": self.error_rate,
+            "n_errors": self.n_errors,
+            "n_synthetic": self.n_synthetic,
+            "n_ties": self.n_ties,
+            "duplication_rate": self.duplication_rate,
+            "reference": self.reference,
+            "n_repeats": self.n_repeats,
+            "rates": list(self.rates),
+            "mean": self.mean,
+            "std": self.std,
+            "interval": list(self.interval) if self.interval else None,
+        }
+
 
 @dataclass(frozen=True)
 class BenchmarkConfig:

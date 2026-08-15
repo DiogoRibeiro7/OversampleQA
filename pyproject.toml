@@ -139,6 +139,12 @@ module = "oversampleqa.cli_enhanced"
 disable_error_code = ["arg-type", "no-any-return", "assignment", "index"]
 
 [[tool.mypy.overrides]]
+# scikit-learn ships no type stubs, so BaseEstimator is Any and subclassing it
+# is an error under strict mode. The estimator's own surface is fully annotated.
+module = "oversampleqa.estimator"
+disable_error_code = ["misc"]
+
+[[tool.mypy.overrides]]
 # matplotlib has no bundled stubs, so every axes/figure call is Any.
 module = "oversampleqa.plotting"
 disable_error_code = ["no-any-return", "arg-type", "union-attr"]
