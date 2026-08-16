@@ -3,16 +3,29 @@
 from __future__ import annotations
 
 import logging
+import pathlib
 import warnings
 
 import numpy as np
 import pandas as pd
 
 from ._provenance import openml_provenance, synthetic_provenance
+from ._render import frame_to_html, frame_to_markdown
 from ._rng import RandomStateLike, as_generator
 from .validator import validate_oversampling
 
 logger = logging.getLogger(__name__)
+
+#: Column order of the long-format frame returned by :func:`run_benchmark`.
+#: One row per (dataset, oversampler, metric, hidden_ratio, run).
+_BENCHMARK_COLUMNS = (
+    "dataset",
+    "oversampler",
+    "metric",
+    "hidden_ratio",
+    "run",
+    "error_rate",
+)
 
 
 
@@ -88,12 +101,21 @@ def run_benchmark(
                         {
                             "dataset": data.get("name", "dataset"),
                             "oversampler": oversampler.__class__.__name__,
+                            # The metric is part of what identifies a
+                            # measurement, not just an argument to it. Without
+                            # it, concatenating two sweeps run under different
+                            # metrics gives a frame whose rows cannot be told
+                            # apart -- and error rates are not comparable
+                            # across metrics.
+                            "metric": distance_metric,
                             "hidden_ratio": ratio,
                             "run": run,
                             "error_rate": error,
                         }
                     )
-    return pd.DataFrame(results)
+    # Fixed column order even when empty, so a caller that correctly handles
+    # "no results" still gets a frame it can select columns from.
+    return pd.DataFrame(results, columns=list(_BENCHMARK_COLUMNS))
 
 
 def load_standard_datasets(include_openml: bool = False) -> list[dict]:
@@ -347,16 +369,31 @@ def export_benchmark_results(
     Args:
         results: Benchmark results dataframe.
         output_path: Destination path.
-        fmt: Output format (csv, json, markdown).
+        fmt: Output format: ``csv``, ``json``, ``markdown`` or ``html``.
+            All four render the same ranking frame.
+
+    Raises:
+        ValueError: If ``fmt`` is not one of the four.
     """
     summary = compute_ranking(results)
     fmt = fmt.lower()
     if fmt == "csv":
         summary.to_csv(output_path)
     elif fmt == "json":
+        # nan becomes null. JSON has no NaN literal, and emitting one produces a
+        # document that strict parsers reject; null at least round-trips.
         summary.reset_index().to_json(output_path, orient="records")
     elif fmt == "markdown":
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(summary.to_csv(sep="|"))
+        # This used to be `summary.to_csv(sep="|")`, which is not Markdown: no
+        # header separator row and no edge pipes, so it rendered as one run-on
+        # paragraph. The same bug was fixed in report.py; it survived here
+        # because the renderer was duplicated rather than shared.
+        pathlib.Path(output_path).write_text(
+            frame_to_markdown(summary), encoding="utf-8"
+        )
+    elif fmt == "html":
+        pathlib.Path(output_path).write_text(
+            frame_to_html(summary), encoding="utf-8"
+        )
     else:
-        raise ValueError("fmt must be 'csv', 'json', or 'markdown'")
+        raise ValueError("fmt must be 'csv', 'json', 'markdown' or 'html'")

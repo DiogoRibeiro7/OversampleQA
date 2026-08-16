@@ -1,6 +1,7 @@
 from imblearn.over_sampling import SMOTE
 
 from oversampleqa.benchmark import (
+    _BENCHMARK_COLUMNS,
     compute_ranking,
     export_benchmark_results,
     load_standard_datasets,
@@ -14,13 +15,11 @@ def test_run_benchmark_basic():
     oversamplers = [SMOTE(random_state=0)]
     df = run_benchmark(datasets, oversamplers, hidden_ratios=[0.1], n_runs=1)
     assert not df.empty
-    assert set(df.columns) == {
-        "dataset",
-        "oversampler",
-        "hidden_ratio",
-        "run",
-        "error_rate",
-    }
+    # Pinned against the declared schema rather than a literal, so the two
+    # cannot drift apart. `metric` joined the frame because it identifies a
+    # measurement: error rates are not comparable across metrics, so rows from
+    # two sweeps are indistinguishable without it.
+    assert list(df.columns) == list(_BENCHMARK_COLUMNS)
 
 
 def test_export_and_ranking(tmp_path):

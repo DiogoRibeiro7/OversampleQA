@@ -12,6 +12,14 @@ maintained manually.
 
 ### Added
 
+- `run_benchmark` records the distance metric as a column. It identifies a
+  measurement rather than merely parameterising one: without it, concatenating
+  two sweeps run under different metrics gives a frame whose rows cannot be
+  told apart, and error rates are not comparable across metrics — on one
+  dataset hassanat scores roughly twice euclidean.
+- `export_benchmark_results` gains an `html` format, so CSV, JSON, Markdown and
+  HTML all render the same ranking frame through one code path.
+
 - Every dataset from `advanced_benchmark.DatasetRepository` now carries a
   `provenance` record — source, generator, params, url, license and notes —
   matching what `benchmark.load_standard_datasets` already did. The two
@@ -25,6 +33,13 @@ maintained manually.
 
 ### Fixed
 
+- **`export_benchmark_results(fmt="markdown")` did not emit Markdown.** It used
+  `to_csv(sep="|")` — no header separator row, no edge pipes — the same defect
+  fixed in `report.py` for 0.4.0. It survived here because the renderer was
+  duplicated rather than shared; both now come from `oversampleqa._render`.
+- `run_benchmark` returned a `(0, 0)` frame when given no datasets, so a caller
+  correctly handling "no results" still hit `KeyError` on any column access.
+  The column order is now fixed even when empty.
 - `docs/requirements.txt` pinned `sphinx==8.1.3` and `matplotlib==3.10.9` and
   was installed after `poetry install`, so the docs job built against two
   packages the lock did not govern. The docs toolchain moved into a locked
