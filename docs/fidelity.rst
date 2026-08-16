@@ -155,6 +155,43 @@ Worked example
    - Memorisation: synthetic points sit on top of training points.
      The error rate cannot say anything about synthesis quality here.
 
+Comparing samplers visually
+---------------------------
+
+:func:`~oversampleqa.plotting.plot_fidelity_radar` puts several samplers on one
+chart across six axes: precision, recall, coverage, density, diversity and
+boundary safety.
+
+.. code-block:: python
+
+   from oversampleqa.plotting import plot_fidelity_radar
+
+   plot_fidelity_radar({"SMOTE": smote_report,
+                        "RandomOverSampler": ros_report},
+                       save_path="fidelity.png")
+
+Two properties of the chart are worth knowing before reading one.
+
+**Every axis points outward for better.** ``boundary safety`` is plotted as the
+complement of the strict violation rate, because the raw rate is better when
+small. A radar chart is read by the area of its polygon, so a chart whose axes
+disagree on direction cannot be read at all.
+
+**Density and diversity are clipped at 1.0.** Neither is bounded above by
+construction — density routinely exceeds 1 when synthetic points cluster more
+tightly than the real minority, and the diversity ratio is a quotient of two
+median distances. Any clipped value is named in a caption under the figure,
+since a value of 2.4 would otherwise be indistinguishable from 1.0.
+
+The validation error rate is deliberately not an axis. It measures whether
+synthetic points are confusable with held-out majority, which is a different
+question from manifold quality, and placing it on the same polygon invites
+reading the two as commensurable.
+
+Metrics that are ``nan`` because nothing could be measured stay ``nan`` and draw
+a gap in the polygon rather than being flattened to zero — a zero would be
+indistinguishable from a genuine measurement of total failure.
+
 References
 ----------
 

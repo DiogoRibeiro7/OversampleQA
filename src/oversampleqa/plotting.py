@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .inference import FriedmanNemenyiResult
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.projections.polar import PolarAxes
 from numpy.typing import NDArray
 from sklearn.decomposition import PCA
 
@@ -357,3 +359,159 @@ def plot_critical_difference(
         plt.close(fig)
     else:
         plt.close(fig)
+
+
+# Radar axes for the fidelity suite, as (label, payload key, invert, bounded).
+#
+# Every axis is oriented so that outward means better. A radar chart whose
+# spokes disagree on direction cannot be read at all: the eye judges the area of
+# the polygon, so a larger polygon has to mean "better" on every spoke or it
+# means nothing. `boundary_violation_strict` is therefore plotted as its
+# complement rather than raw.
+#
+# `bounded` records whether the metric is confined to [0, 1] by construction.
+# Density and the memorisation ratio are not -- density routinely exceeds 1 when
+# synthetic points cluster more tightly than the real minority, and the
+# memorisation ratio is a quotient of two median distances with no upper limit.
+# Both are clipped for drawing, and the clipping is reported in the caption,
+# because a value of 2.4 and a value of 1.0 otherwise render identically.
+_FIDELITY_AXES: tuple[tuple[str, str, bool, bool], ...] = (
+    ("precision", "precision", False, True),
+    ("recall", "recall", False, True),
+    ("coverage", "coverage", False, True),
+    ("density", "density", False, False),
+    ("diversity", "memorisation_distance_ratio", False, False),
+    ("boundary safety", "boundary_violation_strict", True, True),
+)
+
+
+def _fidelity_axis_values(
+    payload: Mapping[str, Any],
+    selected: Sequence[tuple[str, str, bool, bool]],
+    name: str = "",
+) -> tuple[list[float], list[str]]:
+    """Map one report onto the radial axes, returning values and clip notes.
+
+    Split out of :func:`plot_fidelity_radar` so the orientation and clipping
+    rules can be tested directly. Sealed inside the drawing call, the only
+    assertion available is that a file appeared, which would not catch an
+    inverted axis pointing the wrong way.
+
+    Args:
+        payload: Flat mapping of metric name to value.
+        selected: Axis specs as ``(label, key, invert, bounded)``.
+        name: Oversampler name, used only to label clip notes.
+
+    Returns:
+        The per-axis values in ``selected`` order, and a note for every value
+        that had to be clipped to 1.0.
+    """
+    values: list[float] = []
+    notes: list[str] = []
+    for label, key, invert, bounded in selected:
+        raw = float(payload.get(key, np.nan))
+        # nan is preserved rather than coerced to 0.0: a zero would be
+        # indistinguishable from a genuine measurement of total failure.
+        value = 1.0 - raw if invert and not np.isnan(raw) else raw
+        if not bounded and not np.isnan(value) and value > 1.0:
+            notes.append(f"{name} {label}={value:.2f}".strip())
+            value = 1.0
+        values.append(value)
+    return values, notes
+
+
+def plot_fidelity_radar(
+    reports: Mapping[str, Any],
+    save_path: str | None = None,
+    metrics: Sequence[str] | None = None,
+) -> None:
+    """Compare oversamplers across the fidelity suite on one radar chart.
+
+    Outward is better on every axis. ``boundary safety`` is the complement of
+    the strict violation rate for that reason; the raw rate is better when
+    small, and mixing directions on one chart makes the area meaningless.
+
+    The validation error rate is deliberately absent. It answers a different
+    question -- whether synthetic points are confusable with held-out majority
+    -- and putting it on the same polygon invites reading it as commensurable
+    with the manifold metrics, which is the confusion
+    :doc:`/fidelity` exists to prevent.
+
+    Metrics that are ``nan`` because nothing could be measured are left as
+    ``nan``, which draws a gap in the polygon. They are not coerced to zero: a
+    zero here would be indistinguishable from a genuine measurement of total
+    failure.
+
+    Args:
+        reports: Mapping of oversampler name to a
+            :class:`~oversampleqa.fidelity.FidelityReport`, or to any mapping
+            carrying the same keys.
+        save_path: Where to write the figure. Closed without saving if omitted.
+        metrics: Subset of axis labels to draw, in order. Defaults to all six.
+
+    Raises:
+        ValueError: If ``reports`` is empty, if ``metrics`` names an unknown
+            axis, or if fewer than three axes are selected -- a radar chart
+            with two spokes is a line, and with one is a point.
+    """
+    if not reports:
+        raise ValueError("reports is empty; nothing to plot")
+
+    known = {label: spec for spec in _FIDELITY_AXES for label in (spec[0],)}
+    if metrics is None:
+        selected = list(_FIDELITY_AXES)
+    else:
+        unknown = [m for m in metrics if m not in known]
+        if unknown:
+            raise ValueError(
+                f"unknown metric(s) {unknown}; available: {sorted(known)}"
+            )
+        selected = [known[m] for m in metrics]
+    if len(selected) < 3:
+        raise ValueError(
+            f"a radar chart needs at least 3 axes, got {len(selected)}"
+        )
+
+    labels = [spec[0] for spec in selected]
+    angles = np.linspace(0.0, 2 * np.pi, len(selected), endpoint=False)
+    closed = np.concatenate([angles, angles[:1]])  # close the polygon
+
+    # subplot_kw={"polar": True} really does return a PolarAxes, but the stubs
+    # only promise Axes, which has no set_rlabel_position.
+    fig, base_ax = plt.subplots(figsize=(7, 7), subplot_kw={"polar": True})
+    ax = cast(PolarAxes, base_ax)
+    clipped: list[str] = []
+
+    for name, report in reports.items():
+        payload = report.to_dict() if hasattr(report, "to_dict") else dict(report)
+        values, notes = _fidelity_axis_values(payload, selected, name)
+        clipped.extend(notes)
+        series = np.concatenate([np.asarray(values, dtype=float), [values[0]]])
+        ax.plot(closed, series, linewidth=1.8, label=name)
+        ax.fill(closed, series, alpha=0.12)
+
+    ax.set_xticks(angles)
+    ax.set_xticklabels(labels)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_yticks([0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels(["0.25", "0.50", "0.75", "1.00"], fontsize=7)
+    # Park the radial labels halfway between two spokes. Left at the default
+    # they sit on the first axis, directly under the data lines.
+    ax.set_rlabel_position(180.0 / len(selected))
+    ax.legend(loc="upper right", bbox_to_anchor=(1.28, 1.10), fontsize=8)
+    ax.set_title("Fidelity profile (outward is better on every axis)", pad=24)
+
+    if clipped:
+        fig.text(
+            0.5,
+            0.015,
+            "clipped at 1.0: " + ", ".join(clipped),
+            ha="center",
+            fontsize=7,
+            style="italic",
+        )
+
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path)
+    plt.close(fig)
