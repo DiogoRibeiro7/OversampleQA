@@ -104,3 +104,97 @@ def test_format_statistical_summary_reports_significance():
 
 def test_format_statistical_summary_handles_empty():
     assert "No benchmark results" in format_statistical_summary(pd.DataFrame())
+
+
+# --- silent empty results -------------------------------------------------
+
+
+def test_empty_results_keep_their_columns():
+    """A (0, 0) frame raises KeyError on any column access.
+
+    A caller that correctly handles "no results" still breaks if the empty
+    frame has no columns, so the shape must be stable whether or not any
+    combination succeeded.
+    """
+    import warnings as _warnings
+
+    from imblearn.over_sampling import SMOTE
+
+    from oversampleqa import StatisticalBenchmark
+    from oversampleqa.benchmark import load_standard_datasets
+
+    # 50 minority split into 3 folds leaves 33 per training fold; a 10%
+    # hold-out is then 3 points, below min_hidden, so every fold fails.
+    datasets = [d for d in load_standard_datasets() if d["name"] in {"moons"}]
+    with _warnings.catch_warnings():
+        _warnings.simplefilter("ignore")
+        frame = StatisticalBenchmark(
+            n_folds=3, n_repeats=1, random_state=42
+        ).run_comprehensive_benchmark(
+            datasets, [SMOTE(random_state=0)], metrics=["euclidean"]
+        )
+
+    assert frame.empty
+    assert "mean_error" in frame.columns
+    assert list(frame["mean_error"]) == []
+
+
+def test_skipped_combinations_are_summarised_once():
+    """Per-fold warnings number in the hundreds on a real sweep.
+
+    Without a summary the caller sees an empty frame and has to reconstruct
+    why from a flood of individual messages.
+    """
+    import warnings as _warnings
+
+    from imblearn.over_sampling import SMOTE
+
+    from oversampleqa import StatisticalBenchmark
+    from oversampleqa.benchmark import load_standard_datasets
+
+    datasets = [
+        d for d in load_standard_datasets() if d["name"] in {"moons", "circles"}
+    ]
+    with _warnings.catch_warnings(record=True) as caught:
+        _warnings.simplefilter("always")
+        StatisticalBenchmark(
+            n_folds=3, n_repeats=1, random_state=42
+        ).run_comprehensive_benchmark(
+            datasets, [SMOTE(random_state=0)], metrics=["euclidean"]
+        )
+
+    summaries = [
+        str(w.message)
+        for w in caught
+        if "combinations produced no usable folds" in str(w.message)
+    ]
+    assert len(summaries) == 1
+    assert "moons" in summaries[0]
+    assert "fewer" in summaries[0]
+
+
+def test_reused_engine_does_not_accumulate_skips():
+    """The skip list is per run, not per engine."""
+    import warnings as _warnings
+
+    from imblearn.over_sampling import SMOTE
+
+    from oversampleqa import StatisticalBenchmark
+    from oversampleqa.benchmark import load_standard_datasets
+
+    datasets = [d for d in load_standard_datasets() if d["name"] in {"moons"}]
+    engine = StatisticalBenchmark(n_folds=3, n_repeats=1, random_state=42)
+    counts = []
+    for _ in range(2):
+        with _warnings.catch_warnings(record=True) as caught:
+            _warnings.simplefilter("always")
+            engine.run_comprehensive_benchmark(
+                datasets, [SMOTE(random_state=0)], metrics=["euclidean"]
+            )
+        summaries = [
+            str(w.message)
+            for w in caught
+            if "combinations produced no usable folds" in str(w.message)
+        ]
+        counts.append(summaries[0].split()[0] if summaries else "0")
+    assert counts[0] == counts[1], f"skip count grew across runs: {counts}"

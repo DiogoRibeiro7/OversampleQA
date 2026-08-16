@@ -10,6 +10,18 @@ maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`StatisticalBenchmark` returned an empty frame with no columns and no
+  explanation when every fold was skipped.** A minority class small enough that
+  splitting it into folds leaves too few points to hold out makes every fold
+  raise; those were caught and warned per fold, then the combination was
+  dropped silently. With enough datasets and samplers the per-fold warnings run
+  to hundreds, and the return value said nothing. The frame now keeps its nine
+  columns when empty — a `(0, 0)` frame raises `KeyError` on any column access,
+  so a caller that correctly handles "no results" still broke — and one summary
+  warning names the dropped combinations and the likely cause.
+
 ### Added
 
 - `oversampleqa fidelity` subcommand, surfacing the fidelity/diversity split
