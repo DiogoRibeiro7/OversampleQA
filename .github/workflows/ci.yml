@@ -66,9 +66,7 @@ jobs:
       with:
         python-version: "3.12"
         cache: "pip"
-        cache-dependency-path: |
-          docs/requirements.txt
-          poetry.lock
+        cache-dependency-path: poetry.lock
     - name: Install pandoc
       # nbsphinx shells out to pandoc to render the .ipynb tutorials; without it
       # the build dies with PandocMissing.
@@ -80,8 +78,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install "poetry==2.4.1"
         poetry check --lock
-        poetry install --with dev
-        poetry run pip install -r docs/requirements.txt
+        poetry install --with dev,docs
     - name: Sync gallery examples
       run: poetry run python scripts/sync_gallery_examples.py
     - name: Build docs (warnings as errors)

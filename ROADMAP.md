@@ -105,12 +105,11 @@ person; the ordering below reflects priority, not a delivery commitment.
 
 ### Near-term
 
-- **`docs/requirements.txt` pins `matplotlib==3.10.9`** and is installed after
-  `poetry install`, so the docs job builds against a different matplotlib than
-  the test jobs. Undermines the lockfile work.
-- **Dataset provenance.** The built-in catalog has no licensing or provenance
-  metadata. Datasets are fetched from OpenML at run time with no recorded
-  version, so a "reproducible" benchmark is only as stable as OpenML.
+- **`DatasetRepository` records no provenance.** `benchmark.load_standard_datasets`
+  attaches source, generator, params, url, license and notes to every dataset
+  and pins the OpenML version, but `advanced_benchmark.DatasetRepository`
+  returns bare `name`/`data`/`target`/`minority_label` dicts with none of it.
+  The two catalogs should agree.
 - **Long-format benchmark export.** Results are one row per
   (dataset, oversampler, hidden_ratio, run) but statistics are spread across
   columns; a row per (dataset, oversampler, metric, repeat) would make grouping
