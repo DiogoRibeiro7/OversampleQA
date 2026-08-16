@@ -10,6 +10,21 @@ maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- `generate_report` accepts `fidelity_reports`, appending a fidelity and
+  diversity section with the interpretation notes. A report carrying only the
+  error rate omits the axis that usually decides which sampler to use.
+- `frame_to_markdown` renders a DataFrame as a real Markdown table.
+
+### Fixed
+
+- **The Markdown report was not Markdown.** It used `to_csv(sep="|")`, which
+  produces no header separator row and no leading or trailing pipes, so it
+  rendered as one run-on paragraph rather than a table in any viewer. Floats
+  were also unrounded, putting values like `0.21000000000000002` into a
+  document meant to be read.
+
 ### Fixed
 
 - **`StatisticalBenchmark` returned an empty frame with no columns and no
