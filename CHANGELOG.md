@@ -10,6 +10,16 @@ maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- `plot_fidelity_radar` compares samplers across the fidelity suite on one
+  radar chart. Every axis is oriented so outward is better — boundary safety is
+  plotted as the complement of the violation rate — because a radar is read by
+  the area of its polygon and axes that disagree on direction make that area
+  meaningless. Density and diversity are unbounded above, so they are clipped at
+  1.0 and any clipped value is named in a caption; `nan` stays `nan` and draws a
+  gap rather than being flattened to zero.
+
 ## [0.4.0] - 2026-08-16
 
 ### Added
