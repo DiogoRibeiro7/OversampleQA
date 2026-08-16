@@ -10,12 +10,21 @@ maintained manually.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-16
+
 ### Added
 
 - `generate_report` accepts `fidelity_reports`, appending a fidelity and
   diversity section with the interpretation notes. A report carrying only the
   error rate omits the axis that usually decides which sampler to use.
 - `frame_to_markdown` renders a DataFrame as a real Markdown table.
+- `oversampleqa fidelity` subcommand, surfacing the fidelity/diversity split
+  without writing Python. Reports precision, recall, density, coverage, the
+  memorisation ratio and boundary violations, with `--utility` for downstream
+  gain and `-o` for JSON.
+- Gallery example `examples/fidelity_memorisation.py`, showing the case the
+  fidelity module exists for: three of four metrics cannot separate SMOTE from
+  RandomOverSampler, and only the memorisation ratio does.
 
 ### Fixed
 
@@ -24,9 +33,6 @@ maintained manually.
   rendered as one run-on paragraph rather than a table in any viewer. Floats
   were also unrounded, putting values like `0.21000000000000002` into a
   document meant to be read.
-
-### Fixed
-
 - **`StatisticalBenchmark` returned an empty frame with no columns and no
   explanation when every fold was skipped.** A minority class small enough that
   splitting it into folds leaves too few points to hold out makes every fold
@@ -36,16 +42,6 @@ maintained manually.
   columns when empty — a `(0, 0)` frame raises `KeyError` on any column access,
   so a caller that correctly handles "no results" still broke — and one summary
   warning names the dropped combinations and the likely cause.
-
-### Added
-
-- `oversampleqa fidelity` subcommand, surfacing the fidelity/diversity split
-  without writing Python. Reports precision, recall, density, coverage, the
-  memorisation ratio and boundary violations, with `--utility` for downstream
-  gain and `-o` for JSON.
-- Gallery example `examples/fidelity_memorisation.py`, showing the case the
-  fidelity module exists for: three of four metrics cannot separate SMOTE from
-  RandomOverSampler, and only the memorisation ratio does.
 
 ## [0.3.0] - 2026-08-16
 
@@ -435,7 +431,8 @@ Initial release.
 - Plugin system for custom metrics and validators.
 - Sphinx documentation, examples gallery, and tutorials.
 
-[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.4.0
 [0.3.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.3.0
 [0.2.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.2.0
 [0.1.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.1.0
