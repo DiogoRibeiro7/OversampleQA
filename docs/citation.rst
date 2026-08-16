@@ -25,7 +25,7 @@ BibTeX
      author  = {Ribeiro, Diogo},
      title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
                 and benchmark oversampling methods}},
-     version = {0.3.0},
+     version = {0.5.0},
      year    = {2026},
      doi     = {10.5281/zenodo.21940361},
      url     = {https://doi.org/10.5281/zenodo.21940361}
@@ -41,7 +41,7 @@ Concept DOI — ``10.5281/zenodo.21940361``
    versions* on the record page. This is what the README badge and
    ``CITATION.cff`` point at, because it never goes stale.
 
-Version DOI — ``10.5281/zenodo.21959782`` for 0.3.0
+Version DOI — ``10.5281/zenodo.21967099`` for 0.5.0
    Points at one specific release. Use it in a paper, where the reader needs the
    exact code that produced the results.
 

@@ -1,6 +1,6 @@
 # OversampleQA Roadmap
 
-This roadmap reflects a repo review completed on June 19, 2026. The test suite is green (`103 passed`), but several release and quality gates still do not match the repo's stated maturity.
+Last revised August 16, 2026, at v0.5.0.
 
 ## Project Goals
 
@@ -10,149 +10,139 @@ This roadmap reflects a repo review completed on June 19, 2026. The test suite i
 - Offer a fast path for practitioners and a deeper path for research use cases.
 - Stay compatible with scikit-learn and imbalanced-learn conventions.
 
-## Current State (v0.1.0, reviewed June 19, 2026)
+## Current State (v0.5.0)
 
-What is working:
-
-- Core validation, benchmarking, reporting, plotting, and CLI flows are implemented.
-- `poetry run pytest` passes across 241 tests.
-- `make lint` (`ruff check src tests`) passes clean.
-- `make typecheck` (`mypy src`) passes clean. The numerical core is fully strict;
+- 427 tests in the main suite, plus 13 in the reference plugin, green on Linux
+  and Windows across Python 3.10–3.12.
+- `ruff check` and `mypy src` pass clean. The numerical core is fully strict;
   the CLI, plotting and benchmark modules carry scoped, documented relaxations
   at their untyped third-party boundaries.
-- `make docs` passes with warnings treated as errors, enforced in CI.
-- Developer tooling runs on Windows and Linux, and both are in the CI matrix.
+- Docs build under `-W`, enforced in CI.
+- `poetry.lock` is tracked, poetry is pinned, and `poetry check --lock` gates
+  installs, so CI tests a fixed dependency set.
+- Public API frozen behind a snapshot test; deprecation policy documented and
+  mechanised.
 
-What is not yet at release-ready quality:
+### Distribution
 
-- Async mode in `typed_validator.py` is not a working execution mode. It now
-  raises a clear error rather than failing obscurely: the work is CPU-bound
-  NumPy, so an event loop offers it no concurrency. Real parallelism over
-  repeats and datasets is not implemented.
-- The statistical claims in `advanced_benchmark.py` do not hold. See the
-  findings below.
+**This package is not published to PyPI, and there is no plan to publish it.**
+Releases are cut by hand and archived on Zenodo, which mints the DOI. Install
+from the repository or from a Zenodo archive.
 
-## Review Findings To Drive The Roadmap
+| Version | DOI |
+|---|---|
+| Concept (all versions) | [10.5281/zenodo.21940361](https://doi.org/10.5281/zenodo.21940361) |
+| 0.5.0 | [10.5281/zenodo.21967099](https://doi.org/10.5281/zenodo.21967099) |
+| 0.4.0 | [10.5281/zenodo.21965065](https://doi.org/10.5281/zenodo.21965065) |
+| 0.3.0 | [10.5281/zenodo.21959782](https://doi.org/10.5281/zenodo.21959782) |
+| 0.2.0 | [10.5281/zenodo.21940362](https://doi.org/10.5281/zenodo.21940362) |
 
-### Bugs
+## Delivered
 
-- `src/oversampleqa/typed_validator.py` has latent runtime/type defects:
-  - `_wald_confidence_interval()` annotates `Tuple[float, float]` but `Tuple` is not imported.
-  - `ServiceRegistry.get()` raises `ConfigurationError`, but that symbol is not imported or defined in the module.
-  - `validation_session()` uses `return` inside `finally`, which can suppress exceptions.
-  - `ValidationMode.ASYNC` calls `run_until_complete()`, which is unsafe when already inside a running event loop.
-- `docs/gallery/index.rst` and generated gallery pages cause unresolved-title and broken-cross-reference warnings, so the docs are not compatible with a `-W` build yet.
-- `Makefile` commands are not portable to Windows. `clean` is broken in a PowerShell-first environment, and the docs target depends on Unix shell chaining.
-- ~~`src/oversampleqa/caching.py` uses `@lru_cache` on an instance method backed by mutable temporary state (`self._distance_args`).~~ **Resolved.** Replaced with a lock-guarded LRU keyed on the content hash; the thread-safety contract is now stated and tested.
+### v0.2.0 — correctness and release-gate credibility
 
-### Improvements
+- Typed-validator defects fixed: undefined `ConfigurationError`, unimported
+  `Tuple`, `return` inside `finally`, and the async mode that threw under a
+  running loop. The Wald interval was replaced with Wilson, which does not
+  degenerate near a zero error rate.
+- Ruff had no configuration at all, so the project inherited whatever the
+  installed version defaulted to. The rule set is now explicit, every exemption
+  carrying a reason. Black, isort and flake8 removed.
+- Docs build warning-clean under `-W`. 33 orphaned autosummary stubs that
+  duplicated the hand-written API pages were removed.
+- Tooling is cross-platform; Windows is in the CI matrix.
+- Caching rebuilt: opt-in rather than constructed at import, no `lru_cache` on
+  an instance method, no live object in the disk key, enforced eviction.
 
-- Reduce the quality-gate gap between the README/roadmap promises and reality: lint, typecheck, docs, and release automation should all be verifiably green.
-- Add explicit cross-platform maintenance for development tooling and CI, not just package runtime code.
-- Add focused tests for async validation, service-registry error paths, and docs/gallery generation.
-- Tighten plugin discovery and validation so custom extensions fail with actionable errors instead of permissive duck-typing.
-- Turn docs and benchmark outputs into reproducible artifacts with pinned seeds, dataset provenance, and warning-free builds.
+### v0.3.0 — statistical honesty and fidelity
 
-### New Features
+- **`oversampleqa.inference`.** `null_error_rate` gives the error rate a
+  reference scale by scoring real held-out minority points through the same
+  pipeline. Three nearest-neighbour two-sample tests with permutation p-values.
+  `error_rate_interval` uses a parent-block bootstrap, because synthetic points
+  sharing a SMOTE parent are not independent trials — on 200 points from 40
+  parents the interval is 2.3× wider than Wilson.
+- `friedman_nemenyi` and `plot_critical_difference` implement the Demšar (2006)
+  protocol, which is the benchmark's actual question and was absent.
+- **`oversampleqa.fidelity`.** Separates "realistic" from "diverse", which one
+  scalar cannot. `RandomOverSampler` scores an error rate comparable to SMOTE's
+  while contributing no information at all; only the memorisation ratio
+  separates them.
+- Benjamini–Hochberg correction alongside Holm and Bonferroni.
+- **The real Hassanat distance.** The built-in implementation had shipped for
+  the project's entire history scoring `[-5]` and `[5]` as distance zero — it
+  compared absolute values, so it violated the identity of indiscernibles and
+  was not a metric. Every number it produced looked plausible.
 
-- Surface statistical benchmark outputs directly in exported reports and CLI summaries.
-- Publish a reference plugin that demonstrates the supported metric/validator extension contract.
-- Add a documented benchmark catalog with dataset licenses, provenance, and pinned reference results.
-- Add performance-regression tracking for distance matrices, validator throughput, and memory-efficient paths.
+### v0.4.0 — reporting
 
-## Milestones
+- `oversampleqa fidelity` subcommand and a fidelity block in reports.
+- **The Markdown report was not Markdown.** It used `to_csv(sep="|")`, so it had
+  no header separator row and no edge pipes and had never rendered as a table.
+- `StatisticalBenchmark` returned a `(0, 0)` frame with no explanation when
+  every fold was skipped; it now keeps its columns and warns once with the
+  cause.
 
-Owner for all milestones: `diogoribeiro7`.
+### v0.5.0 — extensibility and public API hardening
 
-### v0.2.0 — reset target: July 31, 2026
+- Public API frozen behind a committed snapshot test, so drift shows up in
+  review rather than at release. `docs/api_stability.md` documents what is
+  public and what deprecation means pre-1.0.
+- `deprecated()` decorator mechanising that policy.
+- Entry-point plugin discovery, with a reference plugin in `examples/plugins/`
+  installed and tested in CI.
+- Plugin registration rejects name collisions, bad signatures, and metrics that
+  fail an axiom smoke check — the lesson from the Hassanat defect, made
+  structural. `register_validator` had been a bare dictionary assignment.
+- `plot_fidelity_radar` for cross-sampler comparison.
+- **`poetry.lock` was gitignored**, so CI re-resolved every dependency on every
+  run and no two runs were guaranteed to test the same versions.
 
-Focus: correctness and release-gate credibility.
+## Open Work
 
-Scope:
+Not scheduled against dates. This is a research toolkit maintained by one
+person; the ordering below reflects priority, not a delivery commitment.
 
-Delivered:
+### Near-term
 
-- Typed-validator correctness bugs fixed: the undefined `ConfigurationError`,
-  the unimported `Tuple`, the `return` inside `finally`, and the async mode that
-  threw under a running loop. The Wald interval was replaced with Wilson, which
-  does not degenerate near a zero error rate. All four paths now have tests.
-- `make lint` and `make typecheck` pass. Ruff had no configuration at all, so the
-  project inherited whatever the installed version defaulted to; the rule set is
-  now explicit, with every exemption carrying a reason.
-- Docs build warning-clean under `-W`, enforced in CI. 33 orphaned autosummary
-  stubs that duplicated the hand-written API pages were removed, along with the
-  `exclude_patterns` entry that existed only to hide them.
-- Tooling is cross-platform: `clean` is a Python script, docs invoke
-  `sphinx-build` directly, and Windows is in the CI matrix.
-- Caching was rebuilt: opt-in rather than constructed at import, no `lru_cache`
-  on an instance method, no live object in the disk key, enforced eviction, and
-  read-only returns.
-- Tooling consolidated on ruff; black, isort and flake8 are gone.
+- **`docs/requirements.txt` pins `matplotlib==3.10.9`** and is installed after
+  `poetry install`, so the docs job builds against a different matplotlib than
+  the test jobs. Undermines the lockfile work.
+- **Dataset provenance.** The built-in catalog has no licensing or provenance
+  metadata. Datasets are fetched from OpenML at run time with no recorded
+  version, so a "reproducible" benchmark is only as stable as OpenML.
+- **Long-format benchmark export.** Results are one row per
+  (dataset, oversampler, hidden_ratio, run) but statistics are spread across
+  columns; a row per (dataset, oversampler, metric, repeat) would make grouping
+  and joining trivial and remove bespoke reshaping from `report.py`.
 
-Definition of Done:
+### Later
 
-- `poetry run pytest`, `make lint`, and `make typecheck` all pass on a clean
-  checkout. **Met.**
-- `make docs` succeeds with warnings treated as errors. **Met.**
-- Typed validator async/session paths have dedicated tests. **Met.**
-- The documented developer commands work on both Windows and Linux. **Met.**
+- Real parallelism across repeats and datasets. `ValidationMode.ASYNC` raises
+  rather than pretending: the work is CPU-bound NumPy, so an event loop offers
+  no concurrency. Process-level parallelism is the honest version.
+- Performance-regression tracking beyond the current scheduled, deliberately
+  non-blocking workflow. Timing checks on shared runners produce false failures
+  and train people to ignore red builds.
+- A documented benchmark catalog with pinned reference results.
 
-### v0.3.0 — target: September 30, 2026
+### v1.0.0
 
-Focus: reproducible benchmarking and report depth.
+Focus: a stable contract, not automated publishing.
 
-Scope:
-
-- Expand the built-in dataset catalog with explicit licensing and provenance metadata.
-- Surface confidence intervals, effect sizes, and p-values in CLI output and exported reports, not only in the API.
-- Add a reproducible benchmark-results page with pinned seeds/configuration.
-- Add performance/regression checks for distance-matrix generation and memory-efficient validation.
-- Export benchmark results in a more analysis-friendly shape across CSV/JSON/Markdown outputs.
-
-Definition of Done:
-
-- Benchmark suite runs on at least 3 documented datasets without failures.
-- Statistical fields are visible in CLI summaries and exported reports.
-- A reference benchmark run is reproducible from committed config and seed values.
-- Performance baselines are captured and compared in CI or scheduled runs.
-
-### v0.4.0 — target: November 30, 2026
-
-Focus: extensibility and public API hardening.
-
-Scope:
-
-- Freeze and document the intended public API surface.
-- Tighten plugin-system contracts and publish one reference plugin.
-- Add better extension diagnostics for invalid plugins, missing methods, and registration collisions.
-- Document compatibility guarantees and deprecation policy for pre-1.0 users.
-
-Definition of Done:
-
-- Public API and plugin contracts are documented and tested.
-- A reference plugin is published in-repo or as a companion example package.
-- Plugin loading failures produce actionable user-facing errors.
-
-### v1.0.0 — target: January 29, 2027
-
-Focus: stable release automation.
-
-Scope:
-
-- Finalize backwards-compatibility policy and semantic-versioning guarantees.
-- Enable end-to-end automated release publishing with verified artifacts.
-- Add a clean-environment install-and-smoke-test step for built distributions.
-- Publish an explicit release checklist covering build, test, docs, and security verification.
-
-Definition of Done:
-
-- Tagged release artifacts are generated and published via CI.
-- Full test suite, docs, lint, typecheck, and security checks pass in CI.
-- A clean-environment install-from-wheel or install-from-PyPI smoke test passes.
-- Release process is documented and repeatable.
+- Finalise backwards-compatibility policy and semantic-versioning guarantees.
+  Pre-1.0 the guarantee is best-effort; 1.0 is where that stops being true.
+- A clean-environment install-and-smoke-test from a built wheel. Note this is
+  install-from-wheel, **not** install-from-PyPI: nothing is published there.
+- An explicit release checklist covering build, test, docs, and Zenodo
+  archiving. `docs/citation.rst` holds the current version.
 
 ## Non-Goals
 
+- **Publishing to PyPI.** Distribution is by repository and Zenodo archive.
+- **Automated release publishing.** Releases are deliberately cut by hand; the
+  release workflow was removed. A tag alone archives nothing — the Zenodo
+  webhook fires on GitHub release publication.
 - End-to-end AutoML pipelines.
-- Oversampler implementation (delegated to imbalanced-learn and similar libraries).
+- Oversampler implementation (delegated to imbalanced-learn and similar).
 - Production model serving.
