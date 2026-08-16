@@ -43,6 +43,7 @@
   "correlation_distance": "callable",
   "create_benchmark_report": "callable",
   "cross_match_test": "callable",
+  "deprecated": "callable",
   "distance_matrix": "callable",
   "duplication_rate": "callable",
   "energy_distance": "callable",

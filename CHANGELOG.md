@@ -12,6 +12,15 @@ maintained manually.
 
 ### Added
 
+- `deprecated()` decorator, mechanising the policy `docs/api_stability.md`
+  already promised: the warning names both the replacement and the removal
+  version, which is the detail hand-written deprecations forget. Works on
+  functions, methods and classes, appends a `.. deprecated::` note to the
+  docstring, and raises against the caller's frame — Python hides
+  `DeprecationWarning` outside `__main__` and per-module filters key on the
+  reported location, so a warning that looks like it came from inside the
+  package is invisible to whoever needs to act on it. Nothing is currently
+  deprecated; a test asserts that, so the claim cannot rot.
 - `plot_fidelity_radar` compares samplers across the fidelity suite on one
   radar chart. Every axis is oriented so outward is better — boundary safety is
   plotted as the complement of the violation rate — because a radar is read by
