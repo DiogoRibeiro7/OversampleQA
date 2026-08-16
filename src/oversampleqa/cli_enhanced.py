@@ -1045,6 +1045,130 @@ def validate(
 
 
 @cli.command()
+@click.argument("dataset", type=click.Path(path_type=Path, exists=True))
+@click.option("--target", required=True, help="Target column name.")
+@click.option("--minority-label", type=int, default=1, help="Minority class label.")
+@click.option(
+    "--oversampler", default="SMOTE", help="Oversampler class (imbalanced-learn)."
+)
+@click.option("--metric", default="hassanat", help="Distance metric to use.")
+@click.option("--k", type=int, default=5, help="Neighbours for manifold estimates.")
+@click.option(
+    "--hidden-ratio", type=float, default=0.1, help="Fraction of majority to hide."
+)
+@click.option("--random-state", type=int, default=42, help="Seed for the hold-out.")
+@click.option(
+    "--utility",
+    is_flag=True,
+    help="Also fit models to measure downstream gain (much slower).",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Write the report as JSON to this path.",
+)
+def fidelity(
+    dataset: Path,
+    target: str,
+    minority_label: int,
+    oversampler: str,
+    metric: str,
+    k: int,
+    hidden_ratio: float,
+    random_state: int,
+    utility: bool,
+    output: Path | None,
+) -> None:
+    """Measure fidelity and diversity, not just the error rate.
+
+    The error rate is one scalar covering two failures that need opposite
+    fixes: generating implausible points, and merely copying the training
+    minority. This reports both axes.
+
+    Args:
+        dataset: Dataset path.
+        target: Target column name.
+        minority_label: Minority class label.
+        oversampler: Oversampler class name.
+        metric: Distance metric name.
+        k: Neighbours for the manifold estimates.
+        hidden_ratio: Fraction of majority to hide.
+        random_state: Seed for the hold-out split.
+        utility: Whether to measure downstream utility.
+        output: Optional JSON output path.
+    """
+    import json as _json
+
+    from .fidelity import fidelity_report
+
+    X, y = load_dataset(dataset, target)
+    module = __import__("imblearn.over_sampling", fromlist=[oversampler])
+    sampler = getattr(module, oversampler)()
+
+    with console.status(f"Measuring fidelity for {oversampler}..."):
+        report = fidelity_report(
+            np.asarray(X.values, dtype=float),
+            np.asarray(y.values),
+            minority_label,
+            sampler,
+            metric=metric,
+            k=k,
+            hidden_ratio=hidden_ratio,
+            random_state=random_state,
+            include_utility=utility,
+        )
+
+    table = Table(
+        title=f"Fidelity report - {oversampler}",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="green")
+    table.add_column("Reads as", style="yellow")
+
+    manifold = report.manifold
+    table.add_row("Error rate", f"{report.error_rate:.3f}", "Lower is better")
+    table.add_row(
+        "Precision", f"{manifold.precision:.3f}", "Fidelity: are points plausible?"
+    )
+    table.add_row(
+        "Recall", f"{manifold.recall:.3f}", "Diversity: is the real range covered?"
+    )
+    table.add_row("Density", f"{manifold.density:.3f}", "Fidelity, unsaturated")
+    table.add_row("Coverage", f"{manifold.coverage:.3f}", "Diversity, robust")
+    table.add_row(
+        "Memorisation ratio",
+        f"{report.memorisation.distance_ratio:.3f}",
+        "Near 0 means copying training data",
+    )
+    table.add_row(
+        "Boundary violations",
+        f"{report.boundary.strict_rate:.3f}",
+        "Points landing among majority neighbours",
+    )
+    if report.utility is not None:
+        table.add_row(
+            "Downstream gain",
+            f"{report.utility.difference:+.4f}",
+            f"{report.utility.scoring}, CI "
+            f"[{report.utility.ci_lower:+.4f}, {report.utility.ci_upper:+.4f}]",
+        )
+    console.print(table)
+
+    for note in report.interpret():
+        console.print(f"[yellow]-[/yellow] {note}")
+
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            _json.dumps(report.to_dict(), indent=2, default=str), encoding="utf-8"
+        )
+        console.print(f"[green]Report written to {output}[/green]")
+
+
+@cli.command()
 @click.option(
     "--template", type=click.Choice(sorted(CONFIG_TEMPLATES)), default="production"
 )

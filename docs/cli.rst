@@ -148,3 +148,29 @@ Options
 - ``--distance``: distance metric name.
 - ``--out``: optional text report output path.
 - ``--plot``: optional plot output path.
+
+Fidelity report
+---------------
+
+The error rate is one scalar covering two failures that need opposite fixes:
+generating implausible points, and merely copying the training minority. The
+``fidelity`` subcommand reports both axes.
+
+.. code-block:: bash
+
+   oversampleqa fidelity data.csv      --target target      --minority-label 1      --oversampler SMOTE      --metric hassanat      -o fidelity.json
+
+Output includes precision, recall, density and coverage, the memorisation ratio,
+and the boundary-violation rate. Add ``--utility`` to also fit models and measure
+downstream gain — much slower, since it trains a classifier per fold.
+
+The memorisation ratio is the one to read first. Near zero means the generator
+sits on top of its training data, and the error rate cannot say anything about
+synthesis quality:
+
+.. code-block:: text
+
+   SMOTE              error=0.083  precision=1.000  memorisation=0.360
+   RandomOverSampler  error=0.115  precision=0.980  memorisation=0.000
+
+See :doc:`fidelity` for the interpretation table.

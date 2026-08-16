@@ -10,6 +10,16 @@ maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- `oversampleqa fidelity` subcommand, surfacing the fidelity/diversity split
+  without writing Python. Reports precision, recall, density, coverage, the
+  memorisation ratio and boundary violations, with `--utility` for downstream
+  gain and `-o` for JSON.
+- Gallery example `examples/fidelity_memorisation.py`, showing the case the
+  fidelity module exists for: three of four metrics cannot separate SMOTE from
+  RandomOverSampler, and only the memorisation ratio does.
+
 ## [0.3.0] - 2026-08-16
 
 ### Added
