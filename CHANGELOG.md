@@ -10,6 +10,8 @@ maintained manually.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-16
+
 ### Added
 
 - **Entry-point plugin discovery.** `PluginManager.discover_entry_points()`
@@ -468,7 +470,8 @@ Initial release.
 - Plugin system for custom metrics and validators.
 - Sphinx documentation, examples gallery, and tutorials.
 
-[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.5.0
 [0.4.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.4.0
 [0.3.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.3.0
 [0.2.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.2.0
