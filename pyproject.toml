@@ -172,6 +172,10 @@ oversampleqa-validate = "oversampleqa.cli:main"
 oversampleqa = "oversampleqa.cli_enhanced:main"
 
 [tool.pytest.ini_options]
+# Without this, a bare `pytest` also collects examples/plugins/tests, so the
+# suite's result depends on whether the reference plugin happens to be
+# pip-installed. The plugin has its own tests, run explicitly in CI.
+testpaths = ["tests"]
 markers = [
     "slow: measures memory or timing; slower and more environment-sensitive",
 ]

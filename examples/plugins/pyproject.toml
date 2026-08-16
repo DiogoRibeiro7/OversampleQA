@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oversampleqa-example-plugin"
+version = "0.1.0"
+description = "Reference plugin for OversampleQA: one custom metric, one custom validator."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["numpy>=1.24"]
+
+# This is the whole discovery mechanism. OversampleQA calls
+# `PluginManager.discover_entry_points()`, which reads these groups from the
+# metadata of every installed distribution. Nothing has to import this package
+# first, and nothing has to live in a magic namespace directory.
+[project.entry-points."oversampleqa.metrics"]
+lorentzian = "oversampleqa_example_plugin.metric:LorentzianDistance"
+
+[project.entry-points."oversampleqa.validators"]
+median_ratio = "oversampleqa_example_plugin.validator:MedianRatioValidator"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oversampleqa_example_plugin"]

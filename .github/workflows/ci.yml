@@ -42,6 +42,15 @@ jobs:
 
     - name: Run tests
       run: poetry run pytest --cov=oversampleqa --cov-report=xml
+
+    - name: Test the reference plugin
+      # Installed after the main suite so it cannot alter that environment.
+      # This is the only step that exercises real entry-point discovery; the
+      # tests in tests/ use synthetic entry points and would not catch a broken
+      # pyproject.toml here.
+      run: |
+        poetry run pip install -e examples/plugins
+        poetry run pytest examples/plugins/tests -q
     
     - name: Upload coverage
       # One upload is enough; the Windows job would only duplicate it.

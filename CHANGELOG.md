@@ -12,6 +12,16 @@ maintained manually.
 
 ### Added
 
+- **Entry-point plugin discovery.** `PluginManager.discover_entry_points()`
+  registers metrics and validators advertised by any installed distribution
+  under the `oversampleqa.metrics` and `oversampleqa.validators` groups. A
+  plugin that fails to import or fails a check no longer blocks the rest: each
+  failure warns with the entry point and the reason, since a plugin that
+  silently fails to register looks exactly like one that was never installed.
+  `strict=True` raises instead, for use in plugin test suites.
+- **A reference plugin** in `examples/plugins/`: an installable package with one
+  custom metric, one custom validator, its own README and 13 tests, wired into
+  CI. Documented in `docs/plugins.rst`.
 - `deprecated()` decorator, mechanising the policy `docs/api_stability.md`
   already promised: the warning names both the replacement and the removal
   version, which is the detail hand-written deprecations forget. Works on
@@ -28,6 +38,14 @@ maintained manually.
   meaningless. Density and diversity are unbounded above, so they are clipped at
   1.0 and any clipped value is named in a caption; `nan` stays `nan` and draws a
   gap rather than being flattened to zero.
+
+### Fixed
+
+- **`register_validator` silently overwrote on name collision.** It was a bare
+  dictionary assignment, so two plugins claiming the same name left whichever
+  loaded last in place and said nothing — and under entry-point discovery the
+  load order is not something either author controls. It now refuses, as the
+  metric path already did, and rejects a class with no callable `validate`.
 
 ## [0.4.0] - 2026-08-16
 
