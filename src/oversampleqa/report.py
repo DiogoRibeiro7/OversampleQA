@@ -6,57 +6,11 @@ from typing import Any
 
 import pandas as pd
 
+from ._render import frame_to_html, frame_to_markdown
 from .benchmark import compute_ranking
 from .plotting import plot_error_boxplot, plot_error_ranking
 
-__all__ = ["frame_to_markdown", "generate_report"]
-
-
-def frame_to_markdown(frame: pd.DataFrame, *, float_format: str = "{:.4f}") -> str:
-    """Render a DataFrame as a GitHub-flavoured Markdown table.
-
-    Written out rather than delegated to ``DataFrame.to_markdown``, which needs
-    ``tabulate``. That is installed here only as a transitive dependency of
-    something else, and depending on a package nobody declared is how a working
-    install becomes a broken one after an unrelated upgrade.
-
-    The previous implementation used ``to_csv(sep="|")``, which is not Markdown:
-    it has no header separator row and no leading or trailing pipes, so it
-    rendered as one run-on paragraph rather than a table.
-
-    Args:
-        frame: Frame to render. The index becomes the first column when it is
-            named, since ``compute_ranking`` returns the oversampler there.
-        float_format: Format applied to floating-point cells. Raw repr leaks
-            values like ``0.21000000000000002`` into a document meant to be read.
-
-    Returns:
-        A Markdown table, or a note when the frame is empty.
-    """
-    if frame.empty:
-        return "_No results._"
-
-    display = frame.reset_index() if frame.index.name else frame.copy()
-
-    def render(value: Any) -> str:
-        if isinstance(value, float):
-            return float_format.format(value)
-        return str(value)
-
-    headers = [str(c) for c in display.columns]
-    rows = [[render(v) for v in row] for row in display.itertuples(index=False)]
-
-    widths = [
-        max(len(headers[i]), *(len(r[i]) for r in rows)) if rows else len(headers[i])
-        for i in range(len(headers))
-    ]
-
-    def line(cells: list[str]) -> str:
-        padded = [c.ljust(w) for c, w in zip(cells, widths, strict=True)]
-        return "| " + " | ".join(padded) + " |"
-
-    separator = "| " + " | ".join("-" * w for w in widths) + " |"
-    return "\n".join([line(headers), separator, *(line(r) for r in rows)])
+__all__ = ["frame_to_html", "frame_to_markdown", "generate_report"]
 
 
 def _fidelity_section(reports: dict[str, Any], output_format: str) -> str:
