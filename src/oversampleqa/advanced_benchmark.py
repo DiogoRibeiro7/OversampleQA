@@ -19,6 +19,21 @@ from sklearn.preprocessing import StandardScaler
 
 from .validator import validate_oversampling
 
+# The tidy long-format column set: one row per
+# (dataset, oversampler, metric). Declared once so the empty-result frame and
+# the populated one cannot disagree about their shape.
+_RESULT_COLUMNS = (
+    "dataset_name",
+    "oversampler_name",
+    "metric",
+    "mean_error",
+    "std_error",
+    "ci_lower",
+    "ci_upper",
+    "n_observations",
+    "recommended_samples",
+)
+
 
 @dataclass
 class BenchmarkResult:
@@ -54,6 +69,7 @@ class StatisticalBenchmark:
         self.confidence_level = confidence_level
         self.correction_method = correction_method
         self.random_state = random_state
+        self._skipped: list[str] = []
 
     def run_comprehensive_benchmark(
         self,
@@ -75,6 +91,8 @@ class StatisticalBenchmark:
         """
 
         metrics = tuple(metrics or ("hassanat", "euclidean", "mahalanobis"))
+        # Reset per run: a reused engine must not accumulate skips.
+        self._skipped = []
 
         all_results: list[BenchmarkResult] = []
         for dataset in datasets:
@@ -83,8 +101,28 @@ class StatisticalBenchmark:
             )
 
         frame = pd.DataFrame([self._result_to_dict(r) for r in all_results])
+
+        if self._skipped:
+            warnings.warn(
+                f"{len(self._skipped)} of "
+                f"{len(datasets) * len(oversamplers) * len(metrics)} "
+                "dataset/oversampler/metric combinations produced no usable "
+                "folds and are absent from the results: "
+                + ", ".join(self._skipped[:5])
+                + (" ..." if len(self._skipped) > 5 else "")
+                + ". The most common cause is a minority class too small to "
+                "hold out from once it has been split into folds -- try fewer "
+                "folds or a larger hidden_ratio.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         if frame.empty:
-            return frame
+            # Return the expected columns rather than a (0, 0) frame. An empty
+            # frame with no columns raises KeyError on any column access, so a
+            # caller that handles "no results" still breaks.
+            return pd.DataFrame(columns=list(_RESULT_COLUMNS))
+
         frame = self._add_statistical_analysis(frame)
         return frame
 
@@ -123,6 +161,13 @@ class StatisticalBenchmark:
                     metric=metric,
                 )
                 if not error_rates:
+                    # Every fold failed for this combination. The per-fold
+                    # warnings above explain why, but on a real sweep there are
+                    # hundreds of them; record the combination so the caller
+                    # gets one summary rather than a silently missing row.
+                    self._skipped.append(
+                        f"{dataset_name} / {oversampler.__class__.__name__} / {metric}"
+                    )
                     continue
                 mean_error = float(np.mean(error_rates))
                 std_error = (
