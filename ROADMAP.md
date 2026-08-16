@@ -1,6 +1,6 @@
 # OversampleQA Roadmap
 
-Last revised August 16, 2026, at v0.5.0.
+Last revised August 16, 2026, after v0.5.0.
 
 ## Project Goals
 
@@ -10,18 +10,23 @@ Last revised August 16, 2026, at v0.5.0.
 - Offer a fast path for practitioners and a deeper path for research use cases.
 - Stay compatible with scikit-learn and imbalanced-learn conventions.
 
-## Current State (v0.5.0)
+## Current State (post-v0.5.0)
 
-- 427 tests in the main suite, plus 13 in the reference plugin, green on Linux
-  and Windows across Python 3.10–3.12.
+- 439 tests collected in the main suite, plus 13 in the reference plugin. CI
+  runs the main suite on Linux across Python 3.10-3.12 and on Windows for
+  Python 3.12, then installs and tests the reference plugin separately.
 - `ruff check` and `mypy src` pass clean. The numerical core is fully strict;
   the CLI, plotting and benchmark modules carry scoped, documented relaxations
   at their untyped third-party boundaries.
 - Docs build under `-W`, enforced in CI.
-- `poetry.lock` is tracked, poetry is pinned, and `poetry check --lock` gates
-  installs, so CI tests a fixed dependency set.
+- `poetry.lock` is tracked, poetry is pinned, `poetry check --lock` gates
+  installs, and the docs toolchain lives in the locked `docs` Poetry group, so
+  tests and docs both run against governed dependencies.
 - Public API frozen behind a snapshot test; deprecation policy documented and
   mechanised.
+- Both benchmark dataset catalogs now attach the same provenance record shape:
+  source, generator, params, URL, license and notes. Synthetic seeds, OpenML
+  versions, bundled-data licenses and positional truncation are explicit.
 
 ### Distribution
 
@@ -98,27 +103,190 @@ from the repository or from a Zenodo archive.
 - **`poetry.lock` was gitignored**, so CI re-resolved every dependency on every
   run and no two runs were guaranteed to test the same versions.
 
+### Unreleased — provenance, dependency closure and export cleanup
+
+- `advanced_benchmark.DatasetRepository` now carries dataset provenance in the
+  same shape as `benchmark.load_standard_datasets`. The two catalogs no longer
+  disagree about where a dataset came from, what generated it, which seed or
+  OpenML version was used, or what license applies.
+- The shared provenance helpers live in `oversampleqa._provenance`, with tests
+  for required keys, licenses, synthetic seeds, OpenML version pinning, bundled
+  data, and the fact that `max_samples` is a positional truncation rather than
+  a random sample.
+- The docs dependency stack moved out of `docs/requirements.txt` and into the
+  locked Poetry `docs` group. The docs CI job now installs with
+  `poetry install --with dev,docs`, so Sphinx and its extensions are governed by
+  the same lock discipline as the test environment.
+- The basic benchmark frame is being tightened into a fixed long-format schema:
+  one row per `(dataset, oversampler, metric, hidden_ratio, run)`, with the
+  metric named in the data rather than implied by the call site. Export paths
+  share a table renderer so the Markdown bug cannot survive in one output path
+  after being fixed in another.
+
 ## Open Work
 
 Not scheduled against dates. This is a research toolkit maintained by one
-person; the ordering below reflects priority, not a delivery commitment.
+person; the ordering below reflects priority, not a delivery commitment. Each
+item should land with tests or documentation that would have caught the failure
+mode it addresses.
 
-### Near-term
+### v0.6.0 — export and reporting trust
 
-- **Long-format benchmark export.** Results are one row per
-  (dataset, oversampler, hidden_ratio, run) but statistics are spread across
-  columns; a row per (dataset, oversampler, metric, repeat) would make grouping
-  and joining trivial and remove bespoke reshaping from `report.py`.
+- **Fold-level benchmark export.** The statistical benchmark summary is already
+  tidy by `(dataset, oversampler, metric)`, but the raw fold/repeat observations
+  are still embedded as list-valued `error_rates`. Add an export with one row
+  per `(dataset, oversampler, metric, repeat, fold)`, including the split seed,
+  hidden ratio, error rate, skip status and skip reason.
+- **Unified result schema.** Align the simple benchmark, statistical benchmark,
+  validation report and `Report.to_frame()` outputs around named identifiers
+  rather than positional assumptions. Dataset, oversampler, metric, seed,
+  hidden ratio, reference mode, repeat/fold index and package version should be
+  explicit wherever a row can leave the process.
+- **Report metadata block.** Every Markdown, HTML, JSON and CSV export should
+  carry or sit next to enough metadata to reproduce the run: OversampleQA
+  version, Python version, dependency lock hash when available, platform,
+  random seeds, metric parameters and dataset provenance.
+- **Strict JSON outputs.** Audit every JSON-producing path for `NaN`,
+  infinities and NumPy scalars. Machine-readable exports should be accepted by
+  strict parsers without relying on pandas' permissive defaults.
+- **Renderer consolidation.** Keep frame rendering in one internal module and
+  route reports, benchmark exports and future CLI table exports through it.
+  This prevents a second copy of the old `to_csv(sep="|")` bug.
 
-### Later
+### v0.6.0 — documentation debt
 
-- Real parallelism across repeats and datasets. `ValidationMode.ASYNC` raises
+- **Benchmarking docs correction.** `docs/benchmarking.rst` still explains the
+  old confidence-interval bug where the implementation switched from a
+  Student-t interval to a percentile range at `n=30`. The code now uses a
+  t-interval for the mean at every sample size; the docs should describe that
+  behavior and keep the historical warning only as release-note context.
+- **Concepts page calibration update.** `docs/concepts.rst` says error-rate
+  calibration against a null model is not implemented, but
+  `oversampleqa.inference` now provides `null_error_rate` and the CLI exposes
+  `--calibrate`. Rewrite that section so new users do not learn an obsolete
+  limitation.
+- **Examples refresh.** Update gallery and tutorial examples so they use
+  `n_repeats`, report duplication or memorisation when relevant, seed both the
+  validator and the oversampler, and show the new export metadata instead of a
+  point estimate alone.
+- **Decision guide.** Add a short guide for choosing among error rate,
+  calibrated error rate, two-sample tests, fidelity metrics, downstream utility
+  and benchmark rankings. The current docs explain the pieces but leave too much
+  assembly to the reader.
+
+### v0.7.0 — user-facing features
+
+- **Experiment manifest runner.** Add a YAML-driven command that can run
+  validation, fidelity diagnostics and benchmarks from one checked-in manifest.
+  The manifest should name datasets, target columns, samplers, metrics, seeds,
+  hidden ratios, repeats, output formats and cache settings.
+- **`oversampleqa compare` command.** Provide a first-class CLI workflow for
+  comparing multiple oversamplers on one dataset. It should run the selected
+  diagnostics, rank samplers, flag exact-copy behaviour, and write a report
+  bundle without requiring users to compose several commands manually.
+- **Report bundles.** Add an output directory format containing `report.html`,
+  `summary.json`, `results.csv`, generated plots and a run manifest. This gives
+  users one artefact they can archive, attach to an issue, or cite in a paper.
+- **Quality gates.** Add configurable thresholds for CI-style use: maximum error
+  rate, maximum memorisation, minimum downstream utility, maximum boundary
+  violation and required confidence interval width. The CLI should exit
+  non-zero with a clear reason when a gate fails.
+- **Sampler recommendation summary.** Turn the existing diagnostics into a
+  conservative recommendation table: best realism, best diversity, lowest
+  memorisation, best downstream utility and "do not use" warnings when a sampler
+  duplicates, deletes originals, or cannot support the requested estimand.
+- **Dataset audit command.** Add `oversampleqa audit-data` to report class
+  imbalance, minority size, feature types, missing values, duplicate rows,
+  likely leakage columns, recommended `hidden_ratio`, `min_hidden`, and whether
+  the dataset can support multiclass or fidelity diagnostics.
+- **Plugin scaffold command.** Add a small generator for metric and validator
+  plugins based on `examples/plugins/`, including pyproject entry points, tests
+  and the axiom smoke-check harness.
+- **Static comparison dashboard.** Generate a self-contained HTML dashboard for
+  benchmark runs with sortable tables, fidelity radar plots, confidence
+  intervals, skip reasons and provenance metadata. This should remain static
+  HTML, not a hosted service.
+
+### v0.8.0 — benchmark quality
+
+- **Pinned benchmark catalog.** Define a small catalog of reference datasets
+  that is stable enough to cite: generated datasets with fixed seeds, OpenML
+  datasets with pinned versions, explicit licenses and documented expected
+  failure modes.
+- **Reference benchmark runs.** Store pinned benchmark outputs for a small
+  sampler set and metric set. These should be documentation artefacts, not
+  brittle CI gates, and should state the dependency lock and platform used.
+- **Sampler capability matrix.** Record which oversamplers preserve original
+  rows, expose `random_state`, support multiclass data, can delete samples and
+  can produce exact duplicates. Use it in docs and warnings so unsupported
+  samplers fail with actionable messages.
+- **Statistical comparison polish.** Make the Friedman/Nemenyi workflow easier
+  to use from benchmark outputs: validate balanced method/dataset designs,
+  explain missing cells, and emit a ready-to-plot critical-difference table.
+- **Skip accounting.** Promote skipped combinations from warnings into a
+  structured result table. A benchmark with no usable folds should be easy to
+  summarize programmatically.
+
+### v0.9.0 — scalability and runtime behaviour
+
+- **Process-level parallelism.** Add real parallelism across repeats, folds,
+  datasets and sampler/metric combinations. `ValidationMode.ASYNC` raises
   rather than pretending: the work is CPU-bound NumPy, so an event loop offers
-  no concurrency. Process-level parallelism is the honest version.
-- Performance-regression tracking beyond the current scheduled, deliberately
-  non-blocking workflow. Timing checks on shared runners produce false failures
-  and train people to ignore red builds.
-- A documented benchmark catalog with pinned reference results.
+  no concurrency. Process-level parallelism is the honest version, with stable
+  seeded streams per worker.
+- **Streaming exports.** Large benchmark runs should not need to hold every fold
+  result in memory. Add append-friendly CSV/JSONL writing with resume metadata
+  and clear partial-run markers.
+- **Cache process safety.** The cache is thread-safe through one instance but
+  not process-safe on disk. Either document per-process cache directories in
+  the parallel runner or add atomic writes and file locking.
+- **Performance-regression tracking.** Keep the scheduled workflow non-blocking,
+  but add historical trend artefacts and a local comparison command that can
+  separate likely regressions from shared-runner noise.
+- **Memory-budget reporting.** When batching kicks in, expose the chosen batch
+  size, estimated peak memory, safety factor and metric multiplier in verbose
+  CLI and report metadata.
+
+### Research backlog
+
+- **Distance metric review.** Revisit metrics that are sample-based rather than
+  pointwise (`energy`, `wasserstein`) and decide whether they belong in the same
+  registry, need a separate protocol, or should be flagged more prominently in
+  APIs that expect point metrics.
+- **Parent-aware inference integration.** `error_rate_interval` can use a
+  parent-block bootstrap, but validators do not yet surface parent identifiers
+  from oversamplers. Define a practical parent-tracking protocol where samplers
+  expose enough information.
+- **Calibration defaults.** Decide when the calibrated null/ceiling scale should
+  be the default recommendation rather than an opt-in diagnostic. This needs
+  examples across easy, overlapping, high-dimensional and tiny-minority regimes.
+- **High-dimensional fidelity guidance.** The k-NN manifold metrics warn in high
+  dimension; add empirical guidance on when density/coverage remain useful and
+  when downstream utility or calibrated error rate is more defensible.
+- **Multiclass fidelity.** The fidelity report currently rejects multiclass
+  data. Define whether multiclass fidelity is one-vs-rest, per-class pairwise,
+  or a separate confusion-style object.
+
+### Maintenance backlog
+
+- **Release metadata consistency.** The release-facing files (`README.md`,
+  `CITATION.cff`, `docs/citation.rst`, `.zenodo.json` and `CHANGELOG.md`) should
+  be checked as one unit before every archive so examples, version numbers, DOI
+  guidance and citation snippets cannot drift.
+- **Release checklist automation.** Add a local `scripts/release.py` check mode
+  that verifies version strings, citation metadata, changelog links, DOI
+  placeholders, docs build, API snapshot and clean wheel install before a
+  GitHub release is published.
+- **API-stability audit.** Before each minor release, compare the committed API
+  snapshot with docs and examples. Any new export either needs documentation or
+  an explicit decision that it is private.
+- **Dependency policy.** Keep runtime dependencies conservative and documented.
+  Any dependency used at import time belongs in the runtime group; docs-only and
+  benchmark-only tools should stay out of the core install unless the import
+  path requires them.
+- **Issue templates and contribution notes.** Add prompts for benchmark
+  reproducibility: seeds, dataset provenance, OversampleQA version, metric,
+  hidden ratio, sampler configuration and whether calibration/fidelity was run.
 
 ### v1.0.0
 
