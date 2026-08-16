@@ -53,6 +53,7 @@ Contents
    benchmarking
    inference
    fidelity
+   plugins
    api_stability
    benchmark_results
    plotting

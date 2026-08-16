@@ -5,13 +5,21 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
+import warnings
 from collections.abc import Callable
+from importlib import metadata
 from typing import Any
 
 import numpy as np
 
 from .plugin_contract import MetricDomain
 from .types import DistanceMetricProtocol, FloatArray, ValidatorProtocol
+
+#: Entry-point group a third-party package advertises custom metrics under.
+METRIC_ENTRY_POINT_GROUP = "oversampleqa.metrics"
+
+#: Entry-point group a third-party package advertises custom validators under.
+VALIDATOR_ENTRY_POINT_GROUP = "oversampleqa.validators"
 
 
 class PluginManager:
@@ -115,13 +123,50 @@ class PluginManager:
     def register_validator(
         self, name: str, validator_cls: type[ValidatorProtocol]
     ) -> None:
-        """Register a validator class by name.
+        """Register a validator class by name, refusing collisions.
+
+        This used to be a bare dictionary assignment, so two plugins claiming
+        the same name left whichever loaded last in place and said nothing --
+        and with entry-point discovery the load order is not something either
+        author controls. The metric path already refused collisions; this makes
+        the two consistent.
 
         Args:
             name: Validator identifier.
             validator_cls: Validator class implementing ``validate``.
+
+        Raises:
+            PluginError: If the name is taken, or the class has no callable
+                ``validate``.
         """
+        from .exceptions import PluginError
+
+        if name in self._validator_plugins:
+            raise PluginError(
+                f"validator {name!r} is already registered by another plugin. "
+                "Unregister it first if replacement is intended."
+            )
+        if not callable(getattr(validator_cls, "validate", None)):
+            raise PluginError(
+                f"validator {name!r} has no callable 'validate'. The protocol "
+                "is validate(X, y, minority_label, oversampler, **kwargs)."
+            )
         self._validator_plugins[name] = validator_cls
+
+    def unregister_validator(self, name: str) -> None:
+        """Remove a registered validator plugin.
+
+        Args:
+            name: Validator identifier.
+
+        Raises:
+            PluginError: If no plugin is registered under that name.
+        """
+        from .exceptions import PluginError
+
+        if name not in self._validator_plugins:
+            raise PluginError(f"no validator plugin registered as {name!r}")
+        del self._validator_plugins[name]
 
     def get_metric(self, name: str) -> type[DistanceMetricProtocol]:
         """Retrieve a registered metric class by name.
@@ -165,6 +210,61 @@ class PluginManager:
         for _, name, _ in pkgutil.iter_modules(module.__path__):
             discovered = importlib.import_module(f"{package}.{name}")
             self._register_module(discovered)
+
+    def discover_entry_points(
+        self,
+        *,
+        metric_group: str = METRIC_ENTRY_POINT_GROUP,
+        validator_group: str = VALIDATOR_ENTRY_POINT_GROUP,
+        strict: bool = False,
+    ) -> list[str]:
+        """Register metrics and validators advertised by installed packages.
+
+        This is the discovery mechanism a third-party package should use: it
+        needs no import of a magic namespace package and no scan of the
+        filesystem, only an entry point in its own metadata. See
+        ``examples/plugins/`` for a worked example.
+
+        A plugin that fails to import, or that fails the axiom check, does not
+        prevent the others from loading. Each failure raises a warning naming
+        the entry point and the reason, because a plugin that quietly fails to
+        register looks exactly like a plugin that was never installed, and the
+        difference is an afternoon of confusion.
+
+        Args:
+            metric_group: Entry-point group scanned for metrics.
+            validator_group: Entry-point group scanned for validators.
+            strict: Raise on the first failure instead of warning and
+                continuing. Use in tests, where a plugin that silently fails to
+                load would make the suite pass for the wrong reason.
+
+        Returns:
+            Names successfully registered, metrics and validators together.
+
+        Raises:
+            PluginError: If ``strict`` and any entry point fails.
+        """
+        from .exceptions import PluginError
+
+        registered: list[str] = []
+        for group, register in (
+            (metric_group, self.register_metric),
+            (validator_group, self.register_validator),
+        ):
+            for entry_point in metadata.entry_points(group=group):
+                try:
+                    register(entry_point.name, entry_point.load())
+                except Exception as exc:
+                    detail = (
+                        f"plugin {entry_point.name!r} from group {group!r} "
+                        f"could not be registered: {exc}"
+                    )
+                    if strict:
+                        raise PluginError(detail) from exc
+                    warnings.warn(detail, RuntimeWarning, stacklevel=2)
+                    continue
+                registered.append(entry_point.name)
+        return registered
 
     def _register_module(self, module: Any) -> None:
         """Register all compatible classes in a module.
