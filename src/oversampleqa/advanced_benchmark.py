@@ -6,7 +6,7 @@ import json
 import math
 import warnings
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +56,54 @@ class BenchmarkResult:
     recommended_samples: int | None = None
 
 
+#: Hold-out fraction used inside each fold. Fixed rather than a parameter
+#: so the folds of one run are comparable; recorded in the fold frame so a
+#: reader does not have to know it.
+_FOLD_HIDDEN_RATIO = 0.1
+
+#: Column order of the fold-level frame from :meth:`StatisticalBenchmark.fold_results`.
+_FOLD_COLUMNS = (
+    "dataset_name",
+    "oversampler_name",
+    "metric",
+    "repeat",
+    "fold",
+    "split_seed",
+    "hidden_ratio",
+    "error_rate",
+    "skipped",
+    "skip_reason",
+)
+
+
+@dataclass
+class FoldRecord:
+    """One evaluated fold, including the ones that produced no measurement.
+
+    The summary frame reports a mean and an interval per
+    (dataset, oversampler, metric), which cannot be re-aggregated, plotted as a
+    distribution, or given a different interval. It also cannot answer the
+    question that decides whether a mean is trustworthy: how many folds
+    actually contributed, and why the others did not.
+
+    Skipped folds are kept as rows with ``error_rate`` of ``nan`` and a stated
+    reason rather than dropped. A mean over three surviving folds out of
+    twenty-five looks identical to a mean over twenty-five once the skips are
+    gone.
+    """
+
+    dataset_name: str
+    oversampler_name: str
+    metric: str
+    repeat: int
+    fold: int
+    split_seed: int | None
+    hidden_ratio: float
+    error_rate: float
+    skipped: bool
+    skip_reason: str
+
+
 class StatisticalBenchmark:
     """Advanced benchmarking engine with statistical analysis."""
 
@@ -75,6 +123,7 @@ class StatisticalBenchmark:
         self.correction_method = correction_method
         self.random_state = random_state
         self._skipped: list[str] = []
+        self._fold_records_all: list[FoldRecord] = []
 
     def run_comprehensive_benchmark(
         self,
@@ -96,8 +145,9 @@ class StatisticalBenchmark:
         """
 
         metrics = tuple(metrics or ("hassanat", "euclidean", "mahalanobis"))
-        # Reset per run: a reused engine must not accumulate skips.
+        # Reset per run: a reused engine must not accumulate skips or folds.
         self._skipped = []
+        self._fold_records_all = []
 
         all_results: list[BenchmarkResult] = []
         for dataset in datasets:
@@ -158,13 +208,18 @@ class StatisticalBenchmark:
         results: list[BenchmarkResult] = []
         for oversampler in oversamplers:
             for metric in metrics:
-                error_rates = self._cross_validated_errors(
+                fold_records = self._fold_records(
                     X_scaled,
                     y,
                     minority_label=minority_label,
                     oversampler=oversampler,
                     metric=metric,
+                    dataset_name=dataset_name,
                 )
+                self._fold_records_all.extend(fold_records)
+                error_rates = [
+                    record.error_rate for record in fold_records if not record.skipped
+                ]
                 if not error_rates:
                     # Every fold failed for this combination. The per-fold
                     # warnings above explain why, but on a real sweep there are
@@ -195,15 +250,43 @@ class StatisticalBenchmark:
                 )
         return results
 
-    def _cross_validated_errors(
+    def fold_results(self) -> pd.DataFrame:
+        """Return one row per attempted fold from the most recent run.
+
+        The summary frame reports a mean and interval per
+        (dataset, oversampler, metric). That is enough to read a ranking and
+        not enough to check one: it cannot be re-aggregated, plotted as a
+        distribution, or given a different interval, and it does not say how
+        many folds actually contributed.
+
+        This frame answers those. Skipped folds are present with ``error_rate``
+        of ``nan``, ``skipped`` true and a stated ``skip_reason``, because a
+        mean over three surviving folds of twenty-five is indistinguishable
+        from a mean over twenty-five once the skips are dropped.
+
+        ``split_seed`` is the seed given to the fold splitter for that repeat,
+        so a single repeat can be reproduced without rerunning the sweep.
+
+        Returns:
+            A long-format frame with :data:`_FOLD_COLUMNS`. Empty of rows but
+            not of columns when no run has happened yet, so column access works
+            either way.
+        """
+        return pd.DataFrame(
+            [asdict(record) for record in self._fold_records_all],
+            columns=list(_FOLD_COLUMNS),
+        )
+
+    def _fold_records(
         self,
         X: np.ndarray,
         y: np.ndarray,
         minority_label: int,
         oversampler: Any,
         metric: str,
-    ) -> list[float]:
-        """Compute error rates across repeated stratified folds.
+        dataset_name: str,
+    ) -> list[FoldRecord]:
+        """Evaluate every repeat/fold, recording skips as well as measurements.
 
         Args:
             X: Feature matrix.
@@ -211,20 +294,41 @@ class StatisticalBenchmark:
             minority_label: Minority class label.
             oversampler: Oversampler instance to clone per fold.
             metric: Distance metric name.
+            dataset_name: Name recorded on each row.
 
         Returns:
-            List of error rates for each evaluated fold.
+            One :class:`FoldRecord` per fold attempted, including skipped ones.
         """
-        errors: list[float] = []
+        records: list[FoldRecord] = []
         rng = np.random.default_rng(self.random_state)
+        name = oversampler.__class__.__name__
 
-        for _repeat in range(self.n_repeats):
+        def record(
+            repeat: int, fold: int, seed: int | None, error: float, reason: str
+        ) -> None:
+            records.append(
+                FoldRecord(
+                    dataset_name=dataset_name,
+                    oversampler_name=name,
+                    metric=metric,
+                    repeat=repeat,
+                    fold=fold,
+                    split_seed=seed,
+                    hidden_ratio=_FOLD_HIDDEN_RATIO,
+                    error_rate=error,
+                    skipped=bool(reason),
+                    skip_reason=reason,
+                )
+            )
+
+        for repeat in range(self.n_repeats):
+            split_seed = (
+                None if self.random_state is None else int(rng.integers(0, 1_000_000))
+            )
             cv = StratifiedKFold(
                 n_splits=self.n_folds,
                 shuffle=True,
-                random_state=(
-                    None if self.random_state is None else rng.integers(0, 1_000_000)
-                ),
+                random_state=split_seed,
             )
             for fold, (train_idx, _val_idx) in enumerate(cv.split(X, y)):
                 # Only the training fold is used. validate_oversampling performs
@@ -240,6 +344,13 @@ class StatisticalBenchmark:
                         "Training fold lacks class diversity; skipping fold.",
                         stacklevel=2,
                     )
+                    record(
+                        repeat,
+                        fold,
+                        split_seed,
+                        float("nan"),
+                        "training fold lacks class diversity",
+                    )
                     continue
                 sampler = clone(oversampler)
                 try:
@@ -248,18 +359,30 @@ class StatisticalBenchmark:
                         y_train,
                         minority_label=minority_label,
                         oversampler=sampler,
-                        hidden_ratio=0.1,
+                        hidden_ratio=_FOLD_HIDDEN_RATIO,
                         metric=metric,
                     )
                 except Exception as exc:  # pragma: no cover - defensive
                     warnings.warn(
                         f"Validation failed for fold {fold}: {exc}", stacklevel=2
                     )
+                    record(repeat, fold, split_seed, float("nan"), str(exc))
                     continue
                 if np.isnan(error):
+                    # validate_oversampling returns nan when the sampler made
+                    # no synthetic points. This used to `continue` with no
+                    # warning at all, so the fold vanished from both the mean
+                    # and the count backing the interval.
+                    record(
+                        repeat,
+                        fold,
+                        split_seed,
+                        float("nan"),
+                        "no synthetic samples generated",
+                    )
                     continue
-                errors.append(float(error))
-        return errors
+                record(repeat, fold, split_seed, float(error), "")
+        return records
 
     def _confidence_interval(self, values: Sequence[float]) -> tuple[float, float]:
         """Return a confidence interval for the **mean** of the provided values.

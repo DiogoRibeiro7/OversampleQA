@@ -12,6 +12,18 @@ maintained manually.
 
 ### Added
 
+- `StatisticalBenchmark.fold_results()` returns one row per attempted fold —
+  dataset, oversampler, metric, repeat, fold, split seed, hidden ratio, error
+  rate, skip status and skip reason. The summary frame reports a mean and
+  interval per (dataset, oversampler, metric), which is enough to read a
+  ranking and not enough to check one: it cannot be re-aggregated, plotted as a
+  distribution, or given a different interval.
+  Skipped folds are kept with `nan` and a reason rather than dropped, because a
+  mean over three surviving folds of twenty-five is indistinguishable from a
+  mean over twenty-five once the skips are gone. A combination whose folds all
+  skip produces no summary row at all; the fold frame still shows every attempt.
+  `split_seed` lets a single repeat be reproduced without rerunning the sweep.
+
 - `run_benchmark` records the distance metric as a column. It identifies a
   measurement rather than merely parameterising one: without it, concatenating
   two sweeps run under different metrics gives a frame whose rows cannot be
@@ -32,6 +44,15 @@ maintained manually.
   rather than lumped in with synthetic data.
 
 ### Fixed
+
+- A fold that produced `nan` — the sampler generated no synthetic points — was
+  dropped with no warning at all, so it vanished from both the mean and the
+  count backing the interval. It is now recorded as a skipped fold with that
+  reason.
+- `docs/benchmarking.rst` still documented the pre-0.3 confidence-interval
+  defect as current behaviour, and named `_collect_fold_errors`, which does not
+  exist. It now describes the t-interval used at every sample size and keeps
+  the old behaviour as historical context.
 
 - **`export_benchmark_results(fmt="markdown")` did not emit Markdown.** It used
   `to_csv(sep="|")` — no header separator row, no edge pipes — the same defect
