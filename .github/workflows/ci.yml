@@ -31,11 +31,15 @@ jobs:
         python-version: ${{ matrix.python-version }}
     
     - name: Install dependencies
+      # poetry is pinned and the lock is verified: an unpinned poetry with no
+      # committed lock silently re-resolved every dependency on every run, so
+      # nothing guaranteed two runs tested the same versions.
       run: |
         python -m pip install --upgrade pip
-        pip install poetry
+        pip install "poetry==2.4.1"
+        poetry check --lock
         poetry install --with dev
-    
+
     - name: Run tests
       run: poetry run pytest --cov=oversampleqa --cov-report=xml
     
@@ -65,7 +69,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install poetry
+        pip install "poetry==2.4.1"
+        poetry check --lock
         poetry install --with dev
         poetry run pip install -r docs/requirements.txt
     - name: Sync gallery examples
