@@ -25,6 +25,7 @@ from .benchmark import (
 from .caching import ValidationCache
 from .cli import main as cli_main
 from .clustering import cluster_based_diagnostics
+from .deprecation import deprecated
 from .distance import (
     braycurtis_distance,
     canberra_distance,
@@ -161,6 +162,7 @@ __all__ = [
     "correlation_distance",
     "create_benchmark_report",
     "cross_match_test",
+    "deprecated",
     "distance_matrix",
     "duplication_rate",
     "energy_distance",

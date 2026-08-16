@@ -45,6 +45,27 @@ A deprecated name:
 3. is listed in the changelog under `Deprecated` when introduced and under
    `Removed` when dropped.
 
+Point 1 is mechanised by `oversampleqa.deprecated`, so the wording does not have
+to be reinvented at each site — and, in particular, so the removal version is
+not the detail that gets forgotten:
+
+```python
+from oversampleqa import deprecated
+
+@deprecated(removal_version="0.6.0", replacement="new_name")
+def old_name(): ...
+```
+
+It works on functions, methods and classes, appends a `.. deprecated::` note to
+the docstring so the change is visible in these docs, and raises the warning
+against the **caller's** stack frame. That last point is not cosmetic: Python
+hides `DeprecationWarning` by default outside `__main__`, and per-module filters
+key on the reported location, so a warning that appears to originate inside
+oversampleqa is invisible to the people who need to act on it.
+
+Pass `category=FutureWarning` when the change alters results rather than
+spelling; that category is shown to end users by default.
+
 Currently deprecated:
 
 | Name | Replacement | Removal |
