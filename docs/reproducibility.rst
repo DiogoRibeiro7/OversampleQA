@@ -125,8 +125,19 @@ validating so that repeated runs see the same arrays.
 Dataset provenance
 ------------------
 
-The built-in dataset catalog in :func:`~oversampleqa.benchmark.load_standard_datasets`
-is reproducible by construction:
+Both dataset catalogs — :func:`~oversampleqa.benchmark.load_standard_datasets`
+and :class:`~oversampleqa.advanced_benchmark.DatasetRepository` — attach a
+``provenance`` record to every dataset they return, with the same six keys:
+``source``, ``generator``, ``params``, ``url``, ``license`` and ``notes``.
+
+``license`` is always present. ``"Unknown"`` is a legitimate value; omitting the
+key is not, because an absent licence reads as "no restrictions" to a hurried
+reader. ``notes`` carries anything needed to avoid misreading the numbers — in
+particular, ``max_samples`` takes a *positional slice*, not a random sample, and
+the record says so.
+
+The catalog in :func:`~oversampleqa.benchmark.load_standard_datasets` is
+reproducible by construction:
 
 - **Synthetic datasets** (``make_classification``, ``make_moons``,
   ``make_circles``, ``make_blobs``) are generated with fixed seeds, so they are
