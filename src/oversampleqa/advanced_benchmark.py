@@ -17,6 +17,11 @@ from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
+from ._provenance import (
+    bundled_provenance,
+    openml_provenance,
+    synthetic_provenance,
+)
 from .validator import validate_oversampling
 
 # The tidy long-format column set: one row per
@@ -598,6 +603,16 @@ class DatasetRepository:
                 "data": X,
                 "target": y,
                 "minority_label": 1,
+                "provenance": bundled_provenance(
+                    "sklearn.datasets.load_breast_cancer",
+                    url="https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic",
+                    license="CC BY 4.0 (UCI ML Repository); redistributed with scikit-learn.",
+                    notes=(
+                        f"Truncated to the first {max_samples} rows, which is a "
+                        "positional slice and not a random sample."
+                    ),
+                    max_samples=max_samples,
+                ),
             }
         ]
         if include_openml:
@@ -613,6 +628,15 @@ class DatasetRepository:
                         "data": Xd,
                         "target": yd,
                         "minority_label": 1,
+                        "provenance": openml_provenance(
+                            "diabetes",
+                            1,
+                            notes=(
+                                "Version pinned to 1. Target binarised as "
+                                "'tested_positive'. Truncated to the first "
+                                f"{max_samples} rows."
+                            ),
+                        ),
                     }
                 )
             except Exception as exc:  # pragma: no cover - network dependent
@@ -642,6 +666,21 @@ class DatasetRepository:
                     "data": X[:max_samples],
                     "target": y[:max_samples],
                     "minority_label": 1,
+                    "provenance": {
+                        "source": "third-party",
+                        "generator": "imbalanced_datasets.creditcard.load_data",
+                        "params": {"max_samples": max_samples},
+                        "url": "https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud",
+                        "license": (
+                            "Database Contents License (DbCL) v1.0. Redistribution "
+                            "terms are the upstream package's, not this project's."
+                        ),
+                        "notes": (
+                            "Optional dependency; the loader pins no version, so "
+                            "the contents are whatever the installed release "
+                            f"ships. Truncated to the first {max_samples} rows."
+                        ),
+                    },
                 }
             )
         return datasets
@@ -739,6 +778,7 @@ class DatasetRepository:
                 flip_y=0.02 if difficulty in {"hard", "extreme"} else 0.0,
                 **config,
             )
+            flip_y = 0.02 if difficulty in {"hard", "extreme"} else 0.0
             datasets.append(
                 {
                     "name": f"{difficulty}_synthetic_{idx}",
@@ -746,6 +786,14 @@ class DatasetRepository:
                     "target": y,
                     "minority_label": 1,
                     "difficulty": difficulty,
+                    "provenance": synthetic_provenance(
+                        "sklearn.datasets.make_classification",
+                        random_state=42 + idx,
+                        n_informative=max(2, config["n_features"] // 2),
+                        n_redundant=config["n_features"] // 4,
+                        flip_y=flip_y,
+                        **config,
+                    ),
                 }
             )
         return datasets

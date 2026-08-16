@@ -10,6 +10,26 @@ maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- Every dataset from `advanced_benchmark.DatasetRepository` now carries a
+  `provenance` record — source, generator, params, url, license and notes —
+  matching what `benchmark.load_standard_datasets` already did. The two
+  catalogs previously disagreed: one described where its data came from and the
+  other returned bare arrays. The shared helpers live in
+  `oversampleqa._provenance`, so there is one record shape rather than two, and
+  a test asserts the catalogs agree.
+  `max_samples` truncation is now disclosed as the positional slice it is, and
+  `breast_cancer` is recorded as bundled real-world data with its UCI licence
+  rather than lumped in with synthetic data.
+
+### Fixed
+
+- `docs/requirements.txt` pinned `sphinx==8.1.3` and `matplotlib==3.10.9` and
+  was installed after `poetry install`, so the docs job built against two
+  packages the lock did not govern. The docs toolchain moved into a locked
+  poetry group and the file is gone.
+
 ## [0.5.0] - 2026-08-16
 
 ### Added
