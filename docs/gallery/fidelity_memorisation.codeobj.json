@@ -1,0 +1,65 @@
+{
+ "RandomOverSampler": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "imblearn.over_sampling",
+   "module_short": "imblearn.over_sampling",
+   "name": "RandomOverSampler"
+  }
+ ],
+ "SMOTE": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "imblearn.over_sampling",
+   "module_short": "imblearn.over_sampling",
+   "name": "SMOTE"
+  }
+ ],
+ "fidelity_report": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "oversampleqa.fidelity",
+   "module_short": "oversampleqa.fidelity",
+   "name": "fidelity_report"
+  }
+ ],
+ "make_classification": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "sklearn.datasets",
+   "module_short": "sklearn.datasets",
+   "name": "make_classification"
+  }
+ ],
+ "np.arange": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "arange"
+  }
+ ],
+ "plt.show": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "matplotlib.pyplot",
+   "module_short": "matplotlib.pyplot",
+   "name": "show"
+  }
+ ],
+ "plt.subplots": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "matplotlib.pyplot",
+   "module_short": "matplotlib.pyplot",
+   "name": "subplots"
+  }
+ ]
+}
