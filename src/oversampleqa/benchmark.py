@@ -373,31 +373,82 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
     return datasets
 
 
+#: Columns that identify one comparable experiment. Error rates are only
+#: commensurable within a fixed (dataset, hidden_ratio, metric).
+_SPECIFICATION_COLUMNS = ("dataset", "hidden_ratio", "metric")
+
+
 def compute_ranking(results: pd.DataFrame) -> pd.DataFrame:
-    """Return mean, stddev and rank of oversamplers.
+    """Rank oversamplers within each experiment, then aggregate the ranks.
+
+    Error rates are not comparable across datasets, hold-out ratios or metrics:
+    an easy dataset scores near 0.1 and a hard one near 0.9, and hassanat scores
+    roughly twice euclidean on the same data. Pooling them and taking a mean
+    asks a question with no answer.
+
+    Ranking within each ``(dataset, hidden_ratio, metric)`` and averaging those
+    ranks is the Demsar (2006) protocol, and the same logic underlying
+    :func:`~oversampleqa.inference.friedman_nemenyi` -- so the ranking here and
+    the significance test there answer the same question.
 
     Args:
-        results: Benchmark results dataframe.
+        results: Long-format benchmark frame from :func:`run_benchmark`.
 
     Returns:
-        Summary dataframe with ``mean``, ``std``, ``rank`` and ``n_missing``.
+        Summary indexed by oversampler with ``mean_rank`` (lower is better),
+        ``rank``, ``n_specifications``, and the pooled ``mean``, ``std`` and
+        ``n_missing`` retained for reference.
+
+    Warns:
+        UserWarning: If oversamplers were ranked over different numbers of
+            experiments. Mean ranks computed over different sets are not
+            comparable, and the imbalance is usually caused by skipped runs.
 
     Notes:
-        ``validate_oversampling`` returns ``nan`` when a run produced no
-        synthetic samples. Those runs are excluded from the mean and standard
-        deviation rather than being counted as zero, and the number excluded is
-        reported in ``n_missing`` so a mean computed from very few runs is
-        visible rather than silent.
+        Averaging the raw error rate was not merely imprecise, it inverted
+        results. Given a sampler that beats another on *every* dataset while
+        having more of its runs skipped on the hard one, the pooled mean
+        favours the loser -- Simpson's paradox, reachable here because the
+        hold-out guards legitimately drop runs.
+
+        ``nan`` runs are excluded rather than counted as zero, and the count is
+        reported in ``n_missing``.
     """
     grouped = results.groupby("oversampler")["error_rate"]
-    # pandas skips NaN by default; state it explicitly so the behaviour is a
-    # decision rather than an accident.
     summary = grouped.agg(
         mean=lambda s: s.mean(skipna=True),
         std=lambda s: s.std(skipna=True),
     )
     summary["n_missing"] = grouped.apply(lambda s: int(s.isna().sum()))
-    summary["rank"] = summary["mean"].rank(method="min")
+
+    spec = [c for c in _SPECIFICATION_COLUMNS if c in results.columns]
+    if not spec:
+        # Nothing identifies separate experiments, so every row is already
+        # comparable and the pooled mean is the only available ordering.
+        summary["mean_rank"] = summary["mean"].rank(method="average")
+        summary["n_specifications"] = 1
+        summary["rank"] = summary["mean_rank"].rank(method="min")
+        return summary
+
+    # One score per (experiment, oversampler), then rank within the experiment.
+    per_spec = results.groupby([*spec, "oversampler"])["error_rate"].mean()
+    ranks = per_spec.groupby(level=list(range(len(spec)))).rank(method="average")
+
+    mean_rank = ranks.groupby("oversampler").mean()
+    counts = ranks.groupby("oversampler").count()
+    summary["mean_rank"] = mean_rank
+    summary["n_specifications"] = counts.astype("Int64")
+    summary["rank"] = summary["mean_rank"].rank(method="min")
+
+    if counts.nunique() > 1:
+        warnings.warn(
+            "Oversamplers were ranked over different numbers of experiments "
+            f"({counts.to_dict()}). Mean ranks computed over different sets of "
+            "experiments are not comparable; the imbalance usually means some "
+            "runs were skipped. Check n_missing.",
+            UserWarning,
+            stacklevel=2,
+        )
     return summary
 
 
