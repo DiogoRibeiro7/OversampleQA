@@ -12,6 +12,18 @@ maintained manually.
 
 ### Added
 
+- `tests/test_release_metadata.py` checks the release-facing metadata as one
+  unit: the version across `pyproject.toml` (both blocks), `__init__.py`,
+  `CITATION.cff` and the BibTeX in `README.md` and `docs/citation.rst`; the
+  `date-released` against the dated CHANGELOG heading; that the current version
+  has a recorded DOI; that the README badge uses the concept DOI while the
+  "cite this exact release" line uses the version DOI; and that author,
+  affiliation, ORCID and licence agree between `CITATION.cff` and
+  `.zenodo.json`. It runs on every commit, because drift is introduced between
+  releases and would otherwise surface only during one.
+- CI enforces `ruff check src tests` and `mypy src`. Both were claimed clean by
+  the README and the roadmap, and neither ran in CI.
+
 - `StatisticalBenchmark.fold_results()` returns one row per attempted fold —
   dataset, oversampler, metric, repeat, fold, split seed, hidden ratio, error
   rate, skip status and skip reason. The summary frame reports a mean and
@@ -44,6 +56,9 @@ maintained manually.
   rather than lumped in with synthetic data.
 
 ### Fixed
+
+- The README cited version 0.3.0 in its BibTeX block and offered 0.3.0's DOI as
+  "this exact release", two releases after the fact.
 
 - A fold that produced `nan` — the sampler generated no synthetic points — was
   dropped with no warning at all, so it vanished from both the mean and the
