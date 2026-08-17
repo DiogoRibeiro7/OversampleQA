@@ -17,9 +17,14 @@
 
 .. _sphx_glr_gallery_visualization_example.py:
 
-Visualize sample distributions after oversampling.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-27
+Visualizing Sample Distributions
+================================
+
+Plot real and synthetic samples together to see where an oversampler places
+its generated points.
+
+.. GENERATED FROM PYTHON SOURCE LINES 8-33
 
 .. code-block:: Python
 

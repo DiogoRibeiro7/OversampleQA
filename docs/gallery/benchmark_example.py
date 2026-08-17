@@ -1,4 +1,9 @@
-"""Run a simple benchmark using oversampleqa."""
+"""
+Benchmarking Oversamplers
+=========================
+
+Run a benchmark across the built-in standard datasets and render a report.
+"""
 
 from imblearn.over_sampling import SMOTE
 

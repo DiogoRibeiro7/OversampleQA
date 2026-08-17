@@ -17,9 +17,14 @@
 
 .. _sphx_glr_gallery_typed_validator_example.py:
 
-Typed validator example using ValidationConfig.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-32
+Typed Validator
+===============
+
+Drive validation through the Pydantic-backed ``ValidationConfig`` instead of
+loose keyword arguments.
+
+.. GENERATED FROM PYTHON SOURCE LINES 8-38
 
 .. code-block:: Python
 
