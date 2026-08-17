@@ -76,12 +76,35 @@ the switch is off are not archived retroactively.
 Release checklist
 -----------------
 
-Before publishing a release that will be archived:
+Most of this is enforced by ``tests/test_release_metadata.py``, which runs on
+every commit rather than only at release time — drift is introduced between
+releases and would otherwise only surface during one. It checks that:
 
-* ``version`` in ``CITATION.cff`` matches the release tag.
-* ``date-released`` in ``CITATION.cff`` matches the release date.
-* Author list and affiliations are current in ``CITATION.cff``, ``.zenodo.json``,
-  and ``AUTHORS.md``.
+* the version agrees across ``pyproject.toml`` (both the Poetry and commitizen
+  blocks), ``src/oversampleqa/__init__.py``, ``CITATION.cff``, the BibTeX in
+  ``README.md``, and the BibTeX here;
+* ``date-released`` in ``CITATION.cff`` matches the dated ``CHANGELOG`` heading
+  for that version;
+* the current version has a DOI recorded in ``CITATION.cff``;
+* the README badge points at the *concept* DOI, and the "cite this exact
+  release" line points at the *current version* DOI;
+* author, affiliation, ORCID and licence agree between ``CITATION.cff`` and
+  ``.zenodo.json``;
+* ``.zenodo.json`` declares no ``version`` field.
+
+A failing test names the file and the expected value. Two things it cannot
+check, which remain manual:
+
+* Author list in ``AUTHORS.md``, which has no machine-readable version to
+  compare against.
+* Whether the recorded DOI is the *right* one — only that one exists. Copy it
+  from the Zenodo record page.
+
+The version DOI is minted only after the GitHub release is published, so
+``test_current_version_has_a_recorded_doi`` fails between the version bump and
+the archive. That is the intended sequence: bump and tag, publish, then commit
+the DOI. It is also why both 0.4.0 and 0.5.0 shipped without it — nothing
+failed to remind anyone.
 
 ``.zenodo.json`` deliberately omits a ``version`` field: Zenodo takes the
 version from the git tag, so there is nothing to keep in sync there.

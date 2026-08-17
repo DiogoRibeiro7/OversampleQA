@@ -11,7 +11,7 @@ import warnings
 
 import numpy as np
 import pytest
-from imblearn.over_sampling import RandomOverSampler, SMOTE
+from imblearn.over_sampling import SMOTE, RandomOverSampler
 from sklearn.datasets import make_classification
 
 from oversampleqa.advanced_benchmark import _FOLD_COLUMNS, StatisticalBenchmark

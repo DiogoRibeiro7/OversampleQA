@@ -8,7 +8,7 @@ import pkgutil
 import warnings
 from collections.abc import Callable
 from importlib import metadata
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -272,11 +272,19 @@ class PluginManager:
         Args:
             module: Imported module object.
         """
+        # getmembers yields `type[object]`. The casts record that the guard
+        # immediately above is what establishes the protocol -- it is a runtime
+        # duck-type check on an arbitrary user module, which no annotation can
+        # express. Registration re-validates signature and axioms regardless.
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if self._implements_metric(cls):
-                self.register_metric(cls.__name__.lower(), cls)
+                self.register_metric(
+                    cls.__name__.lower(), cast("type[DistanceMetricProtocol]", cls)
+                )
             elif self._implements_validator(cls):
-                self.register_validator(cls.__name__.lower(), cls)
+                self.register_validator(
+                    cls.__name__.lower(), cast("type[ValidatorProtocol]", cls)
+                )
 
     @staticmethod
     def _implements_metric(cls: type) -> bool:

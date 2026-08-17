@@ -130,9 +130,16 @@ ignore = [
 "tests/*" = ["SLF001"]
 
 [tool.mypy]
-python_version = "3.10"
 ignore_missing_imports = true
 strict = true
+# `python_version = "3.10"` was set here and made mypy unrunnable. mypy parses
+# third-party stubs under the configured version, and numpy's stubs use PEP 695
+# `type` statements, so every run died with "Type statement is only supported in
+# Python 3.12 and greater" before checking a single source file. That went
+# unnoticed because CI never ran mypy.
+#
+# The 3.10 floor is enforced where it is actually observable: the CI test matrix
+# runs 3.10, and ruff's target-version = "py310" rejects newer syntax.
 
 # `strict = true` applies everywhere. The numerical core -- validator,
 # distance, extended_distances, optimized_distance, metrics, caching, types,

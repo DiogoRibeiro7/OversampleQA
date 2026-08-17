@@ -43,7 +43,7 @@ def _fidelity_section(reports: dict[str, Any], output_format: str) -> str:
 
     frame = pd.DataFrame(rows)
     if output_format == "html":
-        body = frame.to_html(index=False, float_format=lambda v: f"{v:.4f}")
+        body = str(frame.to_html(index=False, float_format=lambda v: f"{v:.4f}"))
         if notes:
             body += "<ul>" + "".join(f"<li>{n}</li>" for n in notes) + "</ul>"
         return "<h2>Fidelity and diversity</h2>" + body

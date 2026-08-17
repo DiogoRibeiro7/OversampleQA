@@ -76,4 +76,6 @@ def frame_to_html(frame: pd.DataFrame, *, float_format: str = "{:.4f}") -> str:
     if frame.empty:
         return "<p><em>No results.</em></p>"
     display = frame.reset_index() if frame.index.name else frame
-    return display.to_html(index=False, float_format=float_format.format)
+    # pandas ships no type information, so to_html is typed Any. str() makes
+    # the declared return type honest instead of suppressing the error.
+    return str(display.to_html(index=False, float_format=float_format.format))

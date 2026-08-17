@@ -130,7 +130,78 @@ person; the ordering below reflects priority, not a delivery commitment. Each
 item should land with tests or documentation that would have caught the failure
 mode it addresses.
 
+### v0.5.1 — correctness closure before features
+
+No new user-facing feature work should land until these items are resolved. The
+goal is to bring the older benchmark, multiclass and inference layers up to the
+same statistical standard as the corrected binary validator.
+
+- **Null-calibration estimand consistency.** `null_error_rate()` must calibrate
+  the same experiment as the default validator. Use disjoint minority splits for
+  sampler training, the common minority reference and real null candidates, so
+  observed synthetic candidates and real null candidates are scored against the
+  same hidden-majority and held-out-minority reference sets. The ceiling should
+  also avoid candidate/reference self-overlap.
+- **Calibration interpretation fix.** `NullCalibration.interpret()` should
+  distinguish values below the calibrated interval, inside it and above it. An
+  observed score below `low` is not "within" `[low, high]`.
+- **Multiclass parity with binary validation.** Multiclass validation should
+  reuse the binary path's safety guarantees: verify original-row prefix
+  preservation before extracting synthetic rows, enforce `min_hidden`, account
+  for ties, and reject too-small hidden references instead of reporting
+  plausible noise.
+- **Multiclass missing measurements as `nan`.** Classes for which a sampler
+  generates no synthetic points are unmeasured, not perfect. Report `nan` for
+  those classes and compute macro summaries with explicit `nanmean` over
+  genuinely evaluated target classes.
+- **Benchmark ranking validity.** `compute_ranking()` should not average raw
+  error rates across incomparable datasets, hidden ratios or metrics. Rank
+  within each dataset/specification first, then aggregate ranks, matching the
+  logic behind the Friedman/Nemenyi workflow.
+- **Metric-scoped pairwise inference.** Advanced benchmark pairwise tests must
+  group by `(dataset, metric)` before comparing oversamplers. P-values and
+  effect sizes from one metric must never be attached to rows for another
+  metric.
+- **Paired effect sizes.** Replace independent-sample Cohen's d in paired
+  benchmark comparisons with a paired standardized difference or rank-biserial
+  effect size aligned with the Wilcoxon design.
+- **Benchmark data fixes.** `DatasetRepository._load_medical()` should mark
+  `load_breast_cancer()` minority label `0`, not `1`; OpenML loading should use
+  the actual `fetch_openml(..., as_frame=False)` target interface; and OpenML
+  tests should fail when requested OpenML datasets are all skipped.
+- **Plugin metrics in validation.** Custom metric plugins discovered through
+  entry points should be usable end to end by `distance_matrix()` and
+  `validate_oversampling(..., metric=...)`, not only retrievable through
+  `PluginManager.get_metric()`.
+- **Metric-domain enforcement.** Validators should reject sample-level metrics
+  such as `energy` and `wasserstein` for pointwise nearest-neighbour validation,
+  and use declared metric domains to reject probability, boolean or
+  non-negative metrics on incompatible data.
+- **Inferential dependence caveats.** The nearest-neighbour, MST and cross-match
+  permutation tests should either gain a block/per-fit resampling design for
+  dependent synthetic samples or document their p-values as diagnostic
+  approximations for SMOTE-like generators.
+- **Advanced benchmark defaults.** Remove default Mahalanobis rows unless a
+  covariance inverse is estimated for the relevant training/reference set, and
+  remove `recommended_samples` until it is tied to a defined hypothesis and
+  sampling unit.
+- **Metric degeneracy tests.** Add deterministic metric-property tests for
+  degenerate inputs: `cosine_distance(0, x)`, constant-vector correlation
+  distance and other cases the randomized axiom smoke test can miss.
+- **Noise sensitivity realised flips.** `noise_sensitivity_diagnostic()` should
+  sample replacement labels excluding the original label, so a requested flip
+  fraction corresponds to realised label changes.
+- **CI quality gates.** Main CI should enforce `ruff check` and `mypy src`, not
+  only tests and docs, because the roadmap and README claim those gates are
+  clean.
+- **Release-document consistency.** Fix the README citation version, update stale
+  benchmarking docs, and check Markdown benchmark export rendering alongside the
+  report renderer so release-facing docs and exports do not contradict the code.
+
 ### v0.6.0 — export and reporting trust
+
+This release can start after the v0.5.1 correctness closure. It should improve
+how results leave the package, without changing the statistical meaning again.
 
 - **Fold-level benchmark export.** The statistical benchmark summary is already
   tidy by `(dataset, oversampler, metric)`, but the raw fold/repeat observations
