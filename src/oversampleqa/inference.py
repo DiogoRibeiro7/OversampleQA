@@ -131,6 +131,18 @@ class NullCalibration:
         low, high = self.null_interval()
         if np.isnan(low):
             return "Not enough draws to calibrate."
+        if self.observed < low:
+            # Previously reported as "within". Below the interval is a distinct
+            # and more interesting outcome than inside it: real held-out
+            # minority points score in [low, high], so beating that is not
+            # "better synthesis" -- points closer to the minority than real
+            # minority points are usually sitting on top of the training data.
+            return (
+                f"{self.observed:.3f} is below the null interval "
+                f"[{low:.3f}, {high:.3f}] (z={self.z_score:.2f}) -- better than "
+                "real held-out minority points score. Check memorisation before "
+                "reading this as quality."
+            )
         if self.observed <= high:
             return (
                 f"{self.observed:.3f} is within the null interval "
@@ -292,6 +304,24 @@ def null_error_rate(
 
     generators = spawn_generators(random_state, n_draws)
     majority = X[y != minority_label]
+    n_minority = int(np.sum(y == minority_label))
+
+    # Three disjoint minority pieces are needed, not two. See the estimand note
+    # in the docstring: the null candidates must be scored against the same
+    # reference the observed synthetic points were, and cannot be part of it.
+    ratio = hidden_ratio
+    if int(n_minority * ratio) < min_hidden or n_minority - 2 * int(
+        n_minority * ratio
+    ) < 1:
+        raise ValidationError(
+            f"A minority class of {n_minority} cannot support the calibration "
+            f"split at hidden_ratio={ratio:.3g} and min_hidden={min_hidden}. "
+            "Calibration needs three disjoint minority sets -- one standing in "
+            "for the sampler's training data, one common reference, and one "
+            "supplying the real null candidates -- because scoring the null "
+            "against a reference it belongs to measures nothing. Supply more "
+            "minority data or lower min_hidden."
+        )
 
     null_rates: list[float] = []
     ceiling_rates: list[float] = []
@@ -307,28 +337,57 @@ def null_error_rate(
             min_hidden=min_hidden,
             random_state=gen,
         )
-        # The null: score the held-out *real* minority points. They cannot be
-        # scored against themselves, so the fitted minority is the reference.
+        # The common minority reference. `validate_oversampling` scores its
+        # synthetic points against exactly this set, so the null must too --
+        # previously the null used `fit_minority` instead, which is a different
+        # and much larger set, so the two rates were not the same quantity and
+        # the calibration compared observed against a null of something else.
+        reference = split.reference_minority
+
+        # Null candidates: real minority points held out from both the
+        # reference and the notional training set. They stand in for synthetic
+        # points, so they must be disjoint from the reference they are scored
+        # against; carving them from `fit_minority` guarantees that.
+        n_null = min(len(reference), max(len(split.fit_minority) - 1, 0))
+        if n_null == 0:
+            null_rates.append(float("nan"))
+            ceiling_rates.append(float("nan"))
+            continue
+        null_idx = gen.choice(len(split.fit_minority), size=n_null, replace=False)
+        null_candidates = split.fit_minority[null_idx]
+
         null_rates.append(
             _score_against(
-                split.reference_minority,
+                null_candidates,
                 split.hid_majority,
-                split.fit_minority,
+                reference,
                 metric,
                 metric_kwargs,
             )
         )
+
         # The ceiling: majority points standing in for synthetic ones, i.e. a
         # generator that has learned the wrong distribution entirely.
-        n_bad = len(split.reference_minority)
-        bad_idx = gen.choice(
-            len(majority), size=min(n_bad, len(majority)), replace=False
-        )
+        #
+        # Drawn from the *visible* majority. Drawing from the full majority put
+        # hidden-majority points into the candidate set -- measured at 8.8% of
+        # candidates, with 64% of draws affected -- and a candidate that is
+        # itself in the reference sits at distance zero from it, so it is
+        # counted as an error by construction. That inflated the ceiling and,
+        # with it, every `scaled` position measured against it.
+        visible_mask = np.ones(len(majority), dtype=bool)
+        visible_mask[split.hidden_majority_index] = False
+        visible_majority = majority[visible_mask]
+        if len(visible_majority) == 0:
+            ceiling_rates.append(float("nan"))
+            continue
+        n_bad = min(len(reference), len(visible_majority))
+        bad_idx = gen.choice(len(visible_majority), size=n_bad, replace=False)
         ceiling_rates.append(
             _score_against(
-                majority[bad_idx],
+                visible_majority[bad_idx],
                 split.hid_majority,
-                split.fit_minority,
+                reference,
                 metric,
                 metric_kwargs,
             )
