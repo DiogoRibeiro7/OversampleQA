@@ -46,6 +46,23 @@ Version DOI
    exact code that produced the results. The version DOI is minted by Zenodo
    after the GitHub release is published, then copied into ``CITATION.cff``.
 
+Releases without a version DOI
+------------------------------
+
+**0.5.1 has no Zenodo record.** Zenodo archives a release by fetching its
+tarball from ``codeload.github.com``; that request timed out during a GitHub
+outage on 2026-08-17 and the deposition was abandoned. Redelivering the webhook
+returns ``409``, because Zenodo has already seen the release -- so it cannot be
+archived after the fact.
+
+Cite the concept DOI for 0.5.1. It resolves to the newest archived version,
+which is what a reader following the citation needs anyway, and the package is
+on PyPI, so ``pip install oversampleqa==0.5.1`` still reproduces the exact code.
+
+``tests/test_release_metadata.py`` records this in ``UNARCHIVED_RELEASES``, with
+the reason, so the DOI check does not block later releases over a gap that
+cannot be filled.
+
 Publishing and archiving a release
 ----------------------------------
 
@@ -104,7 +121,7 @@ releases and would otherwise only surface during one. It checks that:
   ``README.md``, and the BibTeX here;
 * ``date-released`` in ``CITATION.cff`` matches the dated ``CHANGELOG`` heading
   for that version;
-* the current version has a DOI recorded in ``CITATION.cff``;
+* every *previous* archived release has a DOI recorded in ``CITATION.cff``;
 * the README badge points at the *concept* DOI, and the "cite this exact
   release" line points at the *current version* DOI;
 * author, affiliation, ORCID and licence agree between ``CITATION.cff`` and
@@ -119,11 +136,13 @@ check, which remain manual:
 * Whether the recorded DOI is the *right* one — only that one exists. Copy it
   from the Zenodo record page.
 
-The version DOI is minted only after the GitHub release is published, so
-``test_current_version_has_a_recorded_doi`` fails between the version bump and
-the archive. That is the intended sequence: bump and tag, publish to PyPI and
-archive on Zenodo, then commit the DOI. It is also why both 0.4.0 and 0.5.0
-shipped without it — nothing failed to remind anyone.
+The version DOI is minted only after the GitHub release is published, so the
+current version legitimately has no DOI between the version bump and the
+archive. ``test_every_previous_release_has_a_recorded_doi`` therefore checks the
+*previous* release rather than the current one: it needs no flag to be switched
+off during the release window, and it blocks the next version bump until the
+last one's DOI is recorded. Both 0.4.0 and 0.5.0 shipped without theirs because
+nothing failed to remind anyone.
 
 ``.zenodo.json`` deliberately omits a ``version`` field: Zenodo takes the
 version from the git tag, so there is nothing to keep in sync there.

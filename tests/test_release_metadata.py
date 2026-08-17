@@ -24,6 +24,21 @@ ROOT = Path(__file__).resolve().parents[1]
 CONCEPT_DOI = "10.5281/zenodo.21940361"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
+#: Releases that were published but never archived, and never will be. Each
+#: needs a reason, so the list cannot quietly become a way to stop caring.
+#:
+#: Zenodo archives by fetching the release tarball from codeload.github.com.
+#: When that request fails the deposition is abandoned, and the webhook returns
+#: 409 on redelivery because Zenodo has already seen the release -- so there is
+#: no way to archive it afterwards. Cite the concept DOI for these versions; it
+#: resolves to the newest archived release.
+UNARCHIVED_RELEASES = {
+    "0.5.1": (
+        "Zenodo's tarball fetch timed out during a GitHub codeload outage on "
+        "2026-08-17; redelivery returns 409."
+    ),
+}
+
 
 def _toml_version(text: str, section: str) -> str:
     """Read ``version`` from one TOML section, without a TOML parser.
@@ -181,7 +196,7 @@ def test_every_previous_release_has_a_recorded_doi(citation, changelog, version)
     previous = [
         v
         for v in _released_versions(changelog)
-        if v != version and parts(v) >= floor
+        if v != version and parts(v) >= floor and v not in UNARCHIVED_RELEASES
     ]
     assert previous, "no earlier archived release found in the CHANGELOG"
     missing = [v for v in previous if v not in dois]
@@ -281,3 +296,22 @@ def test_py_typed_marker_is_present():
 def test_package_declares_a_pypi_readme(pyproject):
     """A missing readme renders the PyPI project page blank."""
     assert 'readme = "README.md"' in pyproject
+
+
+def test_unarchived_releases_are_genuinely_absent(citation):
+    """An exemption for a version that *does* have a DOI is a stale exemption.
+
+    Without this, the list silently becomes a way to stop checking releases
+    that were archived perfectly well.
+    """
+    recorded = _version_dois(citation)
+    stale = [v for v in UNARCHIVED_RELEASES if v in recorded]
+    assert not stale, (
+        f"{stale} are listed as unarchived but have DOIs in CITATION.cff; "
+        "remove them from UNARCHIVED_RELEASES."
+    )
+
+
+def test_every_unarchived_release_states_a_reason():
+    for version, reason in UNARCHIVED_RELEASES.items():
+        assert reason.strip(), f"{version} is exempted without a reason"
