@@ -17,6 +17,14 @@ section are maintained manually.
 
 ### Fixed
 
+- **A registered metric plugin could not actually be used.** `distance_matrix`
+  and every validator funnelling through it checked only the built-in table, so
+  a plugin metric was rejected as unsupported by the exact functions it exists
+  to be used by — while `PluginManager.get_metric` returned it happily.
+  `resolve_metric` now consults built-ins and the plugin registry, per call
+  rather than at import, since plugins register at runtime. The typed
+  validator's config model rejected them too, before any validation could run.
+  Unknown metric names now list the built-ins and say how to register a plugin.
 - **Pairwise p-values and effect sizes were computed from the wrong metric.**
   `_add_statistical_analysis` grouped by dataset alone, so a dataset evaluated
   under several metrics gave a slice with several rows per oversampler; the
