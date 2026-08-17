@@ -17,6 +17,17 @@ section are maintained manually.
 
 ### Fixed
 
+- **`compute_ranking` averaged error rates across incomparable experiments.**
+  Rates are commensurable only within a fixed (dataset, hidden_ratio, metric):
+  an easy dataset scores near 0.1 and a hard one near 0.9, and hassanat scores
+  roughly twice euclidean on the same data. Pooling them did not merely blur the
+  ordering, it inverted it — given a sampler beating another on *every* dataset
+  while having more runs skipped on the hard one, the pooled mean favoured the
+  loser. Ranking is now done within each experiment and the ranks averaged,
+  which is the Demšar protocol and matches `friedman_nemenyi` exactly, so the
+  headline ordering and the significance test cannot disagree. Adds `mean_rank`
+  and `n_specifications`, and warns when samplers were ranked over different
+  numbers of experiments.
 - **`DatasetRepository` declared the wrong minority class for
   `load_breast_cancer`.** It said `1`, but the minority is class 0 — 212
   malignant against 357 benign — so every benchmark using it oversampled the
