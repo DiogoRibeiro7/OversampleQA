@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from collections.abc import Mapping
 from dataclasses import replace
 from typing import Any, NamedTuple
 
@@ -254,16 +255,43 @@ def extract_synthetic_samples(
     can still return more rows than it was given while having removed some of
     the originals -- so the prefix is compared element-wise.
     """
+    require_prefix_preserved(X_original, X_resampled, "validate_oversampling")
+    n = len(X_original)
+    synthetic: NDArray[np.floating] = X_resampled[n:][y_resampled[n:] == minority_label]
+    return synthetic
+
+
+def require_prefix_preserved(
+    X_original: NDArray[np.floating],
+    X_resampled: NDArray[np.floating],
+    caller: str,
+) -> None:
+    """Raise unless the resampler left the original rows as an unchanged prefix.
+
+    Synthetic rows are identified positionally, so a resampler that deletes or
+    reorders originals makes that slice meaningless. A length check alone does
+    not catch it -- ``SMOTEENN`` can return more rows than it was given while
+    having removed some originals -- so the prefix is compared element-wise.
+
+    Shared by the binary and multiclass paths. The multiclass path had no such
+    check and would return plausible-looking numbers from a misaligned slice.
+
+    Args:
+        X_original: Matrix passed to ``fit_resample``.
+        X_resampled: Matrix returned by it.
+        caller: Function name, for the message.
+
+    Raises:
+        ValueError: If the originals are not an unchanged prefix.
+    """
     n = len(X_original)
     if len(X_resampled) < n or not np.array_equal(X_resampled[:n], X_original):
         raise ValueError(
             "The oversampler did not preserve the original samples as a prefix of "
             "its output, so synthetic samples cannot be identified positionally. "
             "This is expected for combined over/under-samplers such as SMOTEENN "
-            "and SMOTETomek, which are not supported by validate_oversampling."
+            f"and SMOTETomek, which are not supported by {caller}."
         )
-    synthetic: NDArray[np.floating] = X_resampled[n:][y_resampled[n:] == minority_label]
-    return synthetic
 
 
 def validate_oversampling(
@@ -643,6 +671,7 @@ def validate_multiclass_oversampling(
     metric_kwargs: dict[str, Any] | None = None,
     return_matrix: bool = False,
     *,
+    min_hidden: int = 5,
     random_state: RandomStateLike = 42,
 ) -> dict[int, float] | tuple[dict[int, float], NDArray[np.floating]]:
     """Validate oversampling for multi-class datasets.
@@ -670,6 +699,10 @@ def validate_multiclass_oversampling(
         Additional keyword arguments passed to :func:`distance_matrix`.
     return_matrix : bool, default=False
         If ``True`` also return the error matrix.
+    min_hidden : int, default=5
+        Minimum held-out points per class. Every class is a reference for
+        every other, so a class that cannot supply a usable hidden set makes
+        attribution unreliable for all of them.
     random_state : int, Generator, SeedSequence or None, default=42
         Seeds the per-class hold-out. Defaults to 42, which reproduces
         previously documented numbers.
@@ -679,21 +712,58 @@ def validate_multiclass_oversampling(
     dict or tuple
         Mapping of ``class_label -> error_rate``. If ``return_matrix`` is
         ``True`` the second element is the error matrix.
+
+        A class for which the sampler generated no synthetic points maps to
+        ``nan``, not ``0.0``: nothing was measured, and ``0.0`` is the score of
+        a perfect result. Use :func:`macro_error_rate` to summarise, or
+        ``np.nanmean`` over the values -- a plain mean propagates the ``nan``.
+
+    Raises
+    ------
+    ValueError
+        If ``hidden_ratio`` is out of range, if any class would hide fewer than
+        ``min_hidden`` points, or if the oversampler did not preserve the
+        original rows as a prefix of its output.
+
+    Notes
+    -----
+    A synthetic point equidistant from its own class and another is attributed
+    to its own class, matching :func:`score_nearest_distances`. Ties previously
+    went to whichever class appeared first in label order, which biased results
+    toward low-numbered classes for reasons unrelated to the data.
     """
 
     _validate_hidden_ratio(hidden_ratio)
     labels = np.unique(y)
     rng = as_generator(random_state)
 
+    # Every class supplies a hidden reference, so every class must be able to
+    # support one. Previously a class whose hold-out rounded to zero got an
+    # empty reference and was silently dropped from attribution: synthetic
+    # points could never be scored against it, so it could never receive an
+    # error, and its own rate was computed against a reduced set of rivals.
+    too_small = {
+        int(lbl): int(np.sum(y == lbl) * hidden_ratio)
+        for lbl in labels
+        if int(np.sum(y == lbl) * hidden_ratio) < min_hidden
+    }
+    if too_small:
+        detail = ", ".join(
+            f"class {lbl} would hide {n}" for lbl, n in sorted(too_small.items())
+        )
+        raise ValueError(
+            f"Hiding {hidden_ratio:.3g} of each class leaves fewer than "
+            f"min_hidden={min_hidden} points for: {detail}. A nearest-neighbour "
+            "comparison against so few points is not meaningful, and every class "
+            "is used as a reference for every other. Supply more data for those "
+            "classes, raise hidden_ratio, or lower min_hidden."
+        )
+
     visible = {}
     hidden = {}
     for label in labels:
         cls_samples = X[y == label]
         n_hidden = int(len(cls_samples) * hidden_ratio)
-        if n_hidden == 0:
-            visible[label] = cls_samples
-            hidden[label] = np.empty((0, X.shape[1]))
-            continue
         idx = rng.permutation(len(cls_samples))
         hidden[label] = cls_samples[idx[:n_hidden]]
         visible[label] = cls_samples[idx[n_hidden:]]
@@ -707,6 +777,11 @@ def validate_multiclass_oversampling(
         logger.exception("Oversampler failed during fit_resample")
         raise
 
+    # The binary path has always checked this; the multiclass path did not, so
+    # a combined sampler that deletes original rows produced a misaligned slice
+    # and plausible-looking numbers from it.
+    require_prefix_preserved(X_train, X_res, "validate_multiclass_oversampling")
+
     start = len(X_train)
     X_syn = X_res[start:]
     y_syn = y_res[start:]
@@ -714,46 +789,72 @@ def validate_multiclass_oversampling(
     metric_kwargs = metric_kwargs or {}
     matrix = np.zeros((len(labels), len(labels)), dtype=int)
 
-    # Precompute distance matrices to hidden samples of each class
-    hidden_dists: dict[int, NDArray[np.floating] | None] = {
-        lbl: (
-            distance_matrix(X_syn, hidden[lbl], metric, **metric_kwargs)
-            if len(hidden[lbl]) > 0
-            else None
-        )
+    # Distance from every synthetic point to each class's hidden reference.
+    hidden_dists = {
+        lbl: distance_matrix(X_syn, hidden[lbl], metric, **metric_kwargs)
         for lbl in labels
     }
 
     for i, lbl in enumerate(labels):
-        syn_i = X_syn[y_syn == lbl]
-        if len(syn_i) == 0:
+        rows = y_syn == lbl
+        if not np.any(rows):
             continue
-        nearest_dist = np.full(len(syn_i), np.inf)
-        nearest_lbl_idx = np.full(len(syn_i), i)
-        for j, lbl_hid in enumerate(labels):
-            arr = hidden_dists[lbl_hid]
-            if arr is None:
-                continue
-            d = arr[y_syn == lbl]
-            if d.size == 0:
-                continue
-            n = d.min(axis=1)
-            mask = n < nearest_dist
-            nearest_dist[mask] = n[mask]
-            nearest_lbl_idx[mask] = j
+        # Nearest distance to each class, as (n_synthetic, n_classes).
+        per_class = np.column_stack(
+            [hidden_dists[other][rows].min(axis=1) for other in labels]
+        )
+        own = per_class[:, i]
+        rivals = np.delete(per_class, i, axis=1)
+        best_rival = rivals.min(axis=1)
+
+        # A tie is attributed to the point's own class. Strict `<` on a running
+        # minimum previously gave ties to whichever class came first in label
+        # order, a systematic bias toward low-numbered classes that had nothing
+        # to do with the data. This matches score_nearest_distances, where a tie
+        # is not evidence of an error.
+        own_wins = own <= best_rival
+        rival_idx = np.argmin(rivals, axis=1)
+        # argmin indexes the array with column i removed; shift back past it.
+        rival_idx[rival_idx >= i] += 1
+
+        attribution = np.where(own_wins, i, rival_idx)
         for j in range(len(labels)):
-            matrix[i, j] = np.sum(nearest_lbl_idx == j)
+            matrix[i, j] = int(np.sum(attribution == j))
 
     error_rates = {}
     for i, lbl in enumerate(labels):
-        n_syn = matrix[i].sum()
+        n_syn = int(matrix[i].sum())
         if n_syn == 0:
-            error_rates[int(lbl)] = 0.0
+            # nan, not 0.0. The sampler generated nothing for this class, so
+            # nothing was measured -- and 0.0 is the score of a perfect result.
+            error_rates[int(lbl)] = float("nan")
             continue
-        errors = n_syn - matrix[i, i]
+        errors = n_syn - int(matrix[i, i])
         error_rates[int(lbl)] = calculate_error_rate(errors, n_syn)
 
     if return_matrix:
         return error_rates, matrix
 
     return error_rates
+
+
+def macro_error_rate(error_rates: Mapping[int, float]) -> float:
+    """Average per-class error rates over the classes actually measured.
+
+    :func:`validate_multiclass_oversampling` reports ``nan`` for a class the
+    sampler generated nothing for. A plain mean propagates that to the summary,
+    turning "one class was not measured" into "no result at all"; counting the
+    ``nan`` as zero would be worse still, since it would read as a perfect score
+    for the class that was never evaluated.
+
+    Args:
+        error_rates: Mapping of class label to error rate.
+
+    Returns:
+        Mean over the classes with a measurement, or ``nan`` when none has one.
+    """
+    values = np.asarray(list(error_rates.values()), dtype=float)
+    measured = values[~np.isnan(values)]
+    if measured.size == 0:
+        return float("nan")
+    return float(measured.mean())

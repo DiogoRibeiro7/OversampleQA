@@ -171,8 +171,17 @@ def test_multiclass_accepts_random_state():
     a = validate_multiclass_oversampling(X, y, SMOTE(random_state=0), random_state=1)
     b = validate_multiclass_oversampling(X, y, SMOTE(random_state=0), random_state=1)
     c = validate_multiclass_oversampling(X, y, SMOTE(random_state=0), random_state=99)
-    assert a == b
-    assert a != c
+
+    # nan != nan, so dict equality cannot express "the same result" now that an
+    # unmeasured class reports nan rather than 0.0.
+    def same(left, right):
+        return left.keys() == right.keys() and all(
+            (np.isnan(left[k]) and np.isnan(right[k])) or left[k] == right[k]
+            for k in left
+        )
+
+    assert same(a, b)
+    assert not same(a, c)
 
 
 def test_stratify_by_rejects_misaligned_input(imbalanced_data):
