@@ -10,7 +10,15 @@ section are maintained manually.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-17
+
 ### Added
+
+- `macro_error_rate` averages per-class rates over the classes actually
+  measured. A plain mean propagates the `nan` from an unmeasured class, and
+  treating that `nan` as zero would read as a perfect score for the class that
+  was never evaluated.
+- `validate_multiclass_oversampling` accepts `min_hidden`.
 
 - PyPI release preparation: package metadata now includes project URLs,
   classifiers and keywords; install docs use `pip install oversampleqa`; and
@@ -65,6 +73,23 @@ section are maintained manually.
   rather than lumped in with synthetic data.
 
 ### Fixed
+
+- **Multiclass validation accepted a resampler that deletes original rows.**
+  Synthetic points are identified positionally, so `SMOTEENN` and `SMOTETomek`
+  produced a misaligned slice and plausible-looking numbers from it. The binary
+  path has always refused this; the guard is now shared by both.
+- **Multiclass validation enforced no minimum hidden-set size.** A class whose
+  hold-out rounded to zero got an empty reference and silently stopped being a
+  reference for any other class, so no synthetic point could ever be attributed
+  to it.
+- **Ties went to the lowest label index.** Attribution used a strict `<` against
+  a running minimum over classes in label order, so a synthetic point
+  equidistant from its own class and another was attributed to whichever sorted
+  first. On quantised features this decided **38.6%** of attributions. A tie now
+  goes to the point's own class, matching `score_nearest_distances`, where a tie
+  is not evidence of an error.
+- **A class the sampler generated nothing for scored `0.0`.** Nothing was
+  measured, and `0.0` is the score of a perfect result. It is now `nan`.
 
 - **The null calibrated a different experiment from the one it was calibrating.**
   `null_error_rate` scored held-out minority points against `fit_minority`,
@@ -577,7 +602,8 @@ Initial release.
 - Plugin system for custom metrics and validators.
 - Sphinx documentation, examples gallery, and tutorials.
 
-[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.5.1
 [0.5.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.5.0
 [0.4.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.4.0
 [0.3.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.3.0

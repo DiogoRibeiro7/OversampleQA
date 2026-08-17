@@ -13,6 +13,7 @@ releases and only becomes visible during one.
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -23,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CONCEPT_DOI = "10.5281/zenodo.21940361"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+PENDING_ZENODO_DOI = os.environ.get("OVERSAMPLEQA_PENDING_ZENODO_DOI") == "1"
 
 
 def _toml_version(text: str, section: str) -> str:
@@ -153,6 +155,8 @@ def test_readme_badge_points_at_the_concept_doi(readme):
 def test_current_version_has_a_recorded_doi(citation, version):
     """Step 5 of the release checklist, skipped on 0.4.0 and 0.5.0."""
     dois = _version_dois(citation)
+    if version not in dois and PENDING_ZENODO_DOI:
+        pytest.skip("version DOI is minted by Zenodo after the GitHub release")
     assert version in dois, (
         f"CITATION.cff records no DOI for {version}. After publishing the "
         "release, add it to the identifiers block."
@@ -171,14 +175,20 @@ def test_no_recorded_version_doi_equals_the_concept_doi(citation):
 
 def test_readme_cites_the_current_version_doi(readme, citation, version):
     """It offered 0.3.0's DOI as 'this exact release' at 0.5.0."""
-    expected = _version_dois(citation)[version]
+    dois = _version_dois(citation)
+    if version not in dois and PENDING_ZENODO_DOI:
+        pytest.skip("version DOI is minted by Zenodo after the GitHub release")
+    expected = dois[version]
     assert expected in readme, (
         f"README should offer {expected} as the current version DOI"
     )
 
 
 def test_citation_doc_cites_the_current_version_doi(citation_doc, citation, version):
-    expected = _version_dois(citation)[version]
+    dois = _version_dois(citation)
+    if version not in dois and PENDING_ZENODO_DOI:
+        pytest.skip("version DOI is minted by Zenodo after the GitHub release")
+    expected = dois[version]
     assert expected in citation_doc
 
 
@@ -220,3 +230,22 @@ def test_zenodo_links_to_the_same_repository_as_citation(zenodo, citation):
     """
     related = json.dumps(zenodo.get("related_identifiers", []))
     assert str(citation["repository-code"]).rstrip("/") in related
+
+
+# --- packaging ---
+
+
+def test_py_typed_marker_is_present():
+    """PEP 561: without this file, every downstream type checker ignores us.
+
+    The package is annotated throughout and checked under mypy strict, and
+    exports Protocols for callers to implement. None of that reaches a consumer
+    unless the marker ships, and the failure is silent -- their checker simply
+    treats the package as untyped.
+    """
+    assert (ROOT / "src" / "oversampleqa" / "py.typed").is_file()
+
+
+def test_package_declares_a_pypi_readme(pyproject):
+    """A missing readme renders the PyPI project page blank."""
+    assert 'readme = "README.md"' in pyproject

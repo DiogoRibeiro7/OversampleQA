@@ -9,6 +9,7 @@ no local API token or ``twine upload`` step here.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -18,10 +19,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_command(args: list[str]) -> None:
+def run_command(args: list[str], *, env: dict[str, str] | None = None) -> None:
     """Run a command from the repository root and fail fast."""
     print("+ " + " ".join(args))
-    subprocess.run(args, cwd=ROOT, check=True)
+    merged_env = os.environ.copy()
+    if env:
+        merged_env.update(env)
+    subprocess.run(args, cwd=ROOT, check=True, env=merged_env)
 
 
 def output(args: list[str]) -> str:
@@ -53,7 +57,10 @@ def ensure_release_ready(*, skip_tests: bool, skip_clean_check: bool) -> None:
     run_command(["poetry", "run", "ruff", "check", "src", "tests"])
     run_command(["poetry", "run", "mypy", "src"])
     if not skip_tests:
-        run_command(["poetry", "run", "pytest"])
+        run_command(
+            ["poetry", "run", "pytest"],
+            env={"OVERSAMPLEQA_PENDING_ZENODO_DOI": "1"},
+        )
     run_command(["poetry", "build"])
     distributions = sorted(str(path.relative_to(ROOT)) for path in dist.iterdir())
     run_command(["python", "-m", "twine", "check", *distributions])

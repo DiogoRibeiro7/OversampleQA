@@ -25,7 +25,7 @@ BibTeX
      author  = {Ribeiro, Diogo},
      title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
                 and benchmark oversampling methods}},
-     version = {0.5.0},
+     version = {0.5.1},
      year    = {2026},
      doi     = {10.5281/zenodo.21940361},
      url     = {https://doi.org/10.5281/zenodo.21940361}
@@ -41,9 +41,10 @@ Concept DOI — ``10.5281/zenodo.21940361``
    versions* on the record page. This is what the README badge and
    ``CITATION.cff`` point at, because it never goes stale.
 
-Version DOI — ``10.5281/zenodo.21967099`` for 0.5.0
+Version DOI
    Points at one specific release. Use it in a paper, where the reader needs the
-   exact code that produced the results.
+   exact code that produced the results. The version DOI is minted by Zenodo
+   after the GitHub release is published, then copied into ``CITATION.cff``.
 
 Publishing and archiving a release
 ----------------------------------
@@ -59,7 +60,10 @@ publisher:
 * owner: ``diogoribeiro7``
 * repository: ``OversampleQA``
 * workflow: ``publish.yml``
-* environment: ``pypi``
+
+No GitHub environment is configured in ``publish.yml``. Leave the environment
+field empty in PyPI's trusted-publisher settings unless you deliberately add a
+GitHub environment later.
 
 1. Update ``version`` and ``date-released`` in ``CITATION.cff``, the version in
    ``pyproject.toml``, ``[tool.commitizen]``, and ``src/oversampleqa/__init__.py``,

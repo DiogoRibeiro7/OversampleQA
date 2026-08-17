@@ -29,6 +29,8 @@ jobs:
           poetry install --with dev
 
       - name: Quality gates
+        env:
+          OVERSAMPLEQA_PENDING_ZENODO_DOI: "1"
         run: |
           poetry run ruff check src tests
           poetry run mypy src
@@ -50,9 +52,6 @@ jobs:
     name: Publish distribution to PyPI
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/oversampleqa
     permissions:
       id-token: write
       contents: read

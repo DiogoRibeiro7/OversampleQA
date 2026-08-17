@@ -8,8 +8,8 @@ abstract: >-
   the hidden majority and to the real minority, yielding an error rate that
   measures how often an oversampler produces majority-like artifacts.
 type: software
-version: "0.5.0"
-date-released: 2026-08-16
+version: "0.5.1"
+date-released: 2026-08-17
 license: MIT
 authors:
   - family-names: Ribeiro
