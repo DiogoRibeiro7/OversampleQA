@@ -22,7 +22,7 @@ from ._provenance import (
     openml_provenance,
     synthetic_provenance,
 )
-from .validator import validate_oversampling
+from .validator import infer_minority_label, validate_oversampling
 
 # The tidy long-format column set: one row per
 # (dataset, oversampler, metric). Declared once so the empty-result frame and
@@ -725,7 +725,11 @@ class DatasetRepository:
                 "name": "breast_cancer",
                 "data": X,
                 "target": y,
-                "minority_label": 1,
+                # Derived, not declared. The full dataset's minority is class 0
+                # (212 malignant against 357 benign) and this said 1, so the
+                # benchmark oversampled the majority. max_samples then inverts
+                # it again -- the first 200 rows are 104 class-0 to 96 class-1.
+                "minority_label": infer_minority_label(y),
                 "provenance": bundled_provenance(
                     "sklearn.datasets.load_breast_cancer",
                     url="https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic",
@@ -750,7 +754,7 @@ class DatasetRepository:
                         "name": "diabetes_openml",
                         "data": Xd,
                         "target": yd,
-                        "minority_label": 1,
+                        "minority_label": infer_minority_label(yd),
                         "provenance": openml_provenance(
                             "diabetes",
                             1,
@@ -788,7 +792,7 @@ class DatasetRepository:
                     "name": "creditcard",
                     "data": X[:max_samples],
                     "target": y[:max_samples],
-                    "minority_label": 1,
+                    "minority_label": infer_minority_label(y[:max_samples]),
                     "provenance": {
                         "source": "third-party",
                         "generator": "imbalanced_datasets.creditcard.load_data",
@@ -907,7 +911,7 @@ class DatasetRepository:
                     "name": f"{difficulty}_synthetic_{idx}",
                     "data": X,
                     "target": y,
-                    "minority_label": 1,
+                    "minority_label": infer_minority_label(y),
                     "difficulty": difficulty,
                     "provenance": synthetic_provenance(
                         "sklearn.datasets.make_classification",
