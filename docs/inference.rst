@@ -50,11 +50,50 @@ or, for a generator drawing from the wrong distribution:
    0.950 is above the null interval [0.000, 0.067] (z=41.18) --
    worse than an ideal generator would achieve here.
 
+or, when the observed rate falls *below* the interval:
+
+.. code-block:: text
+
+   0.010 is below the null interval [0.098, 0.184] (z=-2.71) --
+   better than real held-out minority points score. Check memorisation before
+   reading this as quality.
+
+That third case is not a better result. Real minority points define the bar;
+scoring below it usually means the synthetic points sit on top of the training
+data, which :doc:`/fidelity` measures directly.
+
 .. important::
 
    ``hidden_ratio`` and ``metric`` must match the run that produced
    ``observed``. The rate's scale depends on both, so calibrating against a null
    computed with different settings compares two different quantities.
+
+How the split is built
+----------------------
+
+Calibration divides the minority into **three** disjoint sets, not two:
+
+* one standing in for the sampler's training data;
+* one **common reference**, the same set ``validate_oversampling`` scores its
+  synthetic points against;
+* one supplying the real null candidates, which stand in for synthetic points.
+
+The third must be disjoint from the second, because scoring a point against a
+set it belongs to measures nothing. Ceiling candidates are drawn from the
+**visible** majority for the same reason: a point that is itself in the hidden
+majority sits at distance zero from it and is counted as an error by
+construction.
+
+.. note::
+
+   Before 0.6, the null scored held-out minority points against ``fit_minority``
+   -- roughly 90% of the minority -- while the validator scored synthetic points
+   against the held-out 10%. A denser reference means closer nearest neighbours
+   and fewer errors, so the null sat around 0.033 where the same experiment
+   gives 0.133. The bar was roughly four times too low, and ordinary samplers
+   were therefore reported as significantly worse than ideal. Ceiling candidates
+   were also drawn from the full majority, overlapping the hidden set in 64% of
+   draws. Calibrations produced before 0.6 carry both defects.
 
 Two-sample tests
 ----------------

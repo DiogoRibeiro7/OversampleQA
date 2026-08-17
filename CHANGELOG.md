@@ -57,6 +57,26 @@ maintained manually.
 
 ### Fixed
 
+- **The null calibrated a different experiment from the one it was calibrating.**
+  `null_error_rate` scored held-out minority points against `fit_minority`,
+  roughly 90% of the minority, while `validate_oversampling` scores synthetic
+  points against the held-out 10%. A denser reference gives closer nearest
+  neighbours and fewer errors, so the null sat at 0.033 where the same
+  experiment gives 0.133 — a bar four times too low, against which ordinary
+  samplers were reported as significantly worse than ideal. Calibration now
+  splits the minority three ways: notional training data, a common reference
+  shared by observed and null, and the real null candidates.
+- **Ceiling candidates could be the very points they were scored against.**
+  They were drawn from the full majority, which contains the hidden majority
+  used as the reference; a candidate in the reference sits at distance zero
+  from it and is an error by construction. Measured at 8.8% of candidates, with
+  64% of draws affected. They are now drawn from the visible majority only.
+- **`NullCalibration.interpret()` called a rate below the null interval
+  "within" it.** The check was `observed <= high` with no lower bound. Below the
+  interval is a distinct outcome — better than real held-out minority points
+  score, which usually indicates memorisation rather than quality — and is now
+  reported as such.
+
 - **`mypy src` did not run at all.** `[tool.mypy] python_version = "3.10"` made
   mypy parse third-party stubs under 3.10, and numpy's stubs use PEP 695 `type`
   statements, so every run died with a syntax error before checking a single
