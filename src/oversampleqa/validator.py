@@ -16,6 +16,7 @@ from sklearn.base import clone
 from ._rng import RandomStateLike, as_generator, integer_seed, spawn_generators
 from .distance import distance_matrix
 from .metrics import calculate_error_rate, duplication_rate
+from .plugin_contract import require_pointwise_metric
 from .types import ReferenceSet, ValidationDetails
 
 logger = logging.getLogger(__name__)
@@ -445,6 +446,7 @@ def validate_oversampling(
     narrow. Nothing here claims more than the repeat-level bootstrap supports.
     """
     _validate_hidden_ratio(hidden_ratio)
+    require_pointwise_metric(metric)
     labels = np.unique(y)
     if minority_label not in labels:
         raise ValueError(f"minority_label {minority_label} not found in y")
@@ -765,6 +767,7 @@ def validate_multiclass_oversampling(
     """
 
     _validate_hidden_ratio(hidden_ratio)
+    require_pointwise_metric(metric)
     labels = np.unique(y)
     rng = as_generator(random_state)
 

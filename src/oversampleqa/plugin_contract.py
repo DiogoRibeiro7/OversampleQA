@@ -28,6 +28,7 @@ __all__ = [
     "MetricDomain",
     "MetricPlugin",
     "check_metric_axioms",
+    "require_pointwise_metric",
     "validate_metric_signature",
 ]
 
@@ -65,6 +66,44 @@ METRIC_DOMAINS: dict[str, MetricDomain] = {
     "energy": "sample",
     "wasserstein": "sample",
 }
+
+
+
+def require_pointwise_metric(metric: str) -> None:
+    """Raise unless ``metric`` is meaningful between two individual points.
+
+    Hidden-majority validation asks whether one synthetic point is nearer to
+    held-out majority than to real minority. That question needs a distance
+    between two points. ``energy`` and ``wasserstein`` compare two *samples*,
+    and applied to a single pair they treat each point's own coordinates as the
+    sample -- so feature identity disappears:
+
+    ``[0, 5]`` against ``[5, 0]`` scores 7.07 under euclidean and **0.0** under
+    wasserstein, because the two coordinate multisets are equal. ``energy``
+    returns **-5.0** on the same pair, a negative distance, which then feeds a
+    ``nearest_hidden < nearest_minority`` comparison.
+
+    Neither raised. Both produced plausible error rates -- 0.53 and 0.78 against
+    hassanat's 0.50 on the same run -- which is the worst way to be wrong.
+
+    Args:
+        metric: Metric identifier.
+
+    Raises:
+        MetricError: If the metric is declared as operating on samples.
+    """
+    from .exceptions import MetricError
+
+    if METRIC_DOMAINS.get(metric) == "sample":
+        raise MetricError(
+            f"{metric!r} is a sample-level metric: it compares two "
+            "distributions, not two points. Nearest-neighbour validation needs "
+            "a point metric, and applying this one pairwise discards feature "
+            "identity -- [0, 5] and [5, 0] score as identical. Use a point "
+            "metric such as 'hassanat' or 'euclidean'. To compare whole "
+            "samples, see oversampleqa.inference, whose two-sample tests are "
+            "built for that question."
+        )
 
 
 @runtime_checkable

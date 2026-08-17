@@ -47,6 +47,7 @@ from ._rng import RandomStateLike, as_generator, spawn_generators
 from .distance import distance_matrix
 from .exceptions import ValidationError
 from .metrics import calculate_error_rate
+from .plugin_contract import require_pointwise_metric
 from .validator import prepare_validation_split, score_nearest_distances
 
 __all__ = [
@@ -290,6 +291,7 @@ def null_error_rate(
     against a null computed with different settings compares two different
     quantities.
     """
+    require_pointwise_metric(metric)
     labels = np.unique(y)
     if len(labels) != 2:
         raise ValidationError(
