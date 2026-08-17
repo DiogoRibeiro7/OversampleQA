@@ -109,3 +109,29 @@ jobs:
       run: poetry run python scripts/sync_gallery_examples.py
     - name: Build docs (warnings as errors)
       run: poetry run sphinx-build -b html docs docs/_build/html -W
+
+    # Uploaded from every run, so a pull request proves the artifact is
+    # publishable, not merely that the build exits zero. Only the deploy job
+    # below is restricted to main.
+    - name: Upload pages artifact
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: docs/_build/html
+
+  deploy-docs:
+    # Publishes what the docs job already built. A second build could differ
+    # from the one that was checked, and the -W gate is the thing making the
+    # output trustworthy.
+    needs: docs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
