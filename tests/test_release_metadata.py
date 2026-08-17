@@ -13,7 +13,6 @@ releases and only becomes visible during one.
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 
@@ -24,7 +23,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CONCEPT_DOI = "10.5281/zenodo.21940361"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
-PENDING_ZENODO_DOI = os.environ.get("OVERSAMPLEQA_PENDING_ZENODO_DOI") == "1"
 
 
 def _toml_version(text: str, section: str) -> str:
@@ -152,14 +150,44 @@ def test_readme_badge_points_at_the_concept_doi(readme):
     assert CONCEPT_DOI in badge.group(2)
 
 
-def test_current_version_has_a_recorded_doi(citation, version):
-    """Step 5 of the release checklist, skipped on 0.4.0 and 0.5.0."""
+def _released_versions(changelog: str) -> list[str]:
+    """Versions with a dated CHANGELOG heading, newest first."""
+    return re.findall(r"^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}", changelog, re.M)
+
+
+def test_every_previous_release_has_a_recorded_doi(citation, changelog, version):
+    """Step 5 of the release checklist, missed on both 0.4.0 and 0.5.0.
+
+    Deliberately excludes the version being prepared. A version DOI is minted by
+    Zenodo *after* the GitHub release is published, so between the version bump
+    and the archive there is a window where the current version legitimately has
+    no DOI -- and requiring one there turns CI red for the whole of it.
+
+    Checking the previous release instead needs no flag and cannot be forgotten:
+    the next version bump is blocked until the last one's DOI is recorded. That
+    catches the omission one release later rather than never, which is what
+    actually happened twice.
+    """
     dois = _version_dois(citation)
-    if version not in dois and PENDING_ZENODO_DOI:
-        pytest.skip("version DOI is minted by Zenodo after the GitHub release")
-    assert version in dois, (
-        f"CITATION.cff records no DOI for {version}. After publishing the "
-        "release, add it to the identifiers block."
+    assert dois, "CITATION.cff records no version DOIs at all"
+
+    # Archiving began at 0.2.0; 0.1.0 predates the Zenodo integration and has no
+    # DOI to record. The floor is derived from the earliest DOI actually present
+    # rather than hardcoded, so it stays correct without being maintained.
+    def parts(v: str) -> tuple[int, ...]:
+        return tuple(int(p) for p in v.split("."))
+
+    floor = min(parts(v) for v in dois)
+    previous = [
+        v
+        for v in _released_versions(changelog)
+        if v != version and parts(v) >= floor
+    ]
+    assert previous, "no earlier archived release found in the CHANGELOG"
+    missing = [v for v in previous if v not in dois]
+    assert not missing, (
+        f"CITATION.cff records no DOI for {missing}. Copy it from the Zenodo "
+        "record page into the identifiers block."
     )
 
 
@@ -173,23 +201,27 @@ def test_no_recorded_version_doi_equals_the_concept_doi(citation):
     assert CONCEPT_DOI not in _version_dois(citation).values()
 
 
-def test_readme_cites_the_current_version_doi(readme, citation, version):
-    """It offered 0.3.0's DOI as 'this exact release' at 0.5.0."""
+def test_readme_cites_the_current_version_doi_once_it_exists(readme, citation, version):
+    """It offered 0.3.0's DOI as 'this exact release' at 0.5.0.
+
+    Conditional on the DOI existing, for the same reason as above: during the
+    pre-archive window there is nothing to cite yet.
+    """
     dois = _version_dois(citation)
-    if version not in dois and PENDING_ZENODO_DOI:
-        pytest.skip("version DOI is minted by Zenodo after the GitHub release")
-    expected = dois[version]
-    assert expected in readme, (
-        f"README should offer {expected} as the current version DOI"
+    if version not in dois:
+        pytest.skip(f"{version} has no DOI yet; Zenodo mints it after release")
+    assert dois[version] in readme, (
+        f"README should offer {dois[version]} as the current version DOI"
     )
 
 
-def test_citation_doc_cites_the_current_version_doi(citation_doc, citation, version):
+def test_citation_doc_cites_the_current_version_doi_once_it_exists(
+    citation_doc, citation, version
+):
     dois = _version_dois(citation)
-    if version not in dois and PENDING_ZENODO_DOI:
-        pytest.skip("version DOI is minted by Zenodo after the GitHub release")
-    expected = dois[version]
-    assert expected in citation_doc
+    if version not in dois:
+        pytest.skip(f"{version} has no DOI yet; Zenodo mints it after release")
+    assert dois[version] in citation_doc
 
 
 def test_recorded_versions_all_appear_in_the_changelog(citation, changelog):

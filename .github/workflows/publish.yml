@@ -29,8 +29,6 @@ jobs:
           poetry install --with dev
 
       - name: Quality gates
-        env:
-          OVERSAMPLEQA_PENDING_ZENODO_DOI: "1"
         run: |
           poetry run ruff check src tests
           poetry run mypy src

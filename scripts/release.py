@@ -57,10 +57,7 @@ def ensure_release_ready(*, skip_tests: bool, skip_clean_check: bool) -> None:
     run_command(["poetry", "run", "ruff", "check", "src", "tests"])
     run_command(["poetry", "run", "mypy", "src"])
     if not skip_tests:
-        run_command(
-            ["poetry", "run", "pytest"],
-            env={"OVERSAMPLEQA_PENDING_ZENODO_DOI": "1"},
-        )
+        run_command(["poetry", "run", "pytest"])
     run_command(["poetry", "build"])
     distributions = sorted(str(path.relative_to(ROOT)) for path in dist.iterdir())
     run_command(["python", "-m", "twine", "check", *distributions])
