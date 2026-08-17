@@ -108,6 +108,37 @@ def _holdout_indices(
     return np.concatenate(visible_parts), np.concatenate(hidden_parts)
 
 
+def infer_minority_label(y: NDArray[np.integer]) -> int:
+    """Return the least frequent label in ``y``.
+
+    Benchmark catalogs used to hardcode ``minority_label=1``, which is right for
+    a ``make_classification`` dataset built with descending weights and wrong
+    for real data: ``load_breast_cancer`` has 212 malignant against 357 benign,
+    so its minority is class 0 and the catalog declared 1 -- the whole benchmark
+    was oversampling the majority.
+
+    Truncation makes a fixed answer impossible rather than merely wrong. The
+    first 200 rows of ``load_breast_cancer`` are 104 class-0 against 96 class-1,
+    so ``max_samples`` inverts which class is rarer. Deriving the label from the
+    data actually returned is the only answer correct at every size.
+
+    Args:
+        y: Label array.
+
+    Returns:
+        The least frequent label. Ties resolve to the smaller label, which
+        keeps the result deterministic; a perfectly balanced dataset has no
+        minority and the caller should not be asking.
+
+    Raises:
+        ValueError: If ``y`` is empty.
+    """
+    labels, counts = np.unique(np.asarray(y), return_counts=True)
+    if labels.size == 0:
+        raise ValueError("cannot infer a minority label from an empty array")
+    return int(labels[int(np.argmin(counts))])
+
+
 def prepare_validation_split(
     X: NDArray[np.floating],
     y: NDArray[np.integer],

@@ -10,6 +10,30 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- `infer_minority_label` returns the least frequent label, and both dataset
+  catalogs now derive `minority_label` from the data instead of declaring it.
+
+### Fixed
+
+- **`DatasetRepository` declared the wrong minority class for
+  `load_breast_cancer`.** It said `1`, but the minority is class 0 — 212
+  malignant against 357 benign — so every benchmark using it oversampled the
+  majority. `max_samples` makes a fixed answer impossible rather than merely
+  wrong: the first 200 rows are 104 class-0 against 96 class-1, inverting which
+  class is rarer.
+- **`moons` and `circles` were exactly balanced.** A balanced dataset has
+  nothing to oversample, so SMOTE produced no synthetic points and both
+  contributed `nan` to every benchmark they appeared in. They are now
+  imbalanced, with the subsample recorded in their provenance.
+- **No built-in dataset could produce a measurement at the package's own
+  defaults.** `hidden_ratio=0.1` against `min_hidden=5` needs 50 minority
+  points; the largest built-in had 20, so `load_standard_datasets` returned
+  `nan` for every row — the documented starting point could not demonstrate the
+  documented workflow. The datasets are scaled up, keeping their imbalance
+  ratios and seeds. A test now asserts the catalog yields no `nan` at defaults.
+
 ## [0.5.1] - 2026-08-17
 
 ### Added

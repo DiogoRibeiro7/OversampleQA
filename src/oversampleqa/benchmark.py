@@ -8,6 +8,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from ._provenance import openml_provenance, synthetic_provenance
 from ._render import frame_to_html, frame_to_markdown
@@ -118,6 +119,32 @@ def run_benchmark(
     return pd.DataFrame(results, columns=list(_BENCHMARK_COLUMNS))
 
 
+
+def _imbalance(
+    X: NDArray[np.floating],
+    y: NDArray[np.integer],
+    minority_label: int,
+    keep: int,
+    rng: np.random.Generator,
+) -> tuple[NDArray[np.floating], NDArray[np.integer]]:
+    """Thin one class down to ``keep`` points, so the dataset is imbalanced.
+
+    ``make_moons`` and ``make_circles`` return exactly balanced classes. A
+    balanced dataset has nothing to oversample: SMOTE generates no synthetic
+    points, ``validate_oversampling`` returns ``nan``, and the dataset
+    contributes a missing measurement to every benchmark it appears in. Two of
+    the seven built-in datasets behaved that way.
+
+    Subsampling is random rather than positional, since these generators emit
+    the classes in blocks and a head slice would take one whole class.
+    """
+    minority_idx = np.flatnonzero(y == minority_label)
+    majority_idx = np.flatnonzero(y != minority_label)
+    kept = rng.choice(minority_idx, size=min(keep, len(minority_idx)), replace=False)
+    order = np.sort(np.concatenate([majority_idx, kept]))
+    return X[order], y[order]
+
+
 def load_standard_datasets(include_openml: bool = False) -> list[dict]:
     """Return a list of simple synthetic datasets for benchmarking.
 
@@ -180,7 +207,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             except Exception as exc:  # pragma: no cover - network dependent
                 logger.warning("Failed to fetch %s: %s", name, exc)
 
-    Xc, yc = make_classification(n_samples=200, weights=[0.9, 0.1], random_state=42)
+    Xc, yc = make_classification(n_samples=1000, weights=[0.9, 0.1], random_state=42)
     datasets.append(
         {
             "name": "classification",
@@ -189,14 +216,15 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             "minority_label": 1,
             "provenance": synthetic_provenance(
                 "sklearn.datasets.make_classification",
-                n_samples=200,
+                n_samples=1000,
                 weights=[0.9, 0.1],
                 random_state=42,
             ),
         }
     )
 
-    Xm, ym = make_moons(noise=0.2, random_state=42)
+    Xm, ym = make_moons(n_samples=600, noise=0.2, random_state=42)
+    Xm, ym = _imbalance(Xm, ym, 1, keep=60, rng=np.random.default_rng(42))
     datasets.append(
         {
             "name": "moons",
@@ -204,12 +232,18 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             "target": ym,
             "minority_label": 1,
             "provenance": synthetic_provenance(
-                "sklearn.datasets.make_moons", noise=0.2, random_state=42
+                "sklearn.datasets.make_moons",
+                n_samples=600,
+                noise=0.2,
+                random_state=42,
+                minority_kept=60,
+                subsample_seed=42,
             ),
         }
     )
 
-    Xr, yr = make_circles(noise=0.1, factor=0.5, random_state=42)
+    Xr, yr = make_circles(n_samples=600, noise=0.1, factor=0.5, random_state=42)
+    Xr, yr = _imbalance(Xr, yr, 1, keep=60, rng=np.random.default_rng(42))
     datasets.append(
         {
             "name": "circles",
@@ -217,13 +251,19 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             "target": yr,
             "minority_label": 1,
             "provenance": synthetic_provenance(
-                "sklearn.datasets.make_circles", noise=0.1, factor=0.5, random_state=42
+                "sklearn.datasets.make_circles",
+                n_samples=600,
+                noise=0.1,
+                factor=0.5,
+                random_state=42,
+                minority_kept=60,
+                subsample_seed=42,
             ),
         }
     )
 
     Xb, yb = make_blobs(
-        n_samples=[90, 10],
+        n_samples=[450, 60],
         centers=[(-2, 0), (2, 0)],
         cluster_std=[1.0, 1.0],
         random_state=42,
@@ -236,7 +276,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             "minority_label": 1,
             "provenance": synthetic_provenance(
                 "sklearn.datasets.make_blobs",
-                n_samples=[90, 10],
+                n_samples=[450, 60],
                 centers=[(-2, 0), (2, 0)],
                 cluster_std=[1.0, 1.0],
                 random_state=42,
@@ -245,7 +285,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
     )
 
     Xh, yh = make_classification(
-        n_samples=300,
+        n_samples=1200,
         n_features=10,
         n_informative=5,
         n_redundant=2,
@@ -261,7 +301,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             "minority_label": 1,
             "provenance": synthetic_provenance(
                 "sklearn.datasets.make_classification",
-                n_samples=300,
+                n_samples=1200,
                 n_features=10,
                 n_informative=5,
                 n_redundant=2,
@@ -273,7 +313,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
     )
 
     Xe, ye = make_classification(
-        n_samples=200,
+        n_samples=1200,
         n_features=2,
         n_redundant=0,
         n_clusters_per_class=1,
@@ -289,7 +329,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             "minority_label": 1,
             "provenance": synthetic_provenance(
                 "sklearn.datasets.make_classification",
-                n_samples=200,
+                n_samples=1200,
                 n_features=2,
                 n_redundant=0,
                 n_clusters_per_class=1,
@@ -301,7 +341,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
     )
 
     Xo, yo = make_classification(
-        n_samples=200,
+        n_samples=1200,
         n_features=2,
         n_redundant=0,
         n_clusters_per_class=1,
@@ -318,7 +358,7 @@ def load_standard_datasets(include_openml: bool = False) -> list[dict]:
             "minority_label": 1,
             "provenance": synthetic_provenance(
                 "sklearn.datasets.make_classification",
-                n_samples=200,
+                n_samples=1200,
                 n_features=2,
                 n_redundant=0,
                 n_clusters_per_class=1,
