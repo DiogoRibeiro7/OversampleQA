@@ -10,6 +10,20 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Sample-level metrics were accepted for pointwise validation.** `energy` and
+  `wasserstein` compare two *distributions*; applied to a single pair of points
+  they treat each point's own coordinates as the sample, so feature identity
+  disappears — `[0, 5]` and `[5, 0]` score **0.0** under wasserstein against
+  7.07 under euclidean, and `energy` returns **−5.0**, a negative distance fed
+  straight into a `nearest_hidden < nearest_minority` comparison. Neither
+  raised; both produced plausible error rates (0.53 and 0.78 against hassanat's
+  0.50 on the same run). `validate_oversampling`,
+  `validate_multiclass_oversampling` and `null_error_rate` now reject them,
+  using the domains already declared in `METRIC_DOMAINS`. `distance_matrix`
+  still computes them, since comparing whole samples is what they are for.
+
 ### Added
 
 - **Documentation is published to GitHub Pages** at
