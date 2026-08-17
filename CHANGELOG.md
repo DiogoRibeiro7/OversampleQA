@@ -57,6 +57,13 @@ maintained manually.
 
 ### Fixed
 
+- **`mypy src` did not run at all.** `[tool.mypy] python_version = "3.10"` made
+  mypy parse third-party stubs under 3.10, and numpy's stubs use PEP 695 `type`
+  statements, so every run died with a syntax error before checking a single
+  source file. Nothing noticed because CI never ran mypy. Removing the pin also
+  surfaced two real `arg-type` errors in `plugin_system._register_module` that
+  the older mypy had never reported. The 3.10 floor is enforced by the CI test
+  matrix and ruff's `target-version`.
 - The README cited version 0.3.0 in its BibTeX block and offered 0.3.0's DOI as
   "this exact release", two releases after the fact.
 
