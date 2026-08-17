@@ -12,6 +12,15 @@ section are maintained manually.
 
 ### Fixed
 
+- **`mahalanobis` was silently Euclidean.** With no `cov_inv` it fell back to an
+  identity covariance — which *is* Euclidean distance, so it reported one metric
+  under another's name. It was in the advanced benchmark's default metric list,
+  so every default run produced a third set of rows byte-identical to the
+  euclidean ones: euclidean counted twice in the per-metric rankings, and one
+  pairwise comparison split into two for the multiple-comparison correction. It
+  now raises, in both the scalar and vectorised paths, and is no longer a
+  default in `run_comprehensive_benchmark` or the config templates. A test
+  asserted the fallback; it asserted a bug, and now asserts the fix.
 - **Sample-level metrics were accepted for pointwise validation.** `energy` and
   `wasserstein` compare two *distributions*; applied to a single pair of points
   they treat each point's own coordinates as the sample, so feature identity

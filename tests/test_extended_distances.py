@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from oversampleqa.distance import (
     chebyshev_distance,
@@ -86,6 +87,9 @@ def test_mahalanobis_distance_matrix_with_cov():
     expected = np.sqrt(np.dot(diff, cov_inv @ diff))
     assert np.isclose(dm[0, 0], expected)
 
-    dm_default = distance_matrix(X1, X2, metric="mahalanobis")
-    dm_euclidean = distance_matrix(X1, X2, metric="euclidean")
-    assert np.allclose(dm_default, dm_euclidean)
+    # Omitting cov_inv used to fall back to Euclidean, and this test asserted
+    # it did. That is not a weaker Mahalanobis, it is a different metric under
+    # the wrong name -- and it silently produced duplicate rows in the advanced
+    # benchmark, where mahalanobis was a default.
+    with pytest.raises(ValueError, match="requires cov_inv"):
+        distance_matrix(X1, X2, metric="mahalanobis")

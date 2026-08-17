@@ -144,7 +144,12 @@ class StatisticalBenchmark:
             Distance metrics to evaluate. Defaults to Hassanat, Euclidean, Mahalanobis.
         """
 
-        metrics = tuple(metrics or ("hassanat", "euclidean", "mahalanobis"))
+        # mahalanobis is not a default. Without a covariance inverse it is
+        # Euclidean, so it produced a third set of rows identical to the
+        # euclidean ones -- inflating euclidean's weight in the rankings and
+        # splitting one comparison into two for the p-value correction. Pass it
+        # explicitly, with cov_inv in metric_kwargs, if you want it.
+        metrics = tuple(metrics or ("hassanat", "euclidean"))
         # Reset per run: a reused engine must not accumulate skips or folds.
         self._skipped = []
         self._fold_records_all = []

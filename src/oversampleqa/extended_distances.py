@@ -75,8 +75,19 @@ def mahalanobis_distance(
     diff = x1 - x2
 
     if cov_inv is None:
-        # Fall back to Euclidean if no covariance provided
-        return float(np.sqrt(np.dot(diff, diff)))
+        # Silently returning Euclidean relabels one metric as another. It was
+        # doing exactly that in the advanced benchmark's default metric list,
+        # where every "mahalanobis" row was a byte-identical copy of the
+        # "euclidean" row -- double-weighting euclidean in the rankings and
+        # making the pairwise correction treat one comparison as two.
+        raise ValueError(
+            "mahalanobis requires cov_inv: Mahalanobis distance with an "
+            "identity covariance is Euclidean distance, so defaulting to it "
+            "would report one metric under another's name. Estimate the "
+            "inverse from the reference data, e.g. "
+            "cov_inv=np.linalg.pinv(np.cov(X, rowvar=False)), and pass it "
+            "through metric_kwargs."
+        )
 
     return float(np.sqrt(np.dot(diff, np.dot(cov_inv, diff))))
 

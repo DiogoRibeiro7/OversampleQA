@@ -697,7 +697,14 @@ class OptimizedDistanceMatrix:
         """
         cov_inv = kwargs.get("cov_inv")
         if cov_inv is None:
-            return self._vectorized_euclidean(X1, X2)
+            # Matches the scalar path: a silent Euclidean fallback reports one
+            # metric under another's name.
+            raise ValueError(
+                "mahalanobis requires cov_inv: Mahalanobis distance with an "
+                "identity covariance is Euclidean distance. Estimate the "
+                "inverse from the reference data, e.g. "
+                "cov_inv=np.linalg.pinv(np.cov(X, rowvar=False))."
+            )
         diff = X1[:, None, :] - X2[None, :, :]
         res = np.einsum("...i,ij,...j->...", diff, cov_inv, diff)
         np.maximum(res, 0.0, out=res)
