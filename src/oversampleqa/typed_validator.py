@@ -12,7 +12,7 @@ from typing import Any, cast, overload
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
-from .distance import _METRICS
+from .distance import resolve_metric
 from .exceptions import ConfigurationError, MetricError, ValidationError
 from .types import (
     BaseValidator,
@@ -41,15 +41,21 @@ class PydanticValidationConfig(BaseModel):
     def validate_metric(cls, value: str) -> str:
         """Validate that the metric is supported.
 
+        Accepts registered plugin metrics as well as built-ins. Checking the
+        built-in table alone rejected a plugin metric at config construction --
+        before any validation ran -- even though ``distance_matrix`` would
+        compute it.
+
         Args:
             value: Metric name.
 
         Returns:
             The validated metric name.
+
+        Raises:
+            ValueError: If the metric is neither built in nor registered.
         """
-        allowed = set(_METRICS.keys())
-        if value not in allowed:
-            raise ValueError(f"metric must be one of {sorted(allowed)}")
+        resolve_metric(value)
         return value
 
     @field_validator("random_state")
@@ -236,8 +242,12 @@ class TypedValidator(BaseValidator[ValidationResult]):
             raise ValidationError(f"minority_label {minority_label} not present in y")
         if not hasattr(oversampler, "fit_resample"):
             raise ValidationError("oversampler must implement fit_resample")
-        if config.metric not in _METRICS:
-            raise MetricError(f"Unsupported metric '{config.metric}'")
+        # Built-ins *and* registered plugins. Checking _METRICS alone rejected a
+        # plugin metric that distance_matrix would happily have computed.
+        try:
+            resolve_metric(config.metric)
+        except ValueError as exc:
+            raise MetricError(str(exc)) from None
 
     def _validate_standard(
         self,

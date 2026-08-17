@@ -183,6 +183,49 @@ _METRICS: dict[str, MetricFunc] = {
 _OPTIMIZER = OptimizedDistanceMatrix(metric_registry=_METRICS, cache=None)
 
 
+
+def resolve_metric(name: str) -> MetricFunc | None:
+    """Return a plugin metric callable, or ``None`` for a built-in.
+
+    Registering a metric plugin used to accomplish nothing beyond making it
+    retrievable from the registry: ``distance_matrix`` and every validator that
+    funnels through it consulted only the built-in table, so a plugin metric was
+    rejected as unsupported by the exact functions it exists to be used by.
+
+    Resolution happens per call rather than at import, because plugins register
+    at runtime -- often from ``discover_entry_points`` -- and the built-in table
+    is bound when this module is imported.
+
+    Args:
+        name: Metric identifier.
+
+    Returns:
+        A callable for a registered plugin metric, or ``None`` when the name is
+        a built-in and the default registry already covers it.
+
+    Raises:
+        ValueError: If the name is neither a built-in nor a registered plugin.
+    """
+    if name in _METRICS:
+        return None
+
+    # Local import: plugin_system reads _METRICS from this module, so importing
+    # it at module scope would be a cycle.
+    from .plugin_system import plugin_manager
+
+    try:
+        registered = plugin_manager.get_metric(name)
+    except KeyError:
+        known = ", ".join(sorted(_METRICS))
+        raise ValueError(
+            f"Unsupported metric {name!r}. Built-in metrics: {known}. "
+            "If this is a plugin, register it first -- "
+            "plugin_manager.discover_entry_points() for an installed package, "
+            "or plugin_manager.register_metric(...) directly."
+        ) from None
+    return registered() if isinstance(registered, type) else registered
+
+
 def distance_matrix(
     X1: NDArray[np.floating],
     X2: NDArray[np.floating],
@@ -220,13 +263,13 @@ def distance_matrix(
         Distance matrix. When ``cache`` is supplied the array is **read-only**;
         call ``.copy()`` before modifying it.
     """
-    if metric not in _METRICS:
-        raise ValueError(f"Unsupported metric '{metric}'")
+    plugin = resolve_metric(metric)
+    registry = _METRICS if plugin is None else {**_METRICS, metric: plugin}
     metric_kwargs = metric_kwargs or {}
     optimizer = (
         _OPTIMIZER
-        if cache is None
-        else OptimizedDistanceMatrix(metric_registry=_METRICS, cache=cache)
+        if cache is None and plugin is None
+        else OptimizedDistanceMatrix(metric_registry=registry, cache=cache)
     )
     return optimizer.compute_distance_matrix(
         X1,

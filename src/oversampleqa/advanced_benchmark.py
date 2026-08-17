@@ -466,14 +466,20 @@ class StatisticalBenchmark:
         frame["pairwise_p_values"] = None
         frame["pairwise_effect_sizes"] = None
 
-        for dataset_name in frame["dataset_name"].unique():
-            mask = frame["dataset_name"] == dataset_name
-            dataset_slice = frame.loc[mask]
-            if len(dataset_slice) < 2:
+        # Grouped by (dataset, metric), not dataset alone. Grouping by dataset
+        # put several metrics in one slice, and the lookups below take .iloc[0]
+        # -- so the tests ran on whichever metric happened to sort first and the
+        # result was stamped onto every row, including rows for the other
+        # metrics. Error rates are not comparable across metrics, so those
+        # p-values described a comparison the row did not represent.
+        for _key, group in frame.groupby(
+            ["dataset_name", "metric"], sort=False
+        ):
+            if len(group) < 2:
                 continue
-            pvals = self._pairwise_statistical_tests(dataset_slice)
-            effects = self._calculate_effect_sizes(dataset_slice)
-            for idx in dataset_slice.index:
+            pvals = self._pairwise_statistical_tests(group)
+            effects = self._calculate_effect_sizes(group)
+            for idx in group.index:
                 frame.at[idx, "pairwise_p_values"] = json.dumps(pvals)
                 frame.at[idx, "pairwise_effect_sizes"] = json.dumps(effects)
         return frame
@@ -524,13 +530,27 @@ class StatisticalBenchmark:
         return self._apply_correction(p_values)
 
     def _calculate_effect_sizes(self, dataset_slice: pd.DataFrame) -> dict[str, float]:
-        """Compute pairwise Cohen's d effect sizes.
+        """Compute pairwise matched-pairs rank-biserial correlations.
+
+        Paired, to match the design the p-value comes from. The tests are
+        Wilcoxon signed-rank, which pairs the two samplers fold by fold; the
+        effect size was independent-samples Cohen's d, which pools the two
+        standard deviations and throws that pairing away. On fold errors that
+        move together -- an awkward fold is awkward for both samplers -- the
+        pooled deviation is dominated by between-fold variation that the paired
+        test has already removed, so the effect looks smaller than the test
+        says it is.
+
+        Rank-biserial is the natural companion to a rank test: it is computed
+        from the same signed ranks Wilcoxon uses.
 
         Args:
-            dataset_slice: Subset of results for a single dataset.
+            dataset_slice: Results for one (dataset, metric).
 
         Returns:
-            Mapping of ``oversampler_a_vs_b`` to Cohen's d.
+            Mapping of ``a_vs_b`` to a correlation in ``[-1, 1]``. Positive
+            means the first sampler had the higher error rate on more folds,
+            weighted by how much higher -- so positive favours the second.
         """
         effect_sizes: dict[str, float] = {}
         oversamplers = dataset_slice["oversampler_name"].unique()
@@ -548,12 +568,36 @@ class StatisticalBenchmark:
                     ].iloc[0],
                     dtype=float,
                 )
-                pooled_std = self._pooled_std(errors1, errors2)
-                if pooled_std == 0:
-                    continue
-                cohens_d = (errors1.mean() - errors2.mean()) / pooled_std
-                effect_sizes[f"{os1}_vs_{os2}"] = float(cohens_d)
+                effect = self._rank_biserial(errors1, errors2)
+                if effect is not None:
+                    effect_sizes[f"{os1}_vs_{os2}"] = effect
         return effect_sizes
+
+    @staticmethod
+    def _rank_biserial(x: np.ndarray, y: np.ndarray) -> float | None:
+        """Matched-pairs rank-biserial correlation for two paired samples.
+
+        ``(W+ - W-) / (W+ + W-)`` over the signed ranks of the differences,
+        which is exactly what Wilcoxon signed-rank sums. Zero differences are
+        dropped, as the test drops them.
+
+        Returns ``None`` when the samples cannot be paired or every difference
+        is zero -- there is no effect to report, and 0.0 would claim there is
+        one and that it is exactly nil.
+        """
+        if len(x) != len(y) or len(x) == 0:
+            return None
+        diff = x - y
+        nonzero = diff[diff != 0]
+        if nonzero.size == 0:
+            return None
+        ranks = stats.rankdata(np.abs(nonzero))
+        positive = float(ranks[nonzero > 0].sum())
+        negative = float(ranks[nonzero < 0].sum())
+        total = positive + negative
+        if total == 0:
+            return None
+        return (positive - negative) / total
 
     @staticmethod
     def _pooled_std(x: np.ndarray, y: np.ndarray) -> float:

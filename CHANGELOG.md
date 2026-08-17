@@ -17,6 +17,29 @@ section are maintained manually.
 
 ### Fixed
 
+- **A registered metric plugin could not actually be used.** `distance_matrix`
+  and every validator funnelling through it checked only the built-in table, so
+  a plugin metric was rejected as unsupported by the exact functions it exists
+  to be used by — while `PluginManager.get_metric` returned it happily.
+  `resolve_metric` now consults built-ins and the plugin registry, per call
+  rather than at import, since plugins register at runtime. The typed
+  validator's config model rejected them too, before any validation could run.
+  Unknown metric names now list the built-ins and say how to register a plugin.
+- **Pairwise p-values and effect sizes were computed from the wrong metric.**
+  `_add_statistical_analysis` grouped by dataset alone, so a dataset evaluated
+  under several metrics gave a slice with several rows per oversampler; the
+  lookups took `.iloc[0]`, ran the tests on whichever metric sorted first, and
+  stamped that single result onto every row — including rows for the other
+  metrics, whose error rates are not comparable with it. Grouping is now by
+  (dataset, metric).
+- **The effect size ignored the pairing its p-value depended on.** Wilcoxon
+  signed-rank pairs the two samplers fold by fold; the reported effect was
+  independent-samples Cohen's d, which pools both standard deviations and
+  discards that pairing. Where folds move together — an awkward fold is awkward
+  for both samplers — between-fold variance dominates the pooled deviation and
+  the effect looks far smaller than the test says: measured −0.573 against a
+  matched-pairs rank-biserial of −1.0. Replaced with the rank-biserial
+  correlation, computed from the same signed ranks Wilcoxon sums.
 - **`compute_ranking` averaged error rates across incomparable experiments.**
   Rates are commensurable only within a fixed (dataset, hidden_ratio, metric):
   an easy dataset scores near 0.1 and a hard one near 0.9, and hassanat scores
