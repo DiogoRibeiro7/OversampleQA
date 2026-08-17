@@ -1,4 +1,10 @@
-"""Multiclass validation example using SMOTE."""
+"""
+Multiclass Validation
+=====================
+
+Validate oversampling on a multiclass problem and read the resulting
+confusion-style error matrix across classes.
+"""
 
 from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE

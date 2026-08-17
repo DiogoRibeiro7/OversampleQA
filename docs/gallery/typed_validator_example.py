@@ -1,4 +1,10 @@
-"""Typed validator example using ValidationConfig."""
+"""
+Typed Validator
+===============
+
+Drive validation through the Pydantic-backed ``ValidationConfig`` instead of
+loose keyword arguments.
+"""
 
 from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE

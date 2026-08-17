@@ -6,6 +6,10 @@ Examples Gallery
 This gallery showcases runnable scripts from the ``examples`` folder.
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 
@@ -15,103 +19,120 @@ This gallery showcases runnable scripts from the ``examples`` folder.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Minimal example using oversampleqa.">
+    <div class="sphx-glr-thumbcontainer" tooltip="The smallest useful example: validate SMOTE on a synthetic imbalanced dataset and print the hidden-majority error rate.">
 
 .. only:: html
 
   .. image:: /gallery/images/thumb/sphx_glr_basic_validation_thumb.png
     :alt:
 
-  :ref:`sphx_glr_gallery_basic_validation.py`
+  :doc:`/gallery/basic_validation`
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Minimal example using oversampleqa.</div>
+      <div class="sphx-glr-thumbnail-title">Minimal Validation</div>
     </div>
 
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Run a simple benchmark using oversampleqa.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Run a benchmark across the built-in standard datasets and render a report.">
 
 .. only:: html
 
   .. image:: /gallery/images/thumb/sphx_glr_benchmark_example_thumb.png
     :alt:
 
-  :ref:`sphx_glr_gallery_benchmark_example.py`
+  :doc:`/gallery/benchmark_example`
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Run a simple benchmark using oversampleqa.</div>
+      <div class="sphx-glr-thumbnail-title">Benchmarking Oversamplers</div>
     </div>
 
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Visualize sample distributions after oversampling.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot real and synthetic samples together to see where an oversampler places its generated points.">
 
 .. only:: html
 
   .. image:: /gallery/images/thumb/sphx_glr_visualization_example_thumb.png
     :alt:
 
-  :ref:`sphx_glr_gallery_visualization_example.py`
+  :doc:`/gallery/visualization_example`
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Visualize sample distributions after oversampling.</div>
+      <div class="sphx-glr-thumbnail-title">Visualizing Sample Distributions</div>
     </div>
 
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Multiclass validation example using SMOTE.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Validate oversampling on a multiclass problem and read the resulting confusion-style error matrix across classes.">
 
 .. only:: html
 
   .. image:: /gallery/images/thumb/sphx_glr_multiclass_validation_thumb.png
     :alt:
 
-  :ref:`sphx_glr_gallery_multiclass_validation.py`
+  :doc:`/gallery/multiclass_validation`
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Multiclass validation example using SMOTE.</div>
+      <div class="sphx-glr-thumbnail-title">Multiclass Validation</div>
     </div>
 
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Typed validator example using ValidationConfig.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Drive validation through the Pydantic-backed ValidationConfig instead of loose keyword arguments.">
 
 .. only:: html
 
   .. image:: /gallery/images/thumb/sphx_glr_typed_validator_example_thumb.png
     :alt:
 
-  :ref:`sphx_glr_gallery_typed_validator_example.py`
+  :doc:`/gallery/typed_validator_example`
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Typed validator example using ValidationConfig.</div>
+      <div class="sphx-glr-thumbnail-title">Typed Validator</div>
     </div>
 
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Diagnostics example for density divergence and noise sensitivity.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Go beyond the error rate: local density divergence and noise sensitivity diagnostics for synthetic samples.">
 
 .. only:: html
 
   .. image:: /gallery/images/thumb/sphx_glr_metrics_diagnostics_thumb.png
     :alt:
 
-  :ref:`sphx_glr_gallery_metrics_diagnostics.py`
+  :doc:`/gallery/metrics_diagnostics`
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Diagnostics example for density divergence and noise sensitivity.</div>
+      <div class="sphx-glr-thumbnail-title">Diagnostic Metrics</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The hidden-majority error rate is one number, and it cannot distinguish two failures that need opposite remedies: generating implausible points, and merely copying the training data.">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_fidelity_memorisation_thumb.png
+    :alt:
+
+  :doc:`/gallery/fidelity_memorisation`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">When a Good Error Rate Hides Memorisation</div>
     </div>
 
 
@@ -124,7 +145,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
   .. image:: /gallery/images/thumb/sphx_glr_plot_basic_validation_thumb.png
     :alt:
 
-  :ref:`sphx_glr_gallery_plot_basic_validation.py`
+  :doc:`/gallery/plot_basic_validation`
 
 .. raw:: html
 
@@ -148,6 +169,7 @@ This gallery showcases runnable scripts from the ``examples`` folder.
    /gallery/multiclass_validation
    /gallery/typed_validator_example
    /gallery/metrics_diagnostics
+   /gallery/fidelity_memorisation
    /gallery/plot_basic_validation
 
 

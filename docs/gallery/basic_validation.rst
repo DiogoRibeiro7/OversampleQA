@@ -17,9 +17,14 @@
 
 .. _sphx_glr_gallery_basic_validation.py:
 
-Minimal example using oversampleqa.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-18
+Minimal Validation
+==================
+
+The smallest useful example: validate SMOTE on a synthetic imbalanced dataset
+and print the hidden-majority error rate.
+
+.. GENERATED FROM PYTHON SOURCE LINES 8-24
 
 .. code-block:: Python
 

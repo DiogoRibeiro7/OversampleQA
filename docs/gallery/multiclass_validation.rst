@@ -17,9 +17,14 @@
 
 .. _sphx_glr_gallery_multiclass_validation.py:
 
-Multiclass validation example using SMOTE.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-32
+Multiclass Validation
+=====================
+
+Validate oversampling on a multiclass problem and read the resulting
+confusion-style error matrix across classes.
+
+.. GENERATED FROM PYTHON SOURCE LINES 8-38
 
 .. code-block:: Python
 

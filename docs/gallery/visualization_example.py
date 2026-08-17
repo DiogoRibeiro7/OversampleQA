@@ -1,4 +1,10 @@
-"""Visualize sample distributions after oversampling."""
+"""
+Visualizing Sample Distributions
+================================
+
+Plot real and synthetic samples together to see where an oversampler places
+its generated points.
+"""
 
 from imblearn.over_sampling import SMOTE
 from sklearn.datasets import make_classification

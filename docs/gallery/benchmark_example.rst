@@ -17,9 +17,13 @@
 
 .. _sphx_glr_gallery_benchmark_example.py:
 
-Run a simple benchmark using oversampleqa.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-19
+Benchmarking Oversamplers
+=========================
+
+Run a benchmark across the built-in standard datasets and render a report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 7-24
 
 .. code-block:: Python
 
