@@ -3,10 +3,25 @@ Installation
 
 OversampleQA works with Python 3.10+ and depends on NumPy, scikit-learn, and imbalanced-learn.
 
-OversampleQA is not published on PyPI, so install it from the repository.
+From PyPI
+---------
+
+Install the latest release from PyPI:
+
+.. code-block:: bash
+
+   pip install oversampleqa
+
+For the optional performance helpers:
+
+.. code-block:: bash
+
+   pip install "oversampleqa[performance]"
 
 From source
 -----------
+
+Install from source when developing OversampleQA or testing unreleased changes:
 
 .. code-block:: bash
 
@@ -14,10 +29,11 @@ From source
    cd OversampleQA
    poetry install
 
-As a dependency
----------------
+Repository dependency
+---------------------
 
-To depend on OversampleQA from another project, install it straight from git:
+To depend on the current repository state from another project, install it
+straight from git:
 
 .. code-block:: bash
 
@@ -28,15 +44,6 @@ With poetry:
 .. code-block:: bash
 
    poetry add git+https://github.com/diogoribeiro7/OversampleQA.git
-
-Optional dependencies
----------------------
-
-UMAP-based plots and metrics require ``umap-learn``.
-
-.. code-block:: bash
-
-   pip install umap-learn
 
 Troubleshooting
 ---------------

@@ -30,9 +30,10 @@ Last revised August 16, 2026, after v0.5.0.
 
 ### Distribution
 
-**This package is not published to PyPI, and there is no plan to publish it.**
-Releases are cut by hand and archived on Zenodo, which mints the DOI. Install
-from the repository or from a Zenodo archive.
+OversampleQA is prepared for PyPI distribution. Releases are still cut by hand:
+publishing a GitHub release triggers the PyPI Trusted Publishing workflow and
+the Zenodo archive. PyPI provides the installable package; Zenodo mints the DOI
+for citation and archival use.
 
 | Version | DOI |
 |---|---|
@@ -361,21 +362,20 @@ how results leave the package, without changing the statistical meaning again.
 
 ### v1.0.0
 
-Focus: a stable contract, not automated publishing.
+Focus: a stable public contract and reproducible release process.
 
 - Finalise backwards-compatibility policy and semantic-versioning guarantees.
   Pre-1.0 the guarantee is best-effort; 1.0 is where that stops being true.
-- A clean-environment install-and-smoke-test from a built wheel. Note this is
-  install-from-wheel, **not** install-from-PyPI: nothing is published there.
-- An explicit release checklist covering build, test, docs, and Zenodo
-  archiving. `docs/citation.rst` holds the current version.
+- A clean-environment install-and-smoke-test from a built wheel and from PyPI
+  after release publication.
+- An explicit release checklist covering build, test, docs, PyPI publication and
+  Zenodo archiving. `docs/citation.rst` holds the current version.
 
 ## Non-Goals
 
-- **Publishing to PyPI.** Distribution is by repository and Zenodo archive.
-- **Automated release publishing.** Releases are deliberately cut by hand; the
-  release workflow was removed. A tag alone archives nothing — the Zenodo
-  webhook fires on GitHub release publication.
+- **Fully automated release creation.** Releases are deliberately initiated by
+  hand. A tag alone publishes nothing; the PyPI workflow and Zenodo webhook fire
+  only when a GitHub release is published.
 - End-to-end AutoML pipelines.
 - Oversampler implementation (delegated to imbalanced-learn and similar).
 - Production model serving.

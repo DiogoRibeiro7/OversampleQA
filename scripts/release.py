@@ -1,50 +1,90 @@
 #!/usr/bin/env python3
-"""Release automation script."""
+"""Local release preparation checks.
 
+Publishing is handled by ``.github/workflows/publish.yml`` when a GitHub
+release is published. That workflow uses PyPI Trusted Publishing, so there is
+no local API token or ``twine upload`` step here.
+"""
+
+from __future__ import annotations
+
+import argparse
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 
-def run_command(cmd):
-    """Run command and check for errors."""
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"Error running: {cmd}")
-        print(result.stderr)
-        sys.exit(1)
-    return result.stdout
+ROOT = Path(__file__).resolve().parents[1]
 
 
-def main():
-    """Main release process."""
-    print("🚀 Starting release process...")
+def run_command(args: list[str]) -> None:
+    """Run a command from the repository root and fail fast."""
+    print("+ " + " ".join(args))
+    subprocess.run(args, cwd=ROOT, check=True)
 
-    # Check we're on main branch
-    branch = run_command("git branch --show-current").strip()
+
+def output(args: list[str]) -> str:
+    """Return stripped command output."""
+    result = subprocess.run(
+        args,
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def ensure_release_ready(*, skip_tests: bool, skip_clean_check: bool) -> None:
+    """Run the local checks expected before publishing a GitHub release."""
+    branch = output(["git", "branch", "--show-current"])
     if branch != "main":
-        print("❌ Must be on main branch for release")
-        sys.exit(1)
+        raise SystemExit("Release preparation must run on main.")
 
-    # Check working directory is clean
-    status = run_command("git status --porcelain").strip()
-    if status:
-        print("❌ Working directory must be clean")
-        sys.exit(1)
+    if not skip_clean_check and output(["git", "status", "--porcelain"]):
+        raise SystemExit("Working directory must be clean.")
 
-    # Run tests
-    print("🧪 Running tests...")
-    run_command("pytest tests/")
+    dist = ROOT / "dist"
+    if dist.exists():
+        shutil.rmtree(dist)
 
-    # Build package
-    print("📦 Building package...")
-    run_command("python -m build")
+    run_command(["poetry", "check", "--lock"])
+    run_command(["poetry", "run", "ruff", "check", "src", "tests"])
+    run_command(["poetry", "run", "mypy", "src"])
+    if not skip_tests:
+        run_command(["poetry", "run", "pytest"])
+    run_command(["poetry", "build"])
+    distributions = sorted(str(path.relative_to(ROOT)) for path in dist.iterdir())
+    run_command(["python", "-m", "twine", "check", *distributions])
 
-    # Upload to PyPI (requires API token)
-    print("📤 Uploading to PyPI...")
-    run_command("python -m twine upload dist/*")
+    print(
+        "Release artefacts are ready in dist/. Publish a GitHub release to "
+        "trigger PyPI Trusted Publishing and the Zenodo archive."
+    )
 
-    print("✅ Release complete!")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--skip-tests",
+        action="store_true",
+        help="Skip pytest. Use only after CI has already passed for this commit.",
+    )
+    parser.add_argument(
+        "--skip-clean-check",
+        action="store_true",
+        help="Allow local dirty files while testing the release checks.",
+    )
+    args = parser.parse_args()
+
+    try:
+        ensure_release_ready(
+            skip_tests=args.skip_tests,
+            skip_clean_check=args.skip_clean_check,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(exc.returncode) from exc
 
 
 if __name__ == "__main__":

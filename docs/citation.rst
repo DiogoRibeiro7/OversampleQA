@@ -45,27 +45,42 @@ Version DOI — ``10.5281/zenodo.21967099`` for 0.5.0
    Points at one specific release. Use it in a paper, where the reader needs the
    exact code that produced the results.
 
-Archiving a release on Zenodo
------------------------------
+Publishing and archiving a release
+----------------------------------
 
 The GitHub-Zenodo link is already enabled for this repository, so publishing a
-release is all that is needed. Releases are cut by hand; nothing in CI tags or
-publishes them.
+GitHub release archives the source on Zenodo. The PyPI distribution is uploaded
+by ``.github/workflows/publish.yml`` from the same GitHub release, using PyPI
+Trusted Publishing rather than a stored API token.
+
+Before the first PyPI release, configure the project on PyPI as a trusted
+publisher:
+
+* owner: ``diogoribeiro7``
+* repository: ``OversampleQA``
+* workflow: ``publish.yml``
+* environment: ``pypi``
 
 1. Update ``version`` and ``date-released`` in ``CITATION.cff``, the version in
    ``pyproject.toml``, ``[tool.commitizen]``, and ``src/oversampleqa/__init__.py``,
    and promote the *Unreleased* changelog section. Commit.
-2. Tag the release and push the tag::
+2. Run the local release checks::
+
+      python scripts/release.py
+
+3. Tag the release and push the tag::
 
       git tag -s vX.Y.Z -m "vX.Y.Z"
       git push origin vX.Y.Z
 
-3. Publish a GitHub release for that tag. The webhook fires on release
-   publication only, so pushing a tag alone archives nothing.
-4. Zenodo creates the record and mints a fresh version DOI within a few minutes.
+4. Publish a GitHub release for that tag. The PyPI workflow and the Zenodo
+   webhook both fire on release publication, so pushing a tag alone publishes
+   nothing.
+5. Confirm the PyPI workflow uploaded both the source distribution and wheel.
+6. Zenodo creates the record and mints a fresh version DOI within a few minutes.
    The concept DOI stays the same. Confirm the metadata came from
    ``.zenodo.json`` by opening the new record.
-5. Add the new version DOI to the ``identifiers`` block in ``CITATION.cff``. The
+7. Add the new version DOI to the ``identifiers`` block in ``CITATION.cff``. The
    README badge and BibTeX entry use the concept DOI and need no change.
 
 Should the integration ever need re-enabling, it is done by hand at
@@ -102,9 +117,9 @@ check, which remain manual:
 
 The version DOI is minted only after the GitHub release is published, so
 ``test_current_version_has_a_recorded_doi`` fails between the version bump and
-the archive. That is the intended sequence: bump and tag, publish, then commit
-the DOI. It is also why both 0.4.0 and 0.5.0 shipped without it — nothing
-failed to remind anyone.
+the archive. That is the intended sequence: bump and tag, publish to PyPI and
+archive on Zenodo, then commit the DOI. It is also why both 0.4.0 and 0.5.0
+shipped without it — nothing failed to remind anyone.
 
 ``.zenodo.json`` deliberately omits a ``version`` field: Zenodo takes the
 version from the git tag, so there is nothing to keep in sync there.

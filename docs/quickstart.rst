@@ -6,7 +6,13 @@ This guide will get you started with OversampleQA in just a few minutes.
 Installation
 ------------
 
-OversampleQA is not published on PyPI. Install it from source:
+Install the latest release from PyPI:
+
+.. code-block:: bash
+
+   pip install oversampleqa
+
+For development, install it from source:
 
 .. code-block:: bash
 

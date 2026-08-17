@@ -2,6 +2,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/OversampleQA/ci.yml?branch=main)](https://github.com/diogoribeiro7/OversampleQA/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![PyPI](https://img.shields.io/pypi/v/oversampleqa.svg)](https://pypi.org/project/oversampleqa/)
 [![License](https://img.shields.io/github/license/diogoribeiro7/OversampleQA)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21940361.svg)](https://doi.org/10.5281/zenodo.21940361)
 
@@ -22,8 +23,19 @@ OversampleQA validates synthetic samples by hiding a portion of the majority cla
 
 ## Install
 
-Python 3.10+ is required. OversampleQA is not published on PyPI; install it from
-source:
+Python 3.10+ is required. Install the latest release from PyPI:
+
+```bash
+pip install oversampleqa
+```
+
+For the optional performance helpers:
+
+```bash
+pip install "oversampleqa[performance]"
+```
+
+For development or unreleased changes, install from source:
 
 ```bash
 git clone https://github.com/diogoribeiro7/OversampleQA.git
@@ -31,8 +43,7 @@ cd OversampleQA
 poetry install
 ```
 
-To use it as a dependency in another project, point your package manager at the
-repository:
+To depend on the current repository state from another project:
 
 ```bash
 pip install git+https://github.com/diogoribeiro7/OversampleQA.git

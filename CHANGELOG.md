@@ -4,13 +4,22 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Releases are cut by hand: publish a GitHub release from a tag, which is also what
-triggers the Zenodo archive and its DOI. Entries below the *Unreleased* section are
-maintained manually.
+Releases are cut by hand: publish a GitHub release from a tag, which triggers
+the PyPI publish workflow and the Zenodo archive. Entries below the *Unreleased*
+section are maintained manually.
 
 ## [Unreleased]
 
 ### Added
+
+- PyPI release preparation: package metadata now includes project URLs,
+  classifiers and keywords; install docs use `pip install oversampleqa`; and
+  `.github/workflows/publish.yml` builds and publishes distributions through
+  PyPI Trusted Publishing when a GitHub release is published.
+- `scripts/release.py` is now a local release-preparation check that runs the
+  quality gates, builds the source distribution and wheel, and verifies package
+  metadata. Uploading is handled by the GitHub release workflow rather than a
+  local `twine upload` token.
 
 - `tests/test_release_metadata.py` checks the release-facing metadata as one
   unit: the version across `pyproject.toml` (both blocks), `__init__.py`,
