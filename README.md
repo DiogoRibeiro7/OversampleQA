@@ -3,10 +3,13 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/OversampleQA/ci.yml?branch=main)](https://github.com/diogoribeiro7/OversampleQA/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/oversampleqa.svg)](https://pypi.org/project/oversampleqa/)
+[![Docs](https://img.shields.io/badge/docs-github.io-blue)](https://diogoribeiro7.github.io/OversampleQA/)
 [![License](https://img.shields.io/github/license/diogoribeiro7/OversampleQA)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21940361.svg)](https://doi.org/10.5281/zenodo.21940361)
 
 A diagnostic toolkit to validate, audit, and benchmark oversampling methods for imbalanced classification.
+
+**Documentation:** https://diogoribeiro7.github.io/OversampleQA/
 
 ## What It Does
 

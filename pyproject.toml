@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/diogoribeiro7/OversampleQA"
 repository = "https://github.com/diogoribeiro7/OversampleQA"
-documentation = "https://github.com/diogoribeiro7/OversampleQA/tree/main/docs"
+documentation = "https://diogoribeiro7.github.io/OversampleQA/"
 keywords = [
     "imbalanced-learning",
     "oversampling",
@@ -35,6 +35,7 @@ packages = [
 ]
 
 [tool.poetry.urls]
+"Documentation" = "https://diogoribeiro7.github.io/OversampleQA/"
 "Bug Tracker" = "https://github.com/diogoribeiro7/OversampleQA/issues"
 "Changelog" = "https://github.com/diogoribeiro7/OversampleQA/blob/main/CHANGELOG.md"
 "Citation" = "https://github.com/diogoribeiro7/OversampleQA/blob/main/CITATION.cff"

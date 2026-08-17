@@ -12,6 +12,17 @@ section are maintained manually.
 
 ### Added
 
+- **Documentation is published to GitHub Pages** at
+  https://diogoribeiro7.github.io/OversampleQA/ on every push to `main`. The
+  deploy job publishes the artifact the existing `-W` docs build produced
+  rather than rebuilding, so what ships is the output that passed the gate. The
+  artifact is uploaded on pull requests too, which proves it is publishable
+  before merge; only deployment is restricted to `main`.
+  The `documentation` URL in the package metadata pointed at the raw `.rst`
+  source tree on GitHub and now points at the rendered site.
+
+### Added
+
 - `infer_minority_label` returns the least frequent label, and both dataset
   catalogs now derive `minority_label` from the data instead of declaring it.
 
