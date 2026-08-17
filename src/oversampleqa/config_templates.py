@@ -15,7 +15,7 @@ CONFIG_TEMPLATES: dict[str, dict[str, Any]] = {
             "n_runs": 50,
             "random_state": 42,
             "n_repeats": 20,
-            "metrics": ["hassanat", "euclidean", "mahalanobis"],
+            "metrics": ["hassanat", "euclidean"],
             "include_plots": True,
             "statistical_tests": True,
             "export": ["json", "markdown"],

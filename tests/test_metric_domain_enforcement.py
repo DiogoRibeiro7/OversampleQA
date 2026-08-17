@@ -137,3 +137,60 @@ def test_distance_matrix_still_computes_them():
     a = np.array([[0.0, 0.0], [1.0, 1.0]])
     b = np.array([[0.0, 0.0], [5.0, 5.0]])
     assert distance_matrix(a, b, "wasserstein").shape == (2, 2)
+
+
+# --- mahalanobis without a covariance inverse ---
+
+
+def test_mahalanobis_without_cov_inv_raises():
+    """It silently returned Euclidean, which is a different metric.
+
+    Mahalanobis with an identity covariance *is* Euclidean, so the fallback did
+    not degrade the metric -- it reported one under another's name.
+    """
+    a = np.array([[0.0, 0.0]])
+    b = np.array([[3.0, 4.0]])
+    with pytest.raises(ValueError, match="requires cov_inv"):
+        distance_matrix(a, b, "mahalanobis")
+
+
+def test_mahalanobis_with_cov_inv_is_not_euclidean():
+    rng = np.random.default_rng(0)
+    data = rng.normal(size=(60, 3)) @ np.array(
+        [[2.0, 0.4, 0.0], [0.0, 1.0, 0.3], [0.0, 0.0, 0.5]]
+    )
+    cov_inv = np.linalg.pinv(np.cov(data, rowvar=False))
+    a, b = data[:5], data[5:10]
+    mahal = distance_matrix(a, b, "mahalanobis", cov_inv=cov_inv)
+    euclid = distance_matrix(a, b, "euclidean")
+    assert not np.allclose(mahal, euclid)
+
+
+def test_the_error_says_how_to_estimate_the_inverse():
+    a, b = np.array([[0.0]]), np.array([[1.0]])
+    with pytest.raises(ValueError) as excinfo:
+        distance_matrix(a, b, "mahalanobis")
+    assert "np.cov" in str(excinfo.value)
+
+
+def test_mahalanobis_is_not_a_default_benchmark_metric():
+    """Every mahalanobis row duplicated the euclidean row exactly.
+
+    That double-weighted euclidean in the rankings, since ranking happens per
+    metric, and split one pairwise comparison into two for the correction.
+    """
+    import inspect
+
+    from oversampleqa.advanced_benchmark import StatisticalBenchmark
+
+    source = inspect.getsource(StatisticalBenchmark.run_comprehensive_benchmark)
+    assert 'metrics or ("hassanat", "euclidean")' in source
+
+
+def test_no_config_template_requests_mahalanobis():
+    """A template asking for it would fail at run time now that it raises."""
+    from oversampleqa.config_templates import CONFIG_TEMPLATES
+
+    for name, template in CONFIG_TEMPLATES.items():
+        metrics = template.get("params", {}).get("metrics", [])
+        assert "mahalanobis" not in metrics, name
