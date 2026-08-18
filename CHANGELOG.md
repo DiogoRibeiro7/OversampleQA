@@ -12,6 +12,11 @@ section are maintained manually.
 
 ### Added
 
+- `noise_sensitivity_diagnostic` reports `n_flipped`, the number of labels
+  actually changed, so applied noise can be checked rather than assumed.
+- `flip_labels` relabels selected points to a *different* class, uniform over
+  the alternatives.
+
 - **Documentation is published to GitHub Pages** at
   https://diogoribeiro7.github.io/OversampleQA/ on every push to `main`. The
   deploy job publishes the artifact the existing `-W` docs build produced
@@ -36,6 +41,13 @@ section are maintained manually.
 
 ### Fixed
 
+- **`noise_sensitivity_diagnostic` applied half the noise it reported.**
+  Replacement labels were drawn from *all* classes, so a selected point could
+  be "flipped" to the label it already had. Realised noise was
+  `requested * (k - 1) / k` — on binary data, this package's main case, exactly
+  half: a run labelled `noise=0.3` applied about 0.15, and the x-axis of every
+  noise-sensitivity plot was overstated by 2×. Replacements now exclude the
+  original label, so requested and realised agree exactly.
 - **`cosine` reported a zero vector as identical to every vector.** With a zero
   norm the denominator vanishes and the angle is undefined; the code returned
   `0.0`, which says "identical direction". That is the identity of
