@@ -10,6 +10,19 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- **Documentation is published to GitHub Pages** at
+  https://diogoribeiro7.github.io/OversampleQA/ on every push to `main`. The
+  deploy job publishes the artifact the existing `-W` docs build produced
+  rather than rebuilding, so what ships is the output that passed the gate. The
+  artifact is uploaded on pull requests too, which proves it is publishable
+  before merge; only deployment is restricted to `main`.
+  The `documentation` URL in the package metadata pointed at the raw `.rst`
+  source tree on GitHub and now points at the rendered site.
+- `infer_minority_label` returns the least frequent label, and both dataset
+  catalogs now derive `minority_label` from the data instead of declaring it.
+
 ### Removed
 
 - **`recommended_samples`**, which answered a question nobody asks. Its effect
@@ -23,6 +36,21 @@ section are maintained manually.
 
 ### Fixed
 
+- **`cosine` reported a zero vector as identical to every vector.** With a zero
+  norm the denominator vanishes and the angle is undefined; the code returned
+  `0.0`, which says "identical direction". That is the identity of
+  indiscernibles broken in the same way the original Hassanat defect broke it.
+  It now raises. `cosine(x, x)` on a constant vector also returned
+  **−2.22e-16** — a negative distance feeding a `nearest_hidden < nearest_min`
+  comparison — and is now clamped to exactly zero.
+- **`correlation` reported a constant vector as perfectly correlated.** A
+  constant vector has zero variance, so the correlation is `nan`; the code
+  caught the `nan` and returned `0.0`. `METRIC_DOMAINS` had documented the case
+  as undefined all along — the code disagreed with the comment beside it. It now
+  raises, as does a vector too short to have variance.
+- Deterministic degeneracy tests for zero and constant vectors. The axiom smoke
+  check draws random input, so it essentially never draws exactly these, which
+  is how all three defects survived it.
 - **`mahalanobis` was silently Euclidean.** With no `cov_inv` it fell back to an
   identity covariance — which *is* Euclidean distance, so it reported one metric
   under another's name. It was in the advanced benchmark's default metric list,
@@ -43,25 +71,6 @@ section are maintained manually.
   `validate_multiclass_oversampling` and `null_error_rate` now reject them,
   using the domains already declared in `METRIC_DOMAINS`. `distance_matrix`
   still computes them, since comparing whole samples is what they are for.
-
-### Added
-
-- **Documentation is published to GitHub Pages** at
-  https://diogoribeiro7.github.io/OversampleQA/ on every push to `main`. The
-  deploy job publishes the artifact the existing `-W` docs build produced
-  rather than rebuilding, so what ships is the output that passed the gate. The
-  artifact is uploaded on pull requests too, which proves it is publishable
-  before merge; only deployment is restricted to `main`.
-  The `documentation` URL in the package metadata pointed at the raw `.rst`
-  source tree on GitHub and now points at the rendered site.
-
-### Added
-
-- `infer_minority_label` returns the least frequent label, and both dataset
-  catalogs now derive `minority_label` from the data instead of declaring it.
-
-### Fixed
-
 - **A registered metric plugin could not actually be used.** `distance_matrix`
   and every validator funnelling through it checked only the built-in table, so
   a plugin metric was rejected as unsupported by the exact functions it exists
