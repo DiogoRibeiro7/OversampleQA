@@ -37,17 +37,16 @@ def test_statistical_benchmark_generates_results():
     assert isinstance(p_values, dict)
 
 
-def test_confidence_interval_and_power_estimate():
+def test_confidence_interval_is_ordered():
     dataset = _toy_dataset()
     benchmark = StatisticalBenchmark(n_folds=2, n_repeats=1, confidence_level=0.9)
     df = benchmark.run_comprehensive_benchmark(
         [dataset], [RandomOverSampler()], metrics=["hassanat"]
     )
     assert (df["ci_upper"] >= df["ci_lower"]).all()
-    assert (
-        df["recommended_samples"].iloc[0] is None
-        or df["recommended_samples"].iloc[0] > 0
-    )
+    # recommended_samples was also asserted here, as "None or > 0" -- a
+    # condition every integer satisfies. It reported 1 on every real run.
+    assert "recommended_samples" not in df.columns
 
 
 def test_dataset_repository_synthetic_generation():
@@ -72,7 +71,6 @@ def test_benchmark_report_creation(tmp_path: Path):
             "error_rates": [[0.1, 0.09, 0.11, 0.08, 0.12]],
             "pairwise_p_values": [json.dumps({})],
             "pairwise_effect_sizes": [json.dumps({})],
-            "recommended_samples": [42],
         }
     )
     report_path = create_benchmark_report(df, output_path=tmp_path / "report.html")
