@@ -1,6 +1,6 @@
 # OversampleQA Roadmap
 
-Last revised August 16, 2026, after v0.5.0.
+Last revised August 18, 2026, after v0.6.0.
 
 ## Project Goals
 
@@ -10,38 +10,55 @@ Last revised August 16, 2026, after v0.5.0.
 - Offer a fast path for practitioners and a deeper path for research use cases.
 - Stay compatible with scikit-learn and imbalanced-learn conventions.
 
-## Current State (post-v0.5.0)
+## Current State (post-v0.6.0)
 
-- 439 tests collected in the main suite, plus 13 in the reference plugin. CI
-  runs the main suite on Linux across Python 3.10-3.12 and on Windows for
-  Python 3.12, then installs and tests the reference plugin separately.
-- `ruff check` and `mypy src` pass clean. The numerical core is fully strict;
-  the CLI, plotting and benchmark modules carry scoped, documented relaxations
-  at their untyped third-party boundaries.
-- Docs build under `-W`, enforced in CI.
+- 664 tests in the main suite, plus 13 in the reference plugin. CI runs the main
+  suite on Linux across Python 3.10-3.12 and on Windows for Python 3.12, then
+  installs and tests the reference plugin separately.
+- `ruff check src tests` and `mypy src` are enforced by CI, not merely claimed.
+  The numerical core is fully strict; the CLI, plotting and benchmark modules
+  carry scoped, documented relaxations at their untyped third-party boundaries.
+- Docs build under `-W` and deploy to GitHub Pages from the artifact that build
+  produced, so what is published is what passed the gate.
 - `poetry.lock` is tracked, poetry is pinned, `poetry check --lock` gates
-  installs, and the docs toolchain lives in the locked `docs` Poetry group, so
-  tests and docs both run against governed dependencies.
+  installs, and the docs toolchain lives in the locked `docs` group, so tests
+  and docs run against one governed dependency set.
 - Public API frozen behind a snapshot test; deprecation policy documented and
-  mechanised.
-- Both benchmark dataset catalogs now attach the same provenance record shape:
-  source, generator, params, URL, license and notes. Synthetic seeds, OpenML
-  versions, bundled-data licenses and positional truncation are explicit.
+  mechanised. `py.typed` ships, so the annotations reach downstream checkers.
+- Release-facing metadata is checked as one unit on every commit, and the check
+  blocks a version bump until the previous release's DOI is recorded.
+
+**0.6.0 was a correctness release.** The null calibration, benchmark ranking,
+pairwise inference and permutation tests each reported a different quantity
+before it, so results produced with 0.5.1 or earlier are not comparable with
+results produced now. `CHANGELOG.md` states which numbers changed and by how
+much.
 
 ### Distribution
 
-OversampleQA is prepared for PyPI distribution. Releases are still cut by hand:
-publishing a GitHub release triggers the PyPI Trusted Publishing workflow and
-the Zenodo archive. PyPI provides the installable package; Zenodo mints the DOI
-for citation and archival use.
+Published to PyPI as [`oversampleqa`](https://pypi.org/project/oversampleqa/)
+and archived on Zenodo. Releases are cut by hand: publishing a GitHub release
+triggers the PyPI Trusted Publishing workflow and the Zenodo webhook together.
+PyPI provides the installable package; Zenodo mints the DOI for citation.
+
+Documentation: https://diogoribeiro7.github.io/OversampleQA/
 
 | Version | DOI |
 |---|---|
 | Concept (all versions) | [10.5281/zenodo.21940361](https://doi.org/10.5281/zenodo.21940361) |
+| 0.6.0 | [10.5281/zenodo.21993371](https://doi.org/10.5281/zenodo.21993371) |
+| 0.5.1 | none — see below |
 | 0.5.0 | [10.5281/zenodo.21967099](https://doi.org/10.5281/zenodo.21967099) |
 | 0.4.0 | [10.5281/zenodo.21965065](https://doi.org/10.5281/zenodo.21965065) |
 | 0.3.0 | [10.5281/zenodo.21959782](https://doi.org/10.5281/zenodo.21959782) |
 | 0.2.0 | [10.5281/zenodo.21940362](https://doi.org/10.5281/zenodo.21940362) |
+
+**0.5.1 has no Zenodo record.** Zenodo archives by fetching the release tarball
+from `codeload.github.com`; that request timed out during a GitHub outage on
+2026-08-17, and redelivering the webhook returns `409` because Zenodo has
+already seen the release. It cannot be archived after the fact. Cite the concept
+DOI for that version. `tests/test_release_metadata.py` records the exception, so
+the DOI check does not block later releases over a gap nobody can fill.
 
 ## Delivered
 
@@ -104,7 +121,7 @@ for citation and archival use.
 - **`poetry.lock` was gitignored**, so CI re-resolved every dependency on every
   run and no two runs were guaranteed to test the same versions.
 
-### Unreleased — provenance, dependency closure and export cleanup
+### v0.5.1 — provenance, dependency closure and PyPI
 
 - `advanced_benchmark.DatasetRepository` now carries dataset provenance in the
   same shape as `benchmark.load_standard_datasets`. The two catalogs no longer
@@ -124,6 +141,42 @@ for citation and archival use.
   share a table renderer so the Markdown bug cannot survive in one output path
   after being fixed in another.
 
+### v0.6.0 — correctness closure
+
+Every item on the v0.5.1 correctness list, and it changed what several numbers
+mean. The measurements below are from the codebase, not estimates.
+
+- **Permutation tests rejected a true null every time on SMOTE output.** With
+  both samples drawn from the *same* distribution and only the block structure
+  differing: 100% false rejections at 0.05, median p 0.005. They were detecting
+  the clustering SMOTE always produces. Passing `parents` subsamples one point
+  per parent: 0% false rejections, median p 0.885.
+- **The null calibrated a different experiment.** It scored against
+  `fit_minority` (~90% of the minority) where the validator scores against the
+  held-out 10% — a bar four times too low (0.033 against 0.133). Ceiling
+  candidates could also be the points they were scored against: 8.8% of
+  candidates, 64% of draws.
+- **`compute_ranking` inverted results**, averaging error rates across
+  incomparable experiments. Ranking is now within each
+  (dataset, hidden_ratio, metric) and agrees with `friedman_nemenyi` exactly.
+- **Pairwise statistics came from the wrong metric**, and the effect size
+  discarded the pairing its p-value depended on (-0.573 against a paired -1.0).
+- **Multiclass validation lacked the binary path's guarantees**: no prefix
+  check, no `min_hidden`, ties to the lowest label index (38.6% of attributions
+  on quantised data), and `0.0` for a class that was never measured.
+- **`mahalanobis` without `cov_inv` was Euclidean** — one metric under
+  another's name, and a default, so every benchmark carried duplicate rows.
+- **Sample-level metrics were accepted pointwise**: `[0, 5]` and `[5, 0]` scored
+  0.0 under wasserstein, and `energy` returned -5.0.
+- **`cosine(0, x)` and `correlation(const, x)` returned 0.0**, calling distinct
+  points identical — the shape of the original Hassanat defect, missed because
+  the axiom check draws random vectors.
+- **No built-in dataset could produce a measurement at the package's own
+  defaults**: 42 of 42 benchmark rows were `nan`, now 0 of 42.
+- **`noise_sensitivity_diagnostic` applied half the noise it reported** on
+  binary data.
+- Removed `recommended_samples`, which reported 1 on every row of every run.
+
 ## Open Work
 
 Not scheduled against dates. This is a research toolkit maintained by one
@@ -131,84 +184,14 @@ person; the ordering below reflects priority, not a delivery commitment. Each
 item should land with tests or documentation that would have caught the failure
 mode it addresses.
 
-### v0.5.1 — correctness closure before features
+### v0.7.0 — export and reporting trust
 
-No new user-facing feature work should land until these items are resolved. The
-goal is to bring the older benchmark, multiclass and inference layers up to the
-same statistical standard as the corrected binary validator.
+Improve how results leave the package, without changing statistical meaning
+again. Two of the original items shipped in 0.6.0: the fold-level export
+(`fold_results()`) and renderer consolidation (`oversampleqa._render`, which
+exists because the `to_csv(sep="|")` bug had already been copied into a second
+export path).
 
-- **Null-calibration estimand consistency.** `null_error_rate()` must calibrate
-  the same experiment as the default validator. Use disjoint minority splits for
-  sampler training, the common minority reference and real null candidates, so
-  observed synthetic candidates and real null candidates are scored against the
-  same hidden-majority and held-out-minority reference sets. The ceiling should
-  also avoid candidate/reference self-overlap.
-- **Calibration interpretation fix.** `NullCalibration.interpret()` should
-  distinguish values below the calibrated interval, inside it and above it. An
-  observed score below `low` is not "within" `[low, high]`.
-- **Multiclass parity with binary validation.** Multiclass validation should
-  reuse the binary path's safety guarantees: verify original-row prefix
-  preservation before extracting synthetic rows, enforce `min_hidden`, account
-  for ties, and reject too-small hidden references instead of reporting
-  plausible noise.
-- **Multiclass missing measurements as `nan`.** Classes for which a sampler
-  generates no synthetic points are unmeasured, not perfect. Report `nan` for
-  those classes and compute macro summaries with explicit `nanmean` over
-  genuinely evaluated target classes.
-- **Benchmark ranking validity.** `compute_ranking()` should not average raw
-  error rates across incomparable datasets, hidden ratios or metrics. Rank
-  within each dataset/specification first, then aggregate ranks, matching the
-  logic behind the Friedman/Nemenyi workflow.
-- **Metric-scoped pairwise inference.** Advanced benchmark pairwise tests must
-  group by `(dataset, metric)` before comparing oversamplers. P-values and
-  effect sizes from one metric must never be attached to rows for another
-  metric.
-- **Paired effect sizes.** Replace independent-sample Cohen's d in paired
-  benchmark comparisons with a paired standardized difference or rank-biserial
-  effect size aligned with the Wilcoxon design.
-- **Benchmark data fixes.** `DatasetRepository._load_medical()` should mark
-  `load_breast_cancer()` minority label `0`, not `1`; OpenML loading should use
-  the actual `fetch_openml(..., as_frame=False)` target interface; and OpenML
-  tests should fail when requested OpenML datasets are all skipped.
-- **Plugin metrics in validation.** Custom metric plugins discovered through
-  entry points should be usable end to end by `distance_matrix()` and
-  `validate_oversampling(..., metric=...)`, not only retrievable through
-  `PluginManager.get_metric()`.
-- **Metric-domain enforcement.** Validators should reject sample-level metrics
-  such as `energy` and `wasserstein` for pointwise nearest-neighbour validation,
-  and use declared metric domains to reject probability, boolean or
-  non-negative metrics on incompatible data.
-- **Inferential dependence caveats.** The nearest-neighbour, MST and cross-match
-  permutation tests should either gain a block/per-fit resampling design for
-  dependent synthetic samples or document their p-values as diagnostic
-  approximations for SMOTE-like generators.
-- **Advanced benchmark defaults.** Remove default Mahalanobis rows unless a
-  covariance inverse is estimated for the relevant training/reference set, and
-  remove `recommended_samples` until it is tied to a defined hypothesis and
-  sampling unit.
-- **Metric degeneracy tests.** Add deterministic metric-property tests for
-  degenerate inputs: `cosine_distance(0, x)`, constant-vector correlation
-  distance and other cases the randomized axiom smoke test can miss.
-- **Noise sensitivity realised flips.** `noise_sensitivity_diagnostic()` should
-  sample replacement labels excluding the original label, so a requested flip
-  fraction corresponds to realised label changes.
-- **CI quality gates.** Main CI should enforce `ruff check` and `mypy src`, not
-  only tests and docs, because the roadmap and README claim those gates are
-  clean.
-- **Release-document consistency.** Fix the README citation version, update stale
-  benchmarking docs, and check Markdown benchmark export rendering alongside the
-  report renderer so release-facing docs and exports do not contradict the code.
-
-### v0.6.0 — export and reporting trust
-
-This release can start after the v0.5.1 correctness closure. It should improve
-how results leave the package, without changing the statistical meaning again.
-
-- **Fold-level benchmark export.** The statistical benchmark summary is already
-  tidy by `(dataset, oversampler, metric)`, but the raw fold/repeat observations
-  are still embedded as list-valued `error_rates`. Add an export with one row
-  per `(dataset, oversampler, metric, repeat, fold)`, including the split seed,
-  hidden ratio, error rate, skip status and skip reason.
 - **Unified result schema.** Align the simple benchmark, statistical benchmark,
   validation report and `Report.to_frame()` outputs around named identifiers
   rather than positional assumptions. Dataset, oversampler, metric, seed,
@@ -221,22 +204,12 @@ how results leave the package, without changing the statistical meaning again.
 - **Strict JSON outputs.** Audit every JSON-producing path for `NaN`,
   infinities and NumPy scalars. Machine-readable exports should be accepted by
   strict parsers without relying on pandas' permissive defaults.
-- **Renderer consolidation.** Keep frame rendering in one internal module and
-  route reports, benchmark exports and future CLI table exports through it.
-  This prevents a second copy of the old `to_csv(sep="|")` bug.
 
-### v0.6.0 — documentation debt
+### v0.7.0 — documentation debt
 
-- **Benchmarking docs correction.** `docs/benchmarking.rst` still explains the
-  old confidence-interval bug where the implementation switched from a
-  Student-t interval to a percentile range at `n=30`. The code now uses a
-  t-interval for the mean at every sample size; the docs should describe that
-  behavior and keep the historical warning only as release-note context.
-- **Concepts page calibration update.** `docs/concepts.rst` says error-rate
-  calibration against a null model is not implemented, but
-  `oversampleqa.inference` now provides `null_error_rate` and the CLI exposes
-  `--calibrate`. Rewrite that section so new users do not learn an obsolete
-  limitation.
+The benchmarking-docs correction and the concepts-page calibration claim are
+done; what remains is the material that helps a reader assemble the pieces.
+
 - **Examples refresh.** Update gallery and tutorial examples so they use
   `n_repeats`, report duplication or memorisation when relevant, seed both the
   validator and the oversampler, and show the new export metadata instead of a
@@ -246,7 +219,7 @@ how results leave the package, without changing the statistical meaning again.
   and benchmark rankings. The current docs explain the pieces but leave too much
   assembly to the reader.
 
-### v0.7.0 — user-facing features
+### v0.8.0 — user-facing features
 
 - **Experiment manifest runner.** Add a YAML-driven command that can run
   validation, fidelity diagnostics and benchmarks from one checked-in manifest.
@@ -279,7 +252,7 @@ how results leave the package, without changing the statistical meaning again.
   intervals, skip reasons and provenance metadata. This should remain static
   HTML, not a hosted service.
 
-### v0.8.0 — benchmark quality
+### v0.9.0 — benchmark quality
 
 - **Pinned benchmark catalog.** Define a small catalog of reference datasets
   that is stable enough to cite: generated datasets with fixed seeds, OpenML
@@ -299,7 +272,7 @@ how results leave the package, without changing the statistical meaning again.
   structured result table. A benchmark with no usable folds should be easy to
   summarize programmatically.
 
-### v0.9.0 — scalability and runtime behaviour
+### v0.10.0 — scalability and runtime behaviour
 
 - **Process-level parallelism.** Add real parallelism across repeats, folds,
   datasets and sampler/metric combinations. `ValidationMode.ASYNC` raises
@@ -341,14 +314,17 @@ how results leave the package, without changing the statistical meaning again.
 
 ### Maintenance backlog
 
-- **Release metadata consistency.** The release-facing files (`README.md`,
-  `CITATION.cff`, `docs/citation.rst`, `.zenodo.json` and `CHANGELOG.md`) should
-  be checked as one unit before every archive so examples, version numbers, DOI
-  guidance and citation snippets cannot drift.
-- **Release checklist automation.** Add a local `scripts/release.py` check mode
-  that verifies version strings, citation metadata, changelog links, DOI
-  placeholders, docs build, API snapshot and clean wheel install before a
-  GitHub release is published.
+- **`umap-learn` is a hard runtime dependency**, pulling numba, llvmlite and
+  pynndescent for a single optional plotting mode. Everyone who runs
+  `pip install oversampleqa` pays that cost. Moving it to the `performance`
+  extra would cut install weight substantially, but it breaks anyone calling
+  `plot_sample_distribution(method="umap")`, so it belongs in a deliberate minor
+  bump rather than a patch.
+- **Generated gallery output is tracked in git.** `docs/gallery/` is build
+  output regenerated by every docs build, so it shows as dirty after any local
+  build. Nothing depends on it being committed now that Pages deploys from the
+  CI artifact. Untracking it would remove a standing nuisance; keeping it is
+  also defensible, but the current arrangement costs something every time.
 - **API-stability audit.** Before each minor release, compare the committed API
   snapshot with docs and examples. Any new export either needs documentation or
   an explicit decision that it is private.

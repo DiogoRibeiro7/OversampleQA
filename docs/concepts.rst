@@ -63,8 +63,11 @@ reproduced, and it warns when selected.
    oversampler is "bad". Use it to compare oversamplers **on one dataset**, with
    every other parameter held fixed.
 
-   Calibrating the error rate against a null model, which is what would make
-   values comparable across datasets, is not yet implemented.
+   :func:`~oversampleqa.null_error_rate` supplies the calibration that makes a
+   value interpretable: it scores *real held-out minority points* through the
+   identical pipeline, giving the rate an ideal generator would achieve on this
+   data, and reports the observed rate as a position against it. The CLI exposes
+   it as ``oversampleqa validate --calibrate``. See :doc:`/inference`.
 
 Minimum data requirements
 -------------------------
