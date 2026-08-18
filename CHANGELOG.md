@@ -41,6 +41,19 @@ section are maintained manually.
 
 ### Fixed
 
+- **The permutation tests rejected a true null every time on SMOTE output.**
+  `nn_two_sample_test`, `mst_two_sample_test` and `cross_match_test` permute
+  point labels, which assumes exchangeability — but points sharing a SMOTE
+  parent move together, so the null was far too tight. Measured with synthetic
+  and real drawn from the *same* distribution, differing only in the block
+  structure: **100% false rejections at α=0.05**, median p 0.005. The tests were
+  responding to the clustering SMOTE always produces, not to any difference in
+  distribution, so they would call any SMOTE output "distinguishable from real"
+  however good it was. Passing `parents` now subsamples one point per parent —
+  genuinely exchangeable — across `n_subsamples` draws, combining p-values as
+  twice the median (valid under arbitrary dependence). Same run block-aware: 0%
+  false rejections, median p 0.885. The combination is conservative and power
+  drops to the parent count, which is the honest sample size.
 - **`noise_sensitivity_diagnostic` applied half the noise it reported.**
   Replacement labels were drawn from *all* classes, so a selected point could
   be "flipped" to the label it already had. Realised noise was

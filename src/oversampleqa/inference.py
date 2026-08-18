@@ -33,7 +33,7 @@ multivariate distributions based on adjacency. *JRSS-B* 67(4).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -459,6 +459,89 @@ def _nn_coincidences(
     return int((labels[neighbours] == labels[:, None]).sum())
 
 
+
+def _one_per_parent(
+    parents: NDArray[np.integer], rng: np.random.Generator
+) -> NDArray[np.integer]:
+    """Pick one synthetic point per parent, uniformly at random.
+
+    The result is exchangeable in the way a permutation test requires: no two
+    selected points share a parent, so the dependence the blocks encode is
+    removed rather than assumed away.
+
+    Args:
+        parents: Parent index per synthetic point.
+        rng: Source of randomness.
+
+    Returns:
+        Indices into the synthetic array, one per distinct parent.
+    """
+    parents = np.asarray(parents)
+    chosen = []
+    for parent in np.unique(parents):
+        members = np.flatnonzero(parents == parent)
+        chosen.append(int(rng.choice(members)))
+    return np.asarray(sorted(chosen), dtype=int)
+
+
+def _combine_blocked(
+    run_one: Callable[[NDArray[np.floating]], TwoSampleTestResult],
+    synthetic: NDArray[np.floating],
+    parents: NDArray[np.integer],
+    n_subsamples: int,
+    rng: np.random.Generator,
+) -> TwoSampleTestResult:
+    """Run a two-sample test on independent subsamples and combine the results.
+
+    Permuting the labels of individual synthetic points assumes they are
+    exchangeable. Points sharing a SMOTE parent are not: they lie on segments
+    from the same minority point, so they move together. The permutation null
+    is then too tight and the p-value anticonservative -- the same dependence
+    ``error_rate_interval`` already handles with its parent-block bootstrap,
+    where the honest interval came out 2.3x wider than Wilson.
+
+    Permuting whole blocks instead is the textbook alternative but does not fit
+    here: blocks have unequal sizes, so block-level permutation changes the
+    number of synthetic points between draws, and all three statistics depend
+    on that count. Subsampling one point per parent keeps the sample size fixed
+    and the exchangeability real.
+
+    The per-subsample p-values are dependent, so they are combined with twice
+    the median, which is valid for arbitrarily dependent p-values (Ruger 1978;
+    see also Vovk & Wang 2020). It is conservative by construction.
+
+    Args:
+        run_one: Runs the underlying test on a subsample of synthetic points.
+        synthetic: Full synthetic sample.
+        parents: Parent index per synthetic point.
+        n_subsamples: Independent subsamples to draw.
+        rng: Source of randomness.
+
+    Returns:
+        A result whose ``p_value`` is the combined one and whose ``statistic``
+        is the median across subsamples.
+    """
+    if n_subsamples < 1:
+        raise ValueError(f"n_subsamples must be at least 1; got {n_subsamples}")
+
+    results = [
+        run_one(synthetic[_one_per_parent(parents, rng)]) for _ in range(n_subsamples)
+    ]
+    p_values = np.asarray([r.p_value for r in results], dtype=float)
+    combined = min(1.0, 2.0 * float(np.median(p_values)))
+    template = results[0]
+    return TwoSampleTestResult(
+        name=f"{template.name}_blocked",
+        statistic=float(np.median([r.statistic for r in results])),
+        p_value=combined,
+        asymptotic_p_value=None,
+        n_synthetic=template.n_synthetic,
+        n_real=template.n_real,
+        n_permutations=template.n_permutations,
+        null_statistics=template.null_statistics,
+    )
+
+
 def nn_two_sample_test(
     synthetic: NDArray[np.floating],
     real: NDArray[np.floating],
@@ -467,6 +550,8 @@ def nn_two_sample_test(
     metric: str = "hassanat",
     metric_kwargs: dict[str, Any] | None = None,
     n_permutations: int = 999,
+    parents: NDArray[np.integer] | None = None,
+    n_subsamples: int = 9,
     random_state: RandomStateLike = 42,
 ) -> TwoSampleTestResult:
     """Schilling-Henze nearest-neighbour two-sample test.
@@ -516,6 +601,27 @@ def nn_two_sample_test(
     n = n1 + n2
     if k >= n:
         raise ValueError(f"k={k} must be smaller than the pooled size {n}")
+
+    if parents is not None:
+        # Points sharing a parent are not exchangeable, so permuting
+        # them individually gives a null that is too tight. Subsample
+        # one per parent and combine; see _combine_blocked.
+        inner = as_generator(random_state)
+        return _combine_blocked(
+            lambda subsample: nn_two_sample_test(
+                subsample,
+                real,
+                k=k,
+                metric=metric,
+                metric_kwargs=metric_kwargs,
+                n_permutations=n_permutations,
+                random_state=inner,
+            ),
+            synthetic,
+            parents,
+            n_subsamples,
+            inner,
+        )
 
     distances = _pooled_distances(synthetic, real, metric, metric_kwargs)
     labels = np.concatenate([np.zeros(n1, dtype=int), np.ones(n2, dtype=int)])
@@ -570,6 +676,8 @@ def mst_two_sample_test(
     metric: str = "hassanat",
     metric_kwargs: dict[str, Any] | None = None,
     n_permutations: int = 999,
+    parents: NDArray[np.integer] | None = None,
+    n_subsamples: int = 9,
     random_state: RandomStateLike = 42,
 ) -> TwoSampleTestResult:
     """Friedman-Rafsky minimum-spanning-tree two-sample test.
@@ -588,6 +696,26 @@ def mst_two_sample_test(
     n1, n2 = len(synthetic), len(real)
     if n1 == 0 or n2 == 0:
         raise ValidationError("both samples must be non-empty")
+
+    if parents is not None:
+        # Points sharing a parent are not exchangeable, so permuting
+        # them individually gives a null that is too tight. Subsample
+        # one per parent and combine; see _combine_blocked.
+        inner = as_generator(random_state)
+        return _combine_blocked(
+            lambda subsample: mst_two_sample_test(
+                subsample,
+                real,
+                metric=metric,
+                metric_kwargs=metric_kwargs,
+                n_permutations=n_permutations,
+                random_state=inner,
+            ),
+            synthetic,
+            parents,
+            n_subsamples,
+            inner,
+        )
 
     distances = _pooled_distances(synthetic, real, metric, metric_kwargs)
     labels = np.concatenate([np.zeros(n1, dtype=int), np.ones(n2, dtype=int)])
@@ -649,6 +777,8 @@ def cross_match_test(
     metric: str = "hassanat",
     metric_kwargs: dict[str, Any] | None = None,
     n_permutations: int = 999,
+    parents: NDArray[np.integer] | None = None,
+    n_subsamples: int = 9,
     random_state: RandomStateLike = 42,
 ) -> TwoSampleTestResult:
     """Rosenbaum cross-match test, with a greedy matching.
@@ -673,6 +803,26 @@ def cross_match_test(
     n1, n2 = len(synthetic), len(real)
     if n1 == 0 or n2 == 0:
         raise ValidationError("both samples must be non-empty")
+
+    if parents is not None:
+        # Points sharing a parent are not exchangeable, so permuting
+        # them individually gives a null that is too tight. Subsample
+        # one per parent and combine; see _combine_blocked.
+        inner = as_generator(random_state)
+        return _combine_blocked(
+            lambda subsample: cross_match_test(
+                subsample,
+                real,
+                metric=metric,
+                metric_kwargs=metric_kwargs,
+                n_permutations=n_permutations,
+                random_state=inner,
+            ),
+            synthetic,
+            parents,
+            n_subsamples,
+            inner,
+        )
 
     distances = _pooled_distances(synthetic, real, metric, metric_kwargs)
     labels = np.concatenate([np.zeros(n1, dtype=int), np.ones(n2, dtype=int)])
