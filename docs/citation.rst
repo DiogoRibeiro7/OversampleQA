@@ -41,7 +41,7 @@ Concept DOI — ``10.5281/zenodo.21940361``
    versions* on the record page. This is what the README badge and
    ``CITATION.cff`` point at, because it never goes stale.
 
-Version DOI
+Version DOI — ``10.5281/zenodo.21993371`` for 0.6.0
    Points at one specific release. Use it in a paper, where the reader needs the
    exact code that produced the results. The version DOI is minted by Zenodo
    after the GitHub release is published, then copied into ``CITATION.cff``.

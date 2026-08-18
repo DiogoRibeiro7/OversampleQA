@@ -180,9 +180,10 @@ lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button
 ```
 
 The DOI above is the concept DOI: it always resolves to the newest archived
-version. To cite an exact archived release, use the version DOI listed in
-`CITATION.cff` after Zenodo has minted it. See
-[Citing OversampleQA](docs/citation.rst) for the release and DOI sequence.
+version. To cite this exact release instead, use `10.5281/zenodo.21993371`.
+Every archived version's DOI is listed in `CITATION.cff`; see
+[Citing OversampleQA](docs/citation.rst) for the release and DOI sequence, and
+for why 0.5.1 has no record of its own.
 
 ## License
 
