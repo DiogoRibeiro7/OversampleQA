@@ -129,6 +129,50 @@ inferential layer. p-values come from permutation, so no asymptotic assumption
 is needed; the nearest-neighbour test also reports the asymptotic normal
 approximation alongside, so you can see when the two disagree.
 
+Dependent synthetic points
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A permutation test assumes the points it shuffles are exchangeable. SMOTE's are
+not: every synthetic point lies on a segment from one minority parent, so points
+sharing a parent move together. Permuting them individually makes the null far
+too tight.
+
+Measured under a **true** null -- synthetic and real drawn from the same
+distribution, differing only in that the synthetic sample is clustered by
+parent:
+
+==========================  =================  ================
+                            ignoring blocks    block-aware
+==========================  =================  ================
+false rejections at 0.05    100%               0%
+median p-value              0.005              0.885
+==========================  =================  ================
+
+The naive test rejects the null **every time it is true**. It responds to the
+clustering, which SMOTE always produces, not to any difference in distribution
+-- so it would call any SMOTE output "distinguishable from real" however good
+it was.
+
+Pass ``parents`` to fix it::
+
+    result = nn_two_sample_test(synthetic, real, parents=parent_index)
+
+Each call then draws ``n_subsamples`` independent subsamples of one point per
+parent -- genuinely exchangeable -- and combines their p-values as twice the
+median, which is valid for arbitrarily dependent p-values (Rüger 1978). The
+result is named ``..._blocked``.
+
+Two consequences worth knowing. The combination is **conservative**, so a
+p-value near 1 is weaker evidence of similarity than it looks. And power drops
+sharply, because the effective sample size is the number of parents rather than
+the number of synthetic points -- which is the honest sample size, and the same
+reasoning behind the parent-block bootstrap in
+:func:`~oversampleqa.error_rate_interval`.
+
+Whole-block permutation would be the textbook alternative, but blocks have
+unequal sizes, so permuting them changes the number of synthetic points between
+draws, and all three statistics depend on that count.
+
 .. note::
 
    The cross-match test uses a **greedy** matching rather than Rosenbaum's
