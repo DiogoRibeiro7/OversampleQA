@@ -10,6 +10,30 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- **Documentation is published to GitHub Pages** at
+  https://diogoribeiro7.github.io/OversampleQA/ on every push to `main`. The
+  deploy job publishes the artifact the existing `-W` docs build produced
+  rather than rebuilding, so what ships is the output that passed the gate. The
+  artifact is uploaded on pull requests too, which proves it is publishable
+  before merge; only deployment is restricted to `main`.
+  The `documentation` URL in the package metadata pointed at the raw `.rst`
+  source tree on GitHub and now points at the rendered site.
+- `infer_minority_label` returns the least frequent label, and both dataset
+  catalogs now derive `minority_label` from the data instead of declaring it.
+
+### Removed
+
+- **`recommended_samples`**, which answered a question nobody asks. Its effect
+  size was `|mean| / std` — the effect for testing whether the error rate
+  differs from *zero*. Error rates are never near zero relative to their spread,
+  so the effect is always enormous and the column reported **1 on every row of
+  every real run**. The sampling unit was confused too: the values are per-fold
+  rates, but the formula carries the two-sample factor. It will come back when
+  it is tied to a stated hypothesis — most usefully "how many folds to detect a
+  difference *between two samplers*" — and a defined sampling unit.
+
 ### Fixed
 
 - **`cosine` reported a zero vector as identical to every vector.** With a zero
@@ -27,20 +51,6 @@ section are maintained manually.
 - Deterministic degeneracy tests for zero and constant vectors. The axiom smoke
   check draws random input, so it essentially never draws exactly these, which
   is how all three defects survived it.
-
-### Removed
-
-- **`recommended_samples`**, which answered a question nobody asks. Its effect
-  size was `|mean| / std` — the effect for testing whether the error rate
-  differs from *zero*. Error rates are never near zero relative to their spread,
-  so the effect is always enormous and the column reported **1 on every row of
-  every real run**. The sampling unit was confused too: the values are per-fold
-  rates, but the formula carries the two-sample factor. It will come back when
-  it is tied to a stated hypothesis — most usefully "how many folds to detect a
-  difference *between two samplers*" — and a defined sampling unit.
-
-### Fixed
-
 - **`mahalanobis` was silently Euclidean.** With no `cov_inv` it fell back to an
   identity covariance — which *is* Euclidean distance, so it reported one metric
   under another's name. It was in the advanced benchmark's default metric list,
@@ -61,25 +71,6 @@ section are maintained manually.
   `validate_multiclass_oversampling` and `null_error_rate` now reject them,
   using the domains already declared in `METRIC_DOMAINS`. `distance_matrix`
   still computes them, since comparing whole samples is what they are for.
-
-### Added
-
-- **Documentation is published to GitHub Pages** at
-  https://diogoribeiro7.github.io/OversampleQA/ on every push to `main`. The
-  deploy job publishes the artifact the existing `-W` docs build produced
-  rather than rebuilding, so what ships is the output that passed the gate. The
-  artifact is uploaded on pull requests too, which proves it is publishable
-  before merge; only deployment is restricted to `main`.
-  The `documentation` URL in the package metadata pointed at the raw `.rst`
-  source tree on GitHub and now points at the rendered site.
-
-### Added
-
-- `infer_minority_label` returns the least frequent label, and both dataset
-  catalogs now derive `minority_label` from the data instead of declaring it.
-
-### Fixed
-
 - **A registered metric plugin could not actually be used.** `distance_matrix`
   and every validator funnelling through it checked only the built-in table, so
   a plugin metric was rejected as unsupported by the exact functions it exists
