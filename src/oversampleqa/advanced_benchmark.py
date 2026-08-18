@@ -36,7 +36,6 @@ _RESULT_COLUMNS = (
     "ci_lower",
     "ci_upper",
     "n_observations",
-    "recommended_samples",
 )
 
 
@@ -53,7 +52,6 @@ class BenchmarkResult:
     confidence_interval: tuple[float, float]
     effect_size: float | None = None
     p_value: float | None = None
-    recommended_samples: int | None = None
 
 
 #: Hold-out fraction used inside each fold. Fixed rather than a parameter
@@ -239,8 +237,6 @@ class StatisticalBenchmark:
                     float(np.std(error_rates, ddof=1)) if len(error_rates) > 1 else 0.0
                 )
                 ci_lower, ci_upper = self._confidence_interval(error_rates)
-                power_samples = self._recommended_sample_size(error_rates)
-
                 results.append(
                     BenchmarkResult(
                         dataset_name=dataset_name,
@@ -250,7 +246,6 @@ class StatisticalBenchmark:
                         mean_error=mean_error,
                         std_error=std_error,
                         confidence_interval=(ci_lower, ci_upper),
-                        recommended_samples=power_samples,
                     )
                 )
         return results
@@ -428,35 +423,6 @@ class StatisticalBenchmark:
             return (mean, mean)
         margin = float(stats.t.ppf(1 - alpha / 2, len(arr) - 1)) * standard_error
         return (mean - margin, mean + margin)
-
-    def _recommended_sample_size(
-        self, values: Sequence[float], target_power: float = 0.8
-    ) -> int | None:
-        """Estimate recommended sample size using a Cohen's d approximation.
-
-        Args:
-            values: Observed error rates.
-            target_power: Desired statistical power.
-
-        Returns:
-            Estimated required sample size or ``None`` if not computable.
-        """
-
-        if len(values) < 2:
-            return None
-        arr = np.asarray(values, dtype=float)
-        std = arr.std(ddof=1)
-        if std == 0:
-            return None
-        d = abs(arr.mean()) / std
-        if d == 0:
-            return None
-        # normal approximation for two-sided test
-        alpha = 1 - self.confidence_level
-        z_alpha = stats.norm.ppf(1 - alpha / 2)
-        z_beta = stats.norm.ppf(target_power)
-        n = ((z_alpha + z_beta) ** 2) * 2 / (d**2)
-        return math.ceil(n)
 
     def _add_statistical_analysis(self, frame: pd.DataFrame) -> pd.DataFrame:
         """Add pairwise p-values and effect sizes per dataset.
@@ -700,7 +666,6 @@ class StatisticalBenchmark:
             "error_rates": result.error_rates,
             "effect_size": result.effect_size,
             "p_value": result.p_value,
-            "recommended_samples": result.recommended_samples,
         }
 
 
@@ -1104,7 +1069,6 @@ def create_benchmark_report(
             "ci",
             "p_values",
             "effect_sizes",
-            "recommended_samples",
         ]
     ].to_html(index=False, escape=False)
 

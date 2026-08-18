@@ -10,6 +10,17 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Removed
+
+- **`recommended_samples`**, which answered a question nobody asks. Its effect
+  size was `|mean| / std` — the effect for testing whether the error rate
+  differs from *zero*. Error rates are never near zero relative to their spread,
+  so the effect is always enormous and the column reported **1 on every row of
+  every real run**. The sampling unit was confused too: the values are per-fold
+  rates, but the formula carries the two-sample factor. It will come back when
+  it is tied to a stated hypothesis — most usefully "how many folds to detect a
+  difference *between two samplers*" — and a defined sampling unit.
+
 ### Fixed
 
 - **`mahalanobis` was silently Euclidean.** With no `cov_inv` it fell back to an

@@ -1,9 +1,4 @@
-from oversampleqa.advanced_benchmark import DatasetRepository, StatisticalBenchmark
-
-
-def test_recommended_sample_size_zero_std():
-    bench = StatisticalBenchmark()
-    assert bench._recommended_sample_size([1.0, 1.0, 1.0]) is None
+from oversampleqa.advanced_benchmark import DatasetRepository
 
 
 def test_load_domain_unknown_returns_empty():
