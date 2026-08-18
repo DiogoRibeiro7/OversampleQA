@@ -241,6 +241,39 @@ def check_model_fairness(
     return abs(recalls[0] - recalls[1])
 
 
+def flip_labels(
+    y: np.ndarray,
+    indices: np.ndarray,
+    labels: np.ndarray,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Return a copy of ``y`` with ``indices`` relabelled to a *different* class.
+
+    Drawing replacements from all classes, as this used to, lets a selected
+    point keep its own label. The realised noise was then
+    ``requested * (k - 1) / k`` -- on binary data, half of what was asked for.
+
+    The offset is taken within the sorted label list, which guarantees a change
+    and is uniform over the ``k - 1`` alternatives.
+
+    Args:
+        y: Label array.
+        indices: Positions to relabel.
+        labels: Sorted unique labels.
+        rng: Source of randomness.
+
+    Returns:
+        A new array; ``y`` is not modified.
+    """
+    flipped = y.copy()
+    if len(indices) == 0:
+        return flipped
+    original = np.searchsorted(labels, y[indices])
+    offset = rng.integers(1, len(labels), size=len(indices))
+    flipped[indices] = labels[(original + offset) % len(labels)]
+    return flipped
+
+
 def noise_sensitivity_diagnostic(
     X: np.ndarray,
     y: np.ndarray,
@@ -264,7 +297,21 @@ def noise_sensitivity_diagnostic(
         random_state: Optional random seed.
 
     Returns:
-        DataFrame with noise levels and error rates.
+        DataFrame with ``noise``, ``error_rate`` and ``n_flipped`` -- the number
+        of labels actually changed, so the applied noise can be checked against
+        the requested level rather than assumed.
+
+    Raises:
+        ValueError: If ``y`` contains fewer than two classes, leaving no label
+            to flip to.
+
+    Notes:
+        Replacement labels are drawn from the *other* classes. Drawing from all
+        classes, as this used to, lets a selected point keep its own label, so
+        the realised noise was ``noise * (k - 1) / k``: on binary data -- this
+        package's main case -- **half** the requested level. A run labelled
+        ``noise=0.3`` applied about 0.15, and the x-axis of every
+        noise-sensitivity plot was overstated by that factor.
     """
 
     from .validator import validate_oversampling
@@ -273,14 +320,21 @@ def noise_sensitivity_diagnostic(
     rng = np.random.default_rng(random_state)
     results = []
     labels = np.unique(y)
+    if len(labels) < 2:
+        raise ValueError(
+            "noise_sensitivity_diagnostic needs at least two classes: with one "
+            "class there is no other label to flip to, so no noise level is "
+            "distinguishable from zero."
+        )
 
     for noise in noise_levels:
         y_noisy = y.copy()
+        n_flipped = 0
         if noise > 0:
             n_flip = int(len(y) * noise)
             idx = rng.choice(len(y), n_flip, replace=False)
-            flips = rng.choice(labels, size=n_flip)
-            y_noisy[idx] = flips
+            y_noisy = flip_labels(y, idx, labels, rng)
+            n_flipped = int(np.sum(y_noisy != y))
 
         err = validate_oversampling(
             X,
@@ -290,6 +344,8 @@ def noise_sensitivity_diagnostic(
             hidden_ratio=hidden_ratio,
             metric=metric,
         )
-        results.append({"noise": noise, "error_rate": err})
+        results.append(
+            {"noise": noise, "error_rate": err, "n_flipped": n_flipped}
+        )
 
     return pd.DataFrame(results)

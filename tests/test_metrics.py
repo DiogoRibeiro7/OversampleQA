@@ -59,5 +59,11 @@ def test_noise_sensitivity_diagnostic(tmp_path):
         noise_levels=[0.0, 0.1],
         random_state=0,
     )
-    assert list(df.columns) == ["noise", "error_rate"]
+    assert list(df.columns) == ["noise", "error_rate", "n_flipped"]
     assert len(df) == 2
+    # n_flipped joined the frame so the applied noise can be checked rather
+    # than assumed: replacements used to be drawn from all classes, so a
+    # selected point could keep its own label and binary data realised half
+    # the requested level.
+    assert df["n_flipped"].iloc[0] == 0
+    assert df["n_flipped"].iloc[1] == int(len(y) * 0.1)
