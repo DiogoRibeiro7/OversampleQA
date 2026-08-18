@@ -151,8 +151,20 @@ def cosine_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     dot = np.dot(x1, x2)
     denom = np.linalg.norm(x1) * np.linalg.norm(x2)
     if denom == 0:
-        return 0.0
-    return float(1.0 - dot / denom)
+        # A zero vector has no direction, so the angle to it is undefined.
+        # Returning 0.0 said "identical direction", which made the zero vector
+        # distance-zero from *every* vector -- the identity of indiscernibles
+        # broken in the same way the original hassanat defect broke it. The
+        # randomised axiom check never draws an exact zero vector, so it never
+        # saw this.
+        raise ValueError(
+            "cosine distance is undefined when either vector is zero: a zero "
+            "vector has no direction. Drop all-zero rows, or use a metric "
+            "defined on them such as 'euclidean' or 'hassanat'."
+        )
+    # Clamp: floating point put d(x, x) at -2.22e-16 for a constant vector, a
+    # negative distance feeding a nearest-neighbour comparison.
+    return float(np.clip(1.0 - dot / denom, 0.0, 2.0))
 
 
 MetricFunc = Callable[[NDArray[np.floating], NDArray[np.floating]], float]

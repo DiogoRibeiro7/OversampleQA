@@ -10,6 +10,24 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`cosine` reported a zero vector as identical to every vector.** With a zero
+  norm the denominator vanishes and the angle is undefined; the code returned
+  `0.0`, which says "identical direction". That is the identity of
+  indiscernibles broken in the same way the original Hassanat defect broke it.
+  It now raises. `cosine(x, x)` on a constant vector also returned
+  **−2.22e-16** — a negative distance feeding a `nearest_hidden < nearest_min`
+  comparison — and is now clamped to exactly zero.
+- **`correlation` reported a constant vector as perfectly correlated.** A
+  constant vector has zero variance, so the correlation is `nan`; the code
+  caught the `nan` and returned `0.0`. `METRIC_DOMAINS` had documented the case
+  as undefined all along — the code disagreed with the comment beside it. It now
+  raises, as does a vector too short to have variance.
+- Deterministic degeneracy tests for zero and constant vectors. The axiom smoke
+  check draws random input, so it essentially never draws exactly these, which
+  is how all three defects survived it.
+
 ### Removed
 
 - **`recommended_samples`**, which answered a question nobody asks. Its effect

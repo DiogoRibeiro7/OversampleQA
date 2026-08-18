@@ -179,16 +179,30 @@ def correlation_distance(x1: np.ndarray, x2: np.ndarray) -> float:
         raise ValueError("Input vectors must have the same shape")
 
     if len(x1) < 2:
-        return 0.0
+        # Correlation needs at least two components to have any variance.
+        raise ValueError(
+            "correlation distance is undefined for vectors of length < 2: "
+            "there is no variance to correlate."
+        )
 
-    corr_coef = np.corrcoef(x1, x2)[0, 1]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        # A constant vector makes corrcoef divide by a zero standard deviation.
+        # That is the case handled immediately below, so the warning is noise.
+        corr_coef = np.corrcoef(x1, x2)[0, 1]
 
-    # Handle NaN correlation (constant vectors)
     if np.isnan(corr_coef):
-        return 0.0
+        # A constant vector has zero variance, so the correlation is undefined.
+        # This returned 0.0 -- "perfectly correlated" -- which made a constant
+        # vector distance-zero from every other vector. METRIC_DOMAINS has
+        # documented the case as undefined all along; the code disagreed.
+        raise ValueError(
+            "correlation distance is undefined when either vector is constant: "
+            "zero variance leaves nothing to correlate. Drop constant features "
+            "or rows, or use a metric defined on them such as 'euclidean'."
+        )
 
     coefficient: float = corr_coef
-    return 1.0 - coefficient
+    return float(np.clip(1.0 - coefficient, 0.0, 2.0))
 
 
 def hellinger_distance(x1: np.ndarray, x2: np.ndarray) -> float:
