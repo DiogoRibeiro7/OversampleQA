@@ -10,6 +10,8 @@ section are maintained manually.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-18
+
 ### Added
 
 - `noise_sensitivity_diagnostic` reports `n_flipped`, the number of labels
@@ -739,7 +741,8 @@ Initial release.
 - Plugin system for custom metrics and validators.
 - Sphinx documentation, examples gallery, and tutorials.
 
-[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.6.0
 [0.5.1]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.5.1
 [0.5.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.5.0
 [0.4.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.4.0
