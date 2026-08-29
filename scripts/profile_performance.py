@@ -29,8 +29,8 @@ import platform
 import statistics
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List
 
 import numpy as np
 
@@ -39,7 +39,7 @@ from oversampleqa.optimized_distance import OptimizedDistanceMatrix
 from oversampleqa.validator import validate_oversampling
 
 
-def environment() -> Dict[str, object]:
+def environment() -> dict[str, object]:
     """Return the environment a timing baseline is only comparable within.
 
     A baseline recorded on one machine says nothing about another. Recording
@@ -77,7 +77,7 @@ def _timeit(func: Callable[[], object], loops: int = 5) -> float:
     return statistics.median(samples)
 
 
-def run_profile(quick: bool = False) -> Dict[str, float]:
+def run_profile(quick: bool = False) -> dict[str, float]:
     """Run the performance profile and return per-benchmark best times.
 
     Args:
@@ -97,7 +97,7 @@ def run_profile(quick: bool = False) -> Dict[str, float]:
     X2 = rng.random((n, dim))
     optimizer = OptimizedDistanceMatrix(metric_registry=_METRICS, cache=None)
 
-    results: Dict[str, float] = {}
+    results: dict[str, float] = {}
     for metric in ("euclidean", "hassanat", "manhattan"):
         results[f"optimized_distance_matrix[{metric}]"] = _timeit(
             lambda m=metric: optimizer.compute_distance_matrix(X1, X2, metric=m),
@@ -123,8 +123,8 @@ def run_profile(quick: bool = False) -> Dict[str, float]:
 
 
 def compare(
-    current: Dict[str, float], baseline: Dict[str, float], tolerance: float
-) -> List[str]:
+    current: dict[str, float], baseline: dict[str, float], tolerance: float
+) -> list[str]:
     """Return human-readable regression messages for slower benchmarks.
 
     A benchmark regresses when its current time exceeds the baseline time
@@ -139,7 +139,7 @@ def compare(
     Returns:
         A list of regression messages; empty if nothing regressed.
     """
-    regressions: List[str] = []
+    regressions: list[str] = []
     for name, base_time in baseline.items():
         if name not in current:
             continue
@@ -152,7 +152,7 @@ def compare(
     return regressions
 
 
-def _format_table(results: Dict[str, float]) -> str:
+def _format_table(results: dict[str, float]) -> str:
     """Render benchmark results as a simple aligned text table.
 
     Args:
@@ -168,7 +168,7 @@ def _format_table(results: Dict[str, float]) -> str:
     return "\n".join(lines)
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Entry point for the profiling CLI.
 
     Args:

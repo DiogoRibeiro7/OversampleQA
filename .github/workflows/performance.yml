@@ -52,6 +52,12 @@ jobs:
             --save perf_current.json \
             --tolerance "${{ github.event.inputs.tolerance || '1.5' }}"
 
+      - name: Run core-path benchmark scaffold
+        run: |
+          poetry run python scripts/benchmark_core_paths.py \
+            --repeats 2 \
+            --output core_paths_current.json
+
       - name: Check against committed baseline
         if: hashFiles('perf_baseline.json') != ''
         run: |
@@ -64,5 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: performance-profile
-          path: perf_current.json
+          path: |
+            perf_current.json
+            core_paths_current.json
           if-no-files-found: warn
