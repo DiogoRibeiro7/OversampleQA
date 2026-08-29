@@ -229,6 +229,14 @@ class ValidationReport:
         flat: dict[str, Any] = {
             "schema_version": self.schema_version,
             "error_rate": self.error_rate,
+            "oversampler": self.metadata.oversampler,
+            "metric": self.metadata.metric,
+            "hidden_ratio": self.metadata.hidden_ratio,
+            "reference": self.metadata.reference,
+            "random_state": self.metadata.random_state,
+            "n_repeats": self.metadata.n_repeats,
+            "minority_label": self.metadata.minority_label,
+            "oversampleqa_version": self.metadata.oversampleqa_version,
         }
         flat.update(
             {

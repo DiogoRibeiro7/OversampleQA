@@ -98,6 +98,17 @@ def test_hidden_ratio_is_recorded(run):
     assert set(bench.fold_results()["hidden_ratio"]) == {0.1}
 
 
+def test_fold_rows_include_reproducibility_identifiers(run):
+    bench, _ = run
+    folds = bench.fold_results()
+    assert set(folds["reference"]) == {"hidden_minority"}
+    assert set(folds["minority_label"]) == {1}
+    assert set(folds["random_state"]) == {42}
+    assert set(folds["n_folds"]) == {3}
+    assert set(folds["n_repeats"]) == {2}
+    assert folds["oversampleqa_version"].str.len().gt(0).all()
+
+
 def test_successful_folds_carry_no_skip_reason(run):
     bench, _ = run
     folds = bench.fold_results()

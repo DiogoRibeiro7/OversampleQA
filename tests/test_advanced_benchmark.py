@@ -34,6 +34,17 @@ def test_statistical_benchmark_generates_results():
     )
     assert not df.empty
     assert {"pairwise_p_values", "pairwise_effect_sizes"}.issubset(df.columns)
+    assert {
+        "hidden_ratio",
+        "reference",
+        "minority_label",
+        "random_state",
+        "n_folds",
+        "n_repeats",
+        "oversampleqa_version",
+    }.issubset(df.columns)
+    assert set(df["reference"]) == {"hidden_minority"}
+    assert set(df["hidden_ratio"]) == {0.1}
     p_values = json.loads(df.iloc[0]["pairwise_p_values"])
     assert isinstance(p_values, dict)
 

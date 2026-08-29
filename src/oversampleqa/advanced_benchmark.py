@@ -17,6 +17,7 @@ from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
+from . import __version__ as _PACKAGE_VERSION
 from ._export_metadata import write_export_metadata
 from ._provenance import (
     bundled_provenance,
@@ -32,6 +33,13 @@ _RESULT_COLUMNS = (
     "dataset_name",
     "oversampler_name",
     "metric",
+    "hidden_ratio",
+    "reference",
+    "minority_label",
+    "random_state",
+    "n_folds",
+    "n_repeats",
+    "oversampleqa_version",
     "mean_error",
     "std_error",
     "ci_lower",
@@ -47,6 +55,13 @@ class BenchmarkResult:
     dataset_name: str
     oversampler_name: str
     metric: str
+    hidden_ratio: float
+    reference: str
+    minority_label: int
+    random_state: int | None
+    n_folds: int
+    n_repeats: int
+    oversampleqa_version: str
     error_rates: list[float]
     mean_error: float
     std_error: float
@@ -69,6 +84,12 @@ _FOLD_COLUMNS = (
     "fold",
     "split_seed",
     "hidden_ratio",
+    "reference",
+    "minority_label",
+    "random_state",
+    "n_folds",
+    "n_repeats",
+    "oversampleqa_version",
     "error_rate",
     "skipped",
     "skip_reason",
@@ -98,6 +119,12 @@ class FoldRecord:
     fold: int
     split_seed: int | None
     hidden_ratio: float
+    reference: str
+    minority_label: int
+    random_state: int | None
+    n_folds: int
+    n_repeats: int
+    oversampleqa_version: str
     error_rate: float
     skipped: bool
     skip_reason: str
@@ -243,6 +270,13 @@ class StatisticalBenchmark:
                         dataset_name=dataset_name,
                         oversampler_name=oversampler.__class__.__name__,
                         metric=metric,
+                        hidden_ratio=_FOLD_HIDDEN_RATIO,
+                        reference="hidden_minority",
+                        minority_label=minority_label,
+                        random_state=self.random_state,
+                        n_folds=self.n_folds,
+                        n_repeats=self.n_repeats,
+                        oversampleqa_version=_PACKAGE_VERSION,
                         error_rates=error_rates,
                         mean_error=mean_error,
                         std_error=std_error,
@@ -316,6 +350,12 @@ class StatisticalBenchmark:
                     fold=fold,
                     split_seed=seed,
                     hidden_ratio=_FOLD_HIDDEN_RATIO,
+                    reference="hidden_minority",
+                    minority_label=minority_label,
+                    random_state=self.random_state,
+                    n_folds=self.n_folds,
+                    n_repeats=self.n_repeats,
+                    oversampleqa_version=_PACKAGE_VERSION,
                     error_rate=error,
                     skipped=bool(reason),
                     skip_reason=reason,
@@ -659,6 +699,13 @@ class StatisticalBenchmark:
             "dataset_name": result.dataset_name,
             "oversampler_name": result.oversampler_name,
             "metric": result.metric,
+            "hidden_ratio": result.hidden_ratio,
+            "reference": result.reference,
+            "minority_label": result.minority_label,
+            "random_state": result.random_state,
+            "n_folds": result.n_folds,
+            "n_repeats": result.n_repeats,
+            "oversampleqa_version": result.oversampleqa_version,
             "mean_error": result.mean_error,
             "std_error": result.std_error,
             "ci_lower": result.confidence_interval[0],
