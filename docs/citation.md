@@ -38,11 +38,11 @@ Always resolves to the newest archived version. Zenodo labels it *Cite
 all versions* on the record page. This is what the README badge and
 `CITATION.cff` point at, because it never goes stale.
 
-Version DOI  
+Version DOI — `10.5281/zenodo.22159067` for 0.6.1  
 Points at one specific release. Use it in a paper, where the reader
-needs the exact code that produced the results. The version DOI for
-0.6.1 is minted by Zenodo after the GitHub release is published, then
-copied into `CITATION.cff`.
+needs the exact code that produced the results. The version DOI is
+minted by Zenodo after the GitHub release is published, then copied into
+`CITATION.cff`.
 
 ## Releases without a version DOI
 
