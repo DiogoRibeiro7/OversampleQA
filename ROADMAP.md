@@ -34,6 +34,10 @@ Last revised August 29, 2026, after v0.6.1.
 - Sklearn integration is covered by focused CI tests for `cross_validate`,
   `GridSearchCV`, nested sampler parameters, sklearn `Pipeline` composition and
   common imbalanced-learn sampler paths.
+- Core-path benchmark artifacts record runtime, peak traced memory,
+  environment metadata and benchmark parameters for distance-matrix and
+  validation paths. The scheduled Performance workflow uploads them for trend
+  inspection without making noisy timing results a merge gate.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 
