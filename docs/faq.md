@@ -4,7 +4,9 @@
 
 It is the fraction of synthetic minority samples that are closer to
 hidden majority samples than to real minority samples. Lower values
-generally indicate better synthetic data quality.
+generally indicate better synthetic data quality within the same dataset,
+metric and validation setup. See [Decision Guide](decision_guide.md) for
+calibration and comparison guidance.
 
 ## How do I choose the minority label?
 
@@ -21,6 +23,8 @@ validator with a multiclass-aware oversampler.
 
 Different metrics capture different aspects of similarity. It is good
 practice to validate with at least two metrics to confirm stability.
+See [Decision Guide](decision_guide.md) for metric selection rules of
+thumb.
 
 ## Error modes and edge cases
 
@@ -38,7 +42,7 @@ boundaries.
 | Single feature (one column) | Supported; validation runs normally. |
 | All-identical (degenerate) points | Runs without error; the error rate tends toward `1.0` because synthetic points are indistinguishable from the hidden majority. Treat this as a signal that the data carries no usable structure rather than a quality verdict. |
 | Mahalanobis metric with singular covariance | Handled gracefully (a pseudo-inverse is used); no exception is raised. |
-| Oversampler produces no synthetic samples | Returns an error rate of `0.0` (and empty detail arrays when `return_details=True`). |
+| Oversampler produces no synthetic samples | Warns and returns `nan`, because `0.0` would be indistinguishable from a perfect validation score. |
 
 ## Repro checklist
 
@@ -48,6 +52,8 @@ boundaries.
   imbalanced-learn).
 - Save the exact CLI or typed config used for each run.
 - Use `poetry.lock` to pin versions when sharing results.
+- Keep the artifacts listed in [Production Audit Workflow](production_audit.md)
+  when a sampler choice affects a real model or report.
 
 ## Which oversamplers are supported?
 
