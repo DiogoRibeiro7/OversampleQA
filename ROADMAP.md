@@ -23,6 +23,9 @@ Last revised August 29, 2026, after v0.6.1.
   carry scoped, documented relaxations at their untyped third-party boundaries.
 - Docs build with MkDocs in strict mode and deploy to GitHub Pages from the
   artifact that build produced, so what is published is what passed the gate.
+- Documentation links are gated: MkDocs validates internal pages and anchors,
+  and CI checks stable external targets such as the project docs, GitHub, PyPI
+  and DOI links.
 - `poetry.lock` is tracked, poetry is pinned, `poetry check --lock` gates
   installs, and the docs toolchain lives in the locked `docs` group, so tests
   and docs run against one governed dependency set.
