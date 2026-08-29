@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from ._json import write_json
 from ._provenance import openml_provenance, synthetic_provenance
 from ._render import frame_to_html, frame_to_markdown
 from ._rng import RandomStateLike, as_generator
@@ -473,7 +474,7 @@ def export_benchmark_results(
     elif fmt == "json":
         # nan becomes null. JSON has no NaN literal, and emitting one produces a
         # document that strict parsers reject; null at least round-trips.
-        summary.reset_index().to_json(output_path, orient="records")
+        write_json(output_path, summary.reset_index().to_dict(orient="records"))
     elif fmt == "markdown":
         # This used to be `summary.to_csv(sep="|")`, which is not Markdown: no
         # header separator row and no edge pipes, so it rendered as one run-on

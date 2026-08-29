@@ -32,6 +32,7 @@ from rich.progress import (
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from ._json import strict_json_dumps, write_json
 from .advanced_benchmark import (
     StatisticalBenchmark,
     create_benchmark_report,
@@ -289,7 +290,7 @@ def save_checkpoint(output_dir: Path | None, payload: dict[str, Any]) -> None:
         return
     checkpoint_path = output_dir / CHECKPOINT_FILE
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-    checkpoint_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    write_json(checkpoint_path, payload)
 
 
 def estimate_runtime(seconds: float) -> str:
@@ -548,9 +549,7 @@ def export_results(
             )
             continue
         if fmt_lower == "json":
-            (output_dir / "validation_results.json").write_text(
-                json.dumps(results, indent=2), encoding="utf-8"
-            )
+            write_json(output_dir / "validation_results.json", results)
         elif fmt_lower == "yaml":
             (output_dir / "validation_results.yaml").write_text(
                 yaml.safe_dump(results, sort_keys=False), encoding="utf-8"
@@ -1098,8 +1097,6 @@ def fidelity(
         utility: Whether to measure downstream utility.
         output: Optional JSON output path.
     """
-    import json as _json
-
     from .fidelity import fidelity_report
 
     X, y = load_dataset(dataset, target)
@@ -1163,7 +1160,7 @@ def fidelity(
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(
-            _json.dumps(report.to_dict(), indent=2, default=str), encoding="utf-8"
+            strict_json_dumps(report.to_dict()), encoding="utf-8"
         )
         console.print(f"[green]Report written to {output}[/green]")
 
