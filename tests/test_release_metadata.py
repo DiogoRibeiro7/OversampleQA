@@ -78,7 +78,7 @@ def readme() -> str:
 
 @pytest.fixture(scope="module")
 def citation_doc() -> str:
-    return (ROOT / "docs" / "citation.rst").read_text(encoding="utf-8")
+    return (ROOT / "docs" / "citation.md").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -144,7 +144,7 @@ def test_readme_bibtex_version_matches(readme, version):
 
 def test_citation_doc_bibtex_version_matches(citation_doc, version):
     found = re.search(r"version = \{(.*?)\}", citation_doc)
-    assert found, "docs/citation.rst has no BibTeX version field"
+    assert found, "docs/citation.md has no BibTeX version field"
     assert found.group(1) == version
 
 

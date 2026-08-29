@@ -120,7 +120,8 @@ The enhanced CLI loads configuration from `~/.oversampleqa/config.yaml` by defau
 ## Examples And Docs
 
 - Code samples live in `examples/` and `tutorials/`.
-- Sphinx documentation sources are in `docs/`.
+- MkDocs documentation sources are in `docs/`; the site configuration is `mkdocs.yml`.
+- Published documentation: https://diogoribeiro7.github.io/OversampleQA/
 
 Build docs:
 
@@ -182,7 +183,7 @@ lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button
 The DOI above is the concept DOI: it always resolves to the newest archived
 version. To cite this exact release instead, use `10.5281/zenodo.21993371`.
 Every archived version's DOI is listed in `CITATION.cff`; see
-[Citing OversampleQA](docs/citation.rst) for the release and DOI sequence, and
+[Citing OversampleQA](docs/citation.md) for the release and DOI sequence, and
 for why 0.5.1 has no record of its own.
 
 ## License

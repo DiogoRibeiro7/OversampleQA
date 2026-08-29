@@ -1,0 +1,108 @@
+site_name: OversampleQA
+site_description: A diagnostic toolkit to validate oversampling methods.
+site_url: https://diogoribeiro7.github.io/OversampleQA/
+repo_url: https://github.com/diogoribeiro7/OversampleQA
+repo_name: diogoribeiro7/OversampleQA
+edit_uri: edit/main/docs/
+strict: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: teal
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            docstring_style: google
+            members_order: source
+            show_root_heading: true
+            show_source: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - fenced_code
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quick Start: quickstart.md
+  - Concepts: concepts.md
+  - User Guide: user_guide.md
+  - Algorithms: algorithms.md
+  - Distances: distances.md
+  - Metrics: metrics.md
+  - Benchmarking: benchmarking.md
+  - Plotting: plotting.md
+  - Inference: inference.md
+  - Fidelity: fidelity.md
+  - Plugins: plugins.md
+  - CLI: cli.md
+  - Configuration: configuration.md
+  - Reproducibility: reproducibility.md
+  - API:
+      - Overview: api_landing.md
+      - Reference: api_reference.md
+      - Modules:
+          - Package: api/oversampleqa.md
+          - Advanced Benchmark: api/advanced_benchmark.md
+          - Benchmark: api/benchmark.md
+          - Caching: api/caching.md
+          - CLI: api/cli.md
+          - Enhanced CLI: api/cli_enhanced.md
+          - Clustering: api/clustering.md
+          - Config Templates: api/config_templates.md
+          - Distance: api/distance.md
+          - Extended Distances: api/extended_distances.md
+          - Memory Efficient Validator: api/memory_efficient_validator.md
+          - Metrics: api/metrics.md
+          - Optimized Distance: api/optimized_distance.md
+          - Plotting: api/plotting.md
+          - Plugin System: api/plugin_system.md
+          - Report: api/report.md
+          - Surrogate: api/surrogate.md
+          - Typed Validator: api/typed_validator.md
+          - Types: api/types.md
+          - Validator: api/validator.md
+  - Tutorials:
+      - Overview: tutorials.md
+      - Basic Tutorial: tutorials/basic_tutorial.md
+      - Advanced Tutorial: tutorials/advanced_tutorial.md
+      - CLI Tutorial: tutorials/cli_tutorial.md
+  - Examples:
+      - Overview: examples.md
+      - Gallery: gallery/index.md
+      - Plot Basic Validation: examples/plot_basic_validation.md
+      - Metrics Diagnostics: examples/metrics_diagnostics.md
+      - Typed Validator: examples/typed_validator_example.md
+      - Multiclass Validation: examples/multiclass_validation.md
+  - API Stability: api_stability.md
+  - Benchmark Results: benchmark_results.md
+  - Plotting Examples: visual_examples.md
+  - Contributing: contributing.md
+  - Citation: citation.md
+  - Bibliography: bibliography.md
+  - FAQ: faq.md

@@ -1,10 +1,10 @@
 # Getting Support
 
 ## Documentation
-- [User Guide](docs/user_guide/index.md) - Comprehensive usage guide
-- [API Reference](docs/api/index.md) - Detailed function documentation
-- [Tutorials](docs/tutorials/index.md) - Step-by-step examples
-- [FAQ](docs/faq.md) - Frequently asked questions
+- [User Guide](https://diogoribeiro7.github.io/OversampleQA/user_guide/) - Comprehensive usage guide
+- [API Reference](https://diogoribeiro7.github.io/OversampleQA/api_reference/) - Detailed function documentation
+- [Tutorials](https://diogoribeiro7.github.io/OversampleQA/tutorials/) - Step-by-step examples
+- [FAQ](https://diogoribeiro7.github.io/OversampleQA/faq/) - Frequently asked questions
 
 ## Community Support
 

@@ -80,18 +80,12 @@ safety = "^3.2.7"
 commitizen = "^4.1.1"
 
 # Documentation tooling lives in its own locked group rather than a loose
-# docs/requirements.txt. That file pinned sphinx==8.1.3 and matplotlib==3.10.9
-# and was pip-installed *after* `poetry install`, so the docs job silently
-# downgraded out of the locked set and built against different versions than
-# the tests ran against.
+# docs/requirements.txt, so CI builds the published site from the same lockfile
+# discipline as the test environment.
 [tool.poetry.group.docs.dependencies]
-sphinx = "^8.1.3"
-myst-parser = "^4.0.1"
-sphinx-rtd-theme = "^3.1.0"
-sphinx-copybutton = "^0.5.2"
-nbsphinx = "^0.9.8"
-jupyter = "^1.1.1"
-sphinx-gallery = "^0.21.0"
+mkdocs = ">=1.6,<2.0"
+mkdocs-material = ">=9.5,<10.0"
+mkdocstrings = { version = ">=0.26,<1.0", extras = ["python"] }
 
 [tool.ruff]
 line-length = 88
