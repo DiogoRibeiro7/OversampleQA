@@ -7,11 +7,13 @@ rendered as one run-on paragraph in any viewer.
 
 from __future__ import annotations
 
+import json
 import warnings
 
 import pandas as pd
 import pytest
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.report import frame_to_markdown, generate_report
 
 
@@ -156,3 +158,19 @@ def test_report_without_fidelity_is_unchanged(results):
     """The parameter is optional; omitting it must not alter the ranking output."""
     plain = generate_report(results, output_format="markdown", include_plots=False)
     assert "Fidelity" not in plain
+
+
+def test_report_export_writes_metadata_sidecar(results, tmp_path):
+    out = tmp_path / "report.md"
+    generate_report(
+        results,
+        output_format="markdown",
+        output_path=str(out),
+        include_plots=False,
+    )
+
+    metadata = json.loads(metadata_sidecar_path(out).read_text(encoding="utf-8"))
+
+    assert metadata["export_kind"] == "benchmark_report"
+    assert metadata["data"]["columns"]
+    assert metadata["source"]["row_count"] == len(results)

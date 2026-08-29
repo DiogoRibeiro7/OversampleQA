@@ -1,7 +1,10 @@
+import json
 from pathlib import Path
 
 import pandas as pd
 
+from oversampleqa import cli_enhanced
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.cli_enhanced import (
     analyze_dataset,
     explain_ratio,
@@ -46,3 +49,46 @@ def test_interpretation_helpers():
 
     recs = generate_recommendations(0.4, 0.05)
     assert any("advanced oversamplers" in r for r in recs)
+
+
+def test_statistical_benchmark_outputs_get_metadata_sidecars(tmp_path, monkeypatch):
+    frame = pd.DataFrame(
+        {
+            "dataset_name": ["toy"],
+            "oversampler_name": ["SMOTE"],
+            "metric": ["hassanat"],
+            "mean_error": [0.1],
+            "std_error": [0.01],
+            "ci_lower": [0.05],
+            "ci_upper": [0.15],
+            "n_observations": [5],
+            "pairwise_p_values": [json.dumps({})],
+            "pairwise_effect_sizes": [json.dumps({})],
+        }
+    )
+
+    class DummyBenchmark:
+        def __init__(self, n_folds, n_repeats):
+            self.n_folds = n_folds
+            self.n_repeats = n_repeats
+
+        def run_comprehensive_benchmark(self, datasets, oversamplers):
+            assert datasets == [{"name": "toy"}]
+            assert len(oversamplers) == 2
+            return frame
+
+    monkeypatch.setattr(cli_enhanced, "StatisticalBenchmark", DummyBenchmark)
+
+    cli_enhanced._run_statistical_benchmark(
+        [{"name": "toy"}], tmp_path, folds=2, repeats=3
+    )
+
+    statistics = tmp_path / "benchmark_statistics.csv"
+    summary = tmp_path / "benchmark_summary.md"
+    report = tmp_path / "benchmark_report.html"
+
+    for artifact in (statistics, summary, report):
+        assert metadata_sidecar_path(artifact).exists()
+
+    metadata = json.loads(metadata_sidecar_path(summary).read_text(encoding="utf-8"))
+    assert metadata["benchmark_parameters"] == {"folds": 2, "repeats": 3}

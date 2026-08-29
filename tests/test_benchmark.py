@@ -1,5 +1,6 @@
 from imblearn.over_sampling import SMOTE
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.benchmark import (
     _BENCHMARK_COLUMNS,
     compute_ranking,
@@ -20,6 +21,8 @@ def test_run_benchmark_basic():
     # measurement: error rates are not comparable across metrics, so rows from
     # two sweeps are indistinguishable without it.
     assert list(df.columns) == list(_BENCHMARK_COLUMNS)
+    assert "classification" in df.attrs["dataset_provenance"]
+    assert df.attrs["benchmark_parameters"]["distance_metric"] == "hassanat"
 
 
 def test_export_and_ranking(tmp_path):
@@ -34,12 +37,15 @@ def test_export_and_ranking(tmp_path):
     csv_path = tmp_path / "out.csv"
     export_benchmark_results(df, csv_path, fmt="csv")
     assert csv_path.exists()
+    assert metadata_sidecar_path(csv_path).exists()
     json_path = tmp_path / "out.json"
     export_benchmark_results(df, json_path, fmt="json")
     assert json_path.exists()
+    assert metadata_sidecar_path(json_path).exists()
     md_path = tmp_path / "out.md"
     export_benchmark_results(df, md_path, fmt="markdown")
     assert md_path.exists()
+    assert metadata_sidecar_path(md_path).exists()
 
 
 def test_load_standard_datasets_with_openml():

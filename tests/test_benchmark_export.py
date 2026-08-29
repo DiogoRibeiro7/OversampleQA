@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.benchmark import (
     _BENCHMARK_COLUMNS,
     compute_ranking,
@@ -99,6 +100,21 @@ def test_every_format_writes_a_file(results, tmp_path, fmt):
     out = tmp_path / f"r.{fmt}"
     export_benchmark_results(results, str(out), fmt=fmt)
     assert out.exists() and out.stat().st_size > 0
+    sidecar = metadata_sidecar_path(out)
+    assert sidecar.exists() and sidecar.stat().st_size > 0
+
+
+def test_benchmark_export_metadata_describes_source(results, tmp_path):
+    out = tmp_path / "r.json"
+    export_benchmark_results(results, str(out), fmt="json")
+
+    metadata = json.loads(metadata_sidecar_path(out).read_text(encoding="utf-8"))
+
+    assert metadata["export_kind"] == "benchmark_summary"
+    assert metadata["artifact"] == out.name
+    assert metadata["data"]["row_count"] == 1
+    assert metadata["data"]["attrs"]["source"]["row_count"] == len(results)
+    assert metadata["environment"]["oversampleqa_version"]
 
 
 def test_markdown_export_is_actually_markdown(results, tmp_path):

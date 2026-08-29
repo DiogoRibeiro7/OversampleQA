@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.advanced_benchmark import (
     DatasetRepository,
     StatisticalBenchmark,
@@ -77,6 +78,19 @@ def test_benchmark_report_creation(tmp_path: Path):
     assert report_path.exists()
     content = report_path.read_text(encoding="utf-8")
     assert "OversampleQA Benchmark Report" in content
+    metadata = json.loads(metadata_sidecar_path(report_path).read_text())
+    assert metadata["export_kind"] == "statistical_benchmark_report"
+    assert metadata["data"]["row_count"] == 1
+
+
+def test_empty_benchmark_report_creation_writes_metadata(tmp_path: Path):
+    report_path = create_benchmark_report(
+        pd.DataFrame(), output_path=tmp_path / "empty.html"
+    )
+
+    assert report_path.exists()
+    metadata = json.loads(metadata_sidecar_path(report_path).read_text())
+    assert metadata["export_kind"] == "statistical_benchmark_report"
 
 
 def test_format_statistical_summary_reports_significance():

@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 
+from ._export_metadata import write_export_metadata
 from ._render import frame_to_html, frame_to_markdown
 from .benchmark import compute_ranking
 from .plotting import plot_error_boxplot, plot_error_ranking
@@ -111,4 +112,16 @@ def generate_report(
     if output_path:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
+        write_export_metadata(
+            output_path,
+            export_kind="benchmark_report",
+            data=summary,
+            extra={
+                "source": {
+                    "row_count": len(benchmark_results),
+                    "columns": [str(column) for column in benchmark_results.columns],
+                    "attrs": dict(benchmark_results.attrs),
+                }
+            },
+        )
     return content
