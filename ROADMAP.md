@@ -345,7 +345,7 @@ Focus: a stable public contract and reproducible release process.
 - A clean-environment install-and-smoke-test from a built wheel and from PyPI
   after release publication.
 - An explicit release checklist covering build, test, docs, PyPI publication and
-  Zenodo archiving. `docs/citation.rst` holds the current version.
+  Zenodo archiving. `docs/citation.md` holds the current version.
 
 ## Non-Goals
 

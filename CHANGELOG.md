@@ -10,6 +10,15 @@ section are maintained manually.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-08-29
+
+### Changed
+
+- Migrated the documentation build from Sphinx to MkDocs, with Material theme
+  navigation and mkdocstrings API reference pages.
+- Updated repository documentation links to point readers at the published
+  GitHub Pages site.
+
 ## [0.6.0] - 2026-08-18
 
 ### Added
@@ -741,7 +750,8 @@ Initial release.
 - Plugin system for custom metrics and validators.
 - Sphinx documentation, examples gallery, and tutorials.
 
-[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/DiogoRibeiro7/OversampleQA/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.6.1
 [0.6.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.6.0
 [0.5.1]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.5.1
 [0.5.0]: https://github.com/DiogoRibeiro7/OversampleQA/releases/tag/v0.5.0

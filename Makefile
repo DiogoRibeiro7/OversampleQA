@@ -54,10 +54,9 @@ security:
 clean:
 	poetry run python scripts/clean.py
 
-# -W matches CI: a docs warning is a build failure. Invoking sphinx-build
-# directly avoids the nested `make` that only exists on Unix.
+# --strict matches CI: a docs warning is a build failure.
 docs:
-	poetry run sphinx-build -b html docs docs/_build/html -W
+	poetry run mkdocs build --strict
 
 profile:
 	poetry run python scripts/profile_performance.py
