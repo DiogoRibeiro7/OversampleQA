@@ -41,6 +41,10 @@ Last revised August 29, 2026, after v0.6.1.
 - Core trust documentation now covers metric choice, result interpretation
   limits and production audit workflows, while linking those decisions back to
   API stability and reproducibility guidance.
+- Machine-readable JSON exports use a shared strict serializer: NumPy and
+  pandas scalars are normalized, non-finite values become `null`, and exports
+  are emitted with `allow_nan=False` so standards-compliant parsers can read
+  them.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 
