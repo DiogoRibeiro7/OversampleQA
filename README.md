@@ -173,7 +173,7 @@ lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button
   author  = {Ribeiro, Diogo},
   title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
              and benchmark oversampling methods}},
-  version = {0.6.0},
+  version = {0.6.1},
   year    = {2026},
   doi     = {10.5281/zenodo.21940361},
   url     = {https://doi.org/10.5281/zenodo.21940361}
@@ -181,8 +181,8 @@ lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button
 ```
 
 The DOI above is the concept DOI: it always resolves to the newest archived
-version. To cite this exact release instead, use `10.5281/zenodo.21993371`.
-Every archived version's DOI is listed in `CITATION.cff`; see
+version. The exact DOI for 0.6.1 will be minted by Zenodo after the GitHub
+release is archived. Every archived version's DOI is listed in `CITATION.cff`; see
 [Citing OversampleQA](docs/citation.md) for the release and DOI sequence, and
 for why 0.5.1 has no record of its own.
 

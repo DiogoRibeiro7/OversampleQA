@@ -22,7 +22,7 @@ should say the same thing in both.
   author  = {Ribeiro, Diogo},
   title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
              and benchmark oversampling methods}},
-  version = {0.6.0},
+  version = {0.6.1},
   year    = {2026},
   doi     = {10.5281/zenodo.21940361},
   url     = {https://doi.org/10.5281/zenodo.21940361}
@@ -38,11 +38,11 @@ Always resolves to the newest archived version. Zenodo labels it *Cite
 all versions* on the record page. This is what the README badge and
 `CITATION.cff` point at, because it never goes stale.
 
-Version DOI — `10.5281/zenodo.21993371` for 0.6.0  
+Version DOI  
 Points at one specific release. Use it in a paper, where the reader
-needs the exact code that produced the results. The version DOI is
-minted by Zenodo after the GitHub release is published, then copied into
-`CITATION.cff`.
+needs the exact code that produced the results. The version DOI for
+0.6.1 is minted by Zenodo after the GitHub release is published, then
+copied into `CITATION.cff`.
 
 ## Releases without a version DOI
 
