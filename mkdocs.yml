@@ -6,6 +6,16 @@ repo_name: diogoribeiro7/OversampleQA
 edit_uri: edit/main/docs/
 strict: true
 
+validation:
+  nav:
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    absolute_links: warn
+    unrecognized_links: warn
+    anchors: warn
+
 theme:
   name: material
   features:

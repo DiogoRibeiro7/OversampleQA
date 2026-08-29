@@ -124,6 +124,8 @@ jobs:
         poetry install --with dev,docs
     - name: Build docs
       run: poetry run mkdocs build --strict
+    - name: Check documentation links
+      run: poetry run python scripts/check_docs_links.py
 
     # Uploaded from every run, so a pull request proves the artifact is
     # publishable, not merely that the build exits zero. Only the deploy job
