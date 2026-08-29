@@ -7,6 +7,7 @@ import json
 import numpy as np
 import pandas as pd
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa._json import strict_json_dumps
 from oversampleqa.benchmark import export_benchmark_results
 from oversampleqa.cli_enhanced import export_results, save_checkpoint
@@ -76,6 +77,12 @@ def test_cli_validation_json_export_is_strict(tmp_path):
     assert payload["error_rate"] is None
     assert payload["std"] is None
     assert payload["rates"] == [0.1, None]
+
+    metadata = _strict_loads(
+        metadata_sidecar_path(tmp_path / "validation_results.json").read_text()
+    )
+    assert metadata["export_kind"] == "validation_results"
+    assert metadata["data"]["values"]["error_rate"] is None
 
 
 def test_benchmark_json_export_is_strict(tmp_path):

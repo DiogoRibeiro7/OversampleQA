@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from ._export_metadata import write_export_metadata
 from ._json import write_json
 from ._provenance import openml_provenance, synthetic_provenance
 from ._render import frame_to_html, frame_to_markdown
@@ -117,7 +118,19 @@ def run_benchmark(
                     )
     # Fixed column order even when empty, so a caller that correctly handles
     # "no results" still gets a frame it can select columns from.
-    return pd.DataFrame(results, columns=list(_BENCHMARK_COLUMNS))
+    frame = pd.DataFrame(results, columns=list(_BENCHMARK_COLUMNS))
+    frame.attrs["dataset_provenance"] = {
+        str(data.get("name", "dataset")): data["provenance"]
+        for data in datasets
+        if "provenance" in data
+    }
+    frame.attrs["benchmark_parameters"] = {
+        "hidden_ratios": hidden_ratios,
+        "n_runs": n_runs,
+        "distance_metric": distance_metric,
+        "random_state": repr(random_state),
+    }
+    return frame
 
 
 
@@ -467,25 +480,29 @@ def export_benchmark_results(
     Raises:
         ValueError: If ``fmt`` is not one of the four.
     """
+    output = pathlib.Path(output_path)
     summary = compute_ranking(results)
+    summary.attrs["source"] = {
+        "row_count": len(results),
+        "columns": [str(column) for column in results.columns],
+        "attrs": dict(results.attrs),
+    }
     fmt = fmt.lower()
     if fmt == "csv":
-        summary.to_csv(output_path)
+        summary.to_csv(output)
     elif fmt == "json":
         # nan becomes null. JSON has no NaN literal, and emitting one produces a
         # document that strict parsers reject; null at least round-trips.
-        write_json(output_path, summary.reset_index().to_dict(orient="records"))
+        write_json(output, summary.reset_index().to_dict(orient="records"))
     elif fmt == "markdown":
         # This used to be `summary.to_csv(sep="|")`, which is not Markdown: no
         # header separator row and no edge pipes, so it rendered as one run-on
         # paragraph. The same bug was fixed in report.py; it survived here
         # because the renderer was duplicated rather than shared.
-        pathlib.Path(output_path).write_text(
-            frame_to_markdown(summary), encoding="utf-8"
-        )
+        output.write_text(frame_to_markdown(summary), encoding="utf-8")
     elif fmt == "html":
-        pathlib.Path(output_path).write_text(
-            frame_to_html(summary), encoding="utf-8"
-        )
+        output.write_text(frame_to_html(summary), encoding="utf-8")
     else:
         raise ValueError("fmt must be 'csv', 'json', 'markdown' or 'html'")
+
+    write_export_metadata(output, export_kind="benchmark_summary", data=summary)

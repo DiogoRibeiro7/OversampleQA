@@ -17,6 +17,7 @@ from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
+from ._export_metadata import write_export_metadata
 from ._provenance import (
     bundled_provenance,
     openml_provenance,
@@ -1050,6 +1051,7 @@ def create_benchmark_report(
     if results_df.empty:
         html = "<html><body><h1>No benchmark results available.</h1></body></html>"
         output.write_text(html, encoding="utf-8")
+        write_export_metadata(output, export_kind="statistical_benchmark_report")
         return output
 
     summary = results_df.copy()
@@ -1090,4 +1092,9 @@ def create_benchmark_report(
     </html>
     """
     output.write_text(html, encoding="utf-8")
+    write_export_metadata(
+        output,
+        export_kind="statistical_benchmark_report",
+        data=summary,
+    )
     return output
