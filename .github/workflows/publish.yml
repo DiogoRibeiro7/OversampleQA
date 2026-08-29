@@ -40,6 +40,9 @@ jobs:
       - name: Check package metadata
         run: twine check dist/*
 
+      - name: Smoke test installed wheel
+        run: python scripts/smoke_installed_package.py dist/*.whl
+
       - name: Upload distribution artifact
         uses: actions/upload-artifact@v6
         with:
