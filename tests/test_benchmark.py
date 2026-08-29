@@ -25,6 +25,23 @@ def test_run_benchmark_basic():
     assert df.attrs["benchmark_parameters"]["distance_metric"] == "hassanat"
 
 
+def test_benchmark_rows_include_reproducibility_identifiers():
+    df = run_benchmark(
+        load_standard_datasets()[:1],
+        [SMOTE(random_state=0)],
+        hidden_ratios=[0.1],
+        n_runs=1,
+        random_state=0,
+    )
+    row = df.iloc[0]
+
+    assert row["split_seed"] >= 0
+    assert row["oversampler_random_state"] >= 0
+    assert row["minority_label"] == 1
+    assert row["reference"] == "hidden_minority"
+    assert row["oversampleqa_version"]
+
+
 def test_export_and_ranking(tmp_path):
     df = run_benchmark(
         load_standard_datasets()[:1],

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from . import __version__ as _PACKAGE_VERSION
 from ._export_metadata import write_export_metadata
 from ._json import write_json
 from ._provenance import openml_provenance, synthetic_provenance
@@ -27,6 +28,11 @@ _BENCHMARK_COLUMNS = (
     "metric",
     "hidden_ratio",
     "run",
+    "split_seed",
+    "oversampler_random_state",
+    "minority_label",
+    "reference",
+    "oversampleqa_version",
     "error_rate",
 )
 
@@ -113,6 +119,11 @@ def run_benchmark(
                             "metric": distance_metric,
                             "hidden_ratio": ratio,
                             "run": run,
+                            "split_seed": split_seed,
+                            "oversampler_random_state": int(rs),
+                            "minority_label": minority_label,
+                            "reference": "hidden_minority",
+                            "oversampleqa_version": _PACKAGE_VERSION,
                             "error_rate": error,
                         }
                     )

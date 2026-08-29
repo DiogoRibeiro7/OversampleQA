@@ -49,6 +49,10 @@ Last revised August 29, 2026, after v0.6.1.
   adjacent metadata sidecars with package/runtime versions, lockfile hash when
   available, row/column shape and dataset provenance where the source data
   carries it.
+- Result rows now carry explicit reproducibility identifiers across the simple
+  benchmark, statistical benchmark, fold-level outputs and validation report
+  frame: metric, hidden ratio, reference mode, minority label, seeds/repeat
+  settings and package version are visible without relying on call-site memory.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 
