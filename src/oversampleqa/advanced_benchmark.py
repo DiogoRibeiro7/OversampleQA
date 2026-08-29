@@ -24,6 +24,7 @@ from ._provenance import (
     openml_provenance,
     synthetic_provenance,
 )
+from ._report_metadata import report_metadata_html
 from .validator import infer_minority_label, validate_oversampling
 
 # The tidy long-format column set: one row per
@@ -1096,7 +1097,11 @@ def create_benchmark_report(
     output.parent.mkdir(parents=True, exist_ok=True)
 
     if results_df.empty:
-        html = "<html><body><h1>No benchmark results available.</h1></body></html>"
+        html = (
+            "<html><body><h1>No benchmark results available.</h1>"
+            "<h2>Run metadata</h2>"
+            f"{report_metadata_html(results_df)}</body></html>"
+        )
         output.write_text(html, encoding="utf-8")
         write_export_metadata(output, export_kind="statistical_benchmark_report")
         return output
@@ -1134,6 +1139,9 @@ def create_benchmark_report(
         </head>
         <body>
             <h1>OversampleQA Benchmark Report</h1>
+            <h2>Run metadata</h2>
+            {report_metadata_html(results_df)}
+            <h2>Results</h2>
             {table_html}
         </body>
     </html>

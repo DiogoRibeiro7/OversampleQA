@@ -23,8 +23,13 @@ def results():
         {
             "dataset": ["a"] * 4,
             "oversampler": ["SMOTE", "SMOTE", "ROS", "ROS"],
+            "metric": ["hassanat"] * 4,
             "hidden_ratio": [0.1] * 4,
+            "reference": ["hidden_minority"] * 4,
             "run": [0, 1, 0, 1],
+            "random_state": [7] * 4,
+            "minority_label": [1] * 4,
+            "oversampleqa_version": ["0.6.1"] * 4,
             "error_rate": [0.10, 0.12, 0.20, 0.22],
         }
     )
@@ -76,6 +81,16 @@ def test_named_index_becomes_a_column():
 def test_unknown_format_raises(results):
     with pytest.raises(ValueError, match="markdown"):
         generate_report(results, output_format="latex", include_plots=False)
+
+
+def test_markdown_report_includes_run_metadata(results):
+    content = generate_report(results, output_format="markdown", include_plots=False)
+
+    assert "## Run metadata" in content
+    assert "| result_rows" in content
+    assert "hidden_minority" in content
+    assert "hassanat" in content
+    assert "0.6.1" in content
 
 
 def test_fidelity_section_is_appended(results):
@@ -150,6 +165,7 @@ def test_html_output_includes_fidelity(results):
         include_plots=False,
         fidelity_reports={"SMOTE": {"error_rate": 0.2}},
     )
+    assert "<h2>Run metadata</h2>" in content
     assert "<h2>Fidelity and diversity</h2>" in content
     assert "<table" in content
 

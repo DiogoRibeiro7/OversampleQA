@@ -39,6 +39,12 @@ report_path = create_benchmark_report(df, output_path="benchmark_report.html")
 print(report_path)
 ```
 
+Reports include a run metadata block before the results table. It records the
+package/runtime version context and the reproducibility identifiers present in
+the result rows, such as dataset, oversampler, metric, hidden ratio, reference
+mode, seeds, folds and repeats. Exported reports also write a
+`.metadata.json` sidecar with the fuller machine-readable environment summary.
+
 ## What the statistical benchmark's intervals cover
 
 `~oversampleqa.StatisticalBenchmark` reports confidence intervals,

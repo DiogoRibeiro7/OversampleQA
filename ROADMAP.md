@@ -53,6 +53,10 @@ Last revised August 29, 2026, after v0.6.1.
   benchmark, statistical benchmark, fold-level outputs and validation report
   frame: metric, hidden ratio, reference mode, minority label, seeds/repeat
   settings and package version are visible without relying on call-site memory.
+- Markdown and HTML benchmark reports now render a visible run metadata block
+  before the result tables, so row counts, schema context, seeds, metrics,
+  hidden ratios, reference mode, folds/repeats and package/runtime versions are
+  not trapped in adjacent sidecar files.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 
