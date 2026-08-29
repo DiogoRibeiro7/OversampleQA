@@ -28,6 +28,9 @@ Last revised August 29, 2026, after v0.6.1.
   and docs run against one governed dependency set.
 - Public API frozen behind a snapshot test; deprecation policy documented and
   mechanised. `py.typed` ships, so the annotations reach downstream checkers.
+- Sklearn integration is covered by focused CI tests for `cross_validate`,
+  `GridSearchCV`, nested sampler parameters, sklearn `Pipeline` composition and
+  common imbalanced-learn sampler paths.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 
