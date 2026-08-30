@@ -44,7 +44,9 @@ poetry install
 - [Quick start](quickstart.md)
 - [Concepts](concepts.md)
 - [User guide](user_guide.md)
-- [Decision guide](decision_guide.md)
+- [Decision guide](decision_guide.md) for choosing between error rates,
+  calibration, two-sample tests, fidelity, downstream utility and benchmark
+  rankings.
 - [Limitations](limitations.md)
 - [Production audit workflow](production_audit.md)
 - [API overview](api_landing.md)
