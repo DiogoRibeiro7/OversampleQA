@@ -3,16 +3,16 @@
     "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
     "processor": "x86_64",
     "python_version": "3.12.14",
-    "numpy_version": "2.5.2",
+    "numpy_version": "2.2.6",
     "cpu_count": 4
   },
   "timings": {
-    "optimized_distance_matrix[euclidean]": 0.0026586070000007567,
-    "distance_matrix[euclidean]": 0.0025041039999962322,
-    "optimized_distance_matrix[hassanat]": 0.04973837599999342,
-    "distance_matrix[hassanat]": 0.043645338000004585,
-    "optimized_distance_matrix[manhattan]": 0.014078091999977005,
-    "distance_matrix[manhattan]": 0.015208499999999958,
-    "validate_oversampling[euclidean]": 0.004743947999997999
+    "optimized_distance_matrix[euclidean]": 0.0026419990000050575,
+    "distance_matrix[euclidean]": 0.0024871199999978444,
+    "optimized_distance_matrix[hassanat]": 0.05691695400000185,
+    "distance_matrix[hassanat]": 0.05225455199999374,
+    "optimized_distance_matrix[manhattan]": 0.01621311200000264,
+    "distance_matrix[manhattan]": 0.01616563399998938,
+    "validate_oversampling[euclidean]": 0.00480886399999747
   }
 }
