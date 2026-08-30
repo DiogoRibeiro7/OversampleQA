@@ -139,6 +139,8 @@ celerybeat.pid
 .env
 .envrc
 .venv
+# CI points POETRY_CACHE_DIR here so one path works on Windows and Linux.
+.poetry-cache/
 env/
 venv/
 ENV/
