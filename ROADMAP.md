@@ -61,6 +61,10 @@ Last revised August 29, 2026, after v0.6.1.
   validation, statistical fold identifiers, fidelity-vs-memorisation context,
   and benchmark report metadata sidecars instead of single-split point
   estimates.
+- The decision guide now gives a practical chooser across validation error
+  rate, calibrated error rate, two-sample tests, fidelity diagnostics,
+  downstream utility and benchmark rankings, including accept/reject/defer
+  rules.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 - NumPy-facing annotations now use explicit `NDArray[...]` and `np.dtype[...]`
@@ -315,17 +319,9 @@ export path).
 
 ### v0.8.0 — documentation debt
 
-The benchmarking-docs correction and the concepts-page calibration claim are
-done; what remains is the material that helps a reader assemble the pieces.
-
-- **Examples refresh.** Update gallery and tutorial examples so they use
-  `n_repeats`, report duplication or memorisation when relevant, seed both the
-  validator and the oversampler, and show the new export metadata instead of a
-  point estimate alone.
-- **Decision guide.** Add a short guide for choosing among error rate,
-  calibrated error rate, two-sample tests, fidelity metrics, downstream utility
-  and benchmark rankings. The current docs explain the pieces but leave too much
-  assembly to the reader.
+The benchmarking-docs correction, the concepts-page calibration claim, the
+examples refresh and the decision guide are done. Future documentation work
+should now track specific user-facing features rather than this catch-up bucket.
 
 ### v0.9.0 — user-facing features
 
