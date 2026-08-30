@@ -250,6 +250,8 @@ experiments:
 
 def test_manifest_runner_allows_absolute_experiment_output(tmp_path):
     data = tmp_path / "data.csv"
+    # The dataset has to exist: resolution now checks every path up front.
+    data.write_text("x,target\n0,0\n1,1\n", encoding="utf-8")
     absolute_output = tmp_path / "absolute-output"
     manifest = {
         "experiments": [
@@ -433,3 +435,182 @@ def test_manifest_runner_rejects_invalid_manifests(tmp_path, body, message):
 
     assert result.exit_code != 0
     assert message in result.output
+
+
+# --- manifest failure modes ---
+#
+# Each of these ran to completion, or failed uselessly, before the checks that
+# back them existed. The manifest parser's stated job is to fail before a long
+# experiment starts; these are the cases where it did not.
+
+
+def _toy_manifest(tmp_path: Path, body: str) -> Path:
+    """A manifest plus the dataset it references."""
+    (tmp_path / "data.csv").write_text("x,target\n0,0\n1,1\n", encoding="utf-8")
+    return _write_manifest(tmp_path / "m.yaml", body)
+
+
+def _run_manifest(tmp_path: Path, manifest: Path, fake, monkeypatch, *args: str):
+    monkeypatch.setattr(cli_enhanced, "run_validation_with_progress", fake)
+    return CliRunner().invoke(
+        cli, ["run", str(manifest), "--output", str(tmp_path / "runs"), *args]
+    )
+
+
+def _recording_fake(calls: list):
+    def fake(**kwargs):
+        calls.append(kwargs)
+        kwargs["output_dir"].mkdir(parents=True, exist_ok=True)
+        return {"error_rate": 0.1}
+
+    return fake
+
+
+def test_manifest_rejects_unknown_dataset_reference(tmp_path, monkeypatch):
+    """A typo in a declared name was silently taken as an inline path.
+
+    It then surfaced as a missing file whose path the author never wrote, and
+    only once that experiment was reached.
+    """
+    manifest = _toy_manifest(
+        tmp_path,
+        """
+version: 1
+datasets:
+  toy: {path: data.csv}
+experiments:
+  - {name: one, dataset: toyy}
+""",
+    )
+    calls: list = []
+    result = _run_manifest(tmp_path, manifest, _recording_fake(calls), monkeypatch)
+
+    assert result.exit_code == 1
+    assert "Unknown dataset 'toyy'" in result.output
+    assert "Did you mean 'toy'?" in result.output
+    assert calls == []
+
+
+def test_manifest_still_allows_an_undeclared_inline_path(tmp_path, monkeypatch):
+    """The convenience the previous test constrains must survive it."""
+    manifest = _toy_manifest(
+        tmp_path,
+        """
+version: 1
+datasets:
+  toy: {path: data.csv}
+experiments:
+  - {name: one, dataset: data.csv}
+""",
+    )
+    calls: list = []
+    result = _run_manifest(tmp_path, manifest, _recording_fake(calls), monkeypatch)
+
+    assert result.exit_code == 0, result.output
+    assert calls[0]["dataset_path"] == tmp_path / "data.csv"
+
+
+def test_manifest_checks_every_dataset_before_running_any(tmp_path, monkeypatch):
+    """A bad path in the last experiment used to be found after the others ran."""
+    manifest = _toy_manifest(
+        tmp_path,
+        """
+version: 1
+datasets:
+  toy: {path: data.csv}
+experiments:
+  - {name: one, dataset: toy}
+  - {name: two, dataset: toy}
+  - {name: three, dataset: missing.csv}
+""",
+    )
+    calls: list = []
+    result = _run_manifest(tmp_path, manifest, _recording_fake(calls), monkeypatch)
+
+    assert result.exit_code == 1
+    assert "Dataset file(s) not found" in result.output
+    assert "'three'" in result.output
+    assert calls == [], "no experiment may start when a later dataset is missing"
+
+
+def test_manifest_rejects_experiments_sharing_an_output_directory(tmp_path, monkeypatch):
+    """Slugifying is lossy, so distinct names could collide and overwrite."""
+    manifest = _toy_manifest(
+        tmp_path,
+        """
+version: 1
+datasets:
+  toy: {path: data.csv}
+experiments:
+  - {name: "run 1", dataset: toy}
+  - {name: "run/1", dataset: toy}
+""",
+    )
+    calls: list = []
+    result = _run_manifest(tmp_path, manifest, _recording_fake(calls), monkeypatch)
+
+    assert result.exit_code == 1
+    assert "both write to" in result.output
+    assert calls == []
+
+
+def test_manifest_reports_a_bad_scalar_as_a_cli_error(tmp_path, monkeypatch):
+    """``int('positive')`` reached the user as a traceback with no output."""
+    manifest = _toy_manifest(
+        tmp_path,
+        """
+version: 1
+datasets:
+  toy: {path: data.csv}
+experiments:
+  - {name: one, dataset: toy, minority_label: positive}
+""",
+    )
+    result = _run_manifest(tmp_path, manifest, _recording_fake([]), monkeypatch)
+
+    assert result.exit_code == 1
+    assert "minority_label" in result.output
+    assert "'positive'" in result.output
+    assert "Experiment 1 ('one')" in result.output
+
+
+def test_manifest_records_completed_experiments_when_a_later_one_fails(
+    tmp_path, monkeypatch
+):
+    """The summary was never written, so finished work left no record."""
+    manifest = _toy_manifest(
+        tmp_path,
+        """
+version: 1
+datasets:
+  toy: {path: data.csv}
+experiments:
+  - {name: one, dataset: toy}
+  - {name: two, dataset: toy}
+  - {name: three, dataset: toy}
+""",
+    )
+    seen = {"n": 0}
+
+    def fake(**kwargs):
+        seen["n"] += 1
+        if seen["n"] == 2:
+            raise RuntimeError("oversampler blew up")
+        kwargs["output_dir"].mkdir(parents=True, exist_ok=True)
+        return {"error_rate": 0.1}
+
+    result = _run_manifest(tmp_path, manifest, fake, monkeypatch)
+
+    assert result.exit_code == 1
+    assert "1 of 3 experiment(s) completed" in result.output
+
+    summary_path = tmp_path / "runs" / "manifest_summary.json"
+    assert summary_path.exists(), "completed work must be recorded before raising"
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert payload["n_experiments"] == 1
+    assert payload["n_planned"] == 3
+
+    statuses = [(e["name"], e["status"]) for e in payload["experiments"]]
+    assert statuses == [("one", "completed"), ("two", "failed")]
+    assert "oversampler blew up" in payload["experiments"][1]["reason"]
+    assert seen["n"] == 2, "the run stops at the failure rather than continuing"
