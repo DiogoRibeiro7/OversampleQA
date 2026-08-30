@@ -66,6 +66,7 @@ class RunMetadata:
     reference: str = "hidden_minority"
     random_state: int | None = None
     n_repeats: int = 1
+    dataset: str = ""
     dataset_hash: str = ""
     n_samples: int = 0
     n_features: int = 0
@@ -229,6 +230,13 @@ class ValidationReport:
         flat: dict[str, Any] = {
             "schema_version": self.schema_version,
             "error_rate": self.error_rate,
+            # `dataset` is whatever the caller named it and is empty when they
+            # named nothing: this surface validates arrays, not a file, so it
+            # has no name of its own. `dataset_hash` is the identity that is
+            # always present, and is promoted out of the `meta_` block because
+            # a row nobody can trace back to its data is not much of a record.
+            "dataset": self.metadata.dataset,
+            "dataset_hash": self.metadata.dataset_hash,
             "oversampler": self.metadata.oversampler,
             "metric": self.metadata.metric,
             "hidden_ratio": self.metadata.hidden_ratio,

@@ -326,11 +326,25 @@ again. Two of the original items shipped in 0.6.0: the fold-level export
 exists because the `to_csv(sep="|")` bug had already been copied into a second
 export path).
 
-- **Unified result schema.** Align the simple benchmark, statistical benchmark,
-  validation report and `Report.to_frame()` outputs around named identifiers
-  rather than positional assumptions. Dataset, oversampler, metric, seed,
-  hidden ratio, reference mode, repeat/fold index and package version should be
-  explicit wherever a row can leave the process.
+- **Unified result schema.** *Done, additively.* `oversampleqa._schema`
+  declares the identifier columns every result surface carries, and a test
+  holds all four to it: `run_benchmark`, `fold_results`, the statistical
+  summary and `ValidationReport.to_frame`. The disagreement was narrower than
+  it looked -- `dataset` against `dataset_name`, `oversampler` against
+  `oversampler_name` -- but it meant `frame["dataset"]` worked or raised
+  depending on which surface produced the frame, so two of them could not be
+  concatenated without knowing their provenance.
+
+  The canonical names were added; nothing was renamed or reordered, so existing
+  readers are untouched. `ValidationReport.to_frame` gained `dataset` (empty
+  unless a caller names one, since that surface validates arrays rather than a
+  file) and promoted `dataset_hash` out of the `meta_` block, a row being of
+  little use if nobody can trace it back to its data.
+
+  Seed and repeat/fold index were already explicit wherever they apply: `run`
+  and `split_seed` on the simple benchmark, `repeat`/`fold`/`split_seed` on the
+  fold frame. The statistical summary is an aggregate, so a fold index would be
+  meaningless there -- `fold_results` is the surface that carries one.
 - **Strict JSON outputs.** *Done.* Every JSON-producing path goes through
   `strict_json_dumps`. The two exceptions were the `pairwise_p_values` and
   `pairwise_effect_sizes` columns, which called `json.dumps` directly and
