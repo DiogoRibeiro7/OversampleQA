@@ -65,6 +65,10 @@ Last revised August 29, 2026, after v0.6.1.
   rate, calibrated error rate, two-sample tests, fidelity diagnostics,
   downstream utility and benchmark rankings, including accept/reject/defer
   rules.
+- The enhanced CLI can run validation experiments from a checked-in YAML
+  manifest, resolving named datasets, sampler settings, seeds, repeats,
+  calibration flags, exports, output directories and resume policy into
+  auditable per-experiment outputs plus a manifest summary.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 - NumPy-facing annotations now use explicit `NDArray[...]` and `np.dtype[...]`
@@ -325,10 +329,11 @@ should now track specific user-facing features rather than this catch-up bucket.
 
 ### v0.9.0 — user-facing features
 
-- **Experiment manifest runner.** Add a YAML-driven command that can run
-  validation, fidelity diagnostics and benchmarks from one checked-in manifest.
-  The manifest should name datasets, target columns, samplers, metrics, seeds,
-  hidden ratios, repeats, output formats and cache settings.
+- **Experiment manifest runner.** Validation manifests are supported through
+  `oversampleqa run`: datasets, target columns, samplers, metrics, seeds,
+  hidden ratios, repeats, calibration flags, output formats and resume policy
+  can be checked in and rerun. Extend the same manifest surface to fidelity
+  diagnostics, benchmarks and cache settings.
 - **`oversampleqa compare` command.** Provide a first-class CLI workflow for
   comparing multiple oversamplers on one dataset. It should run the selected
   diagnostics, rank samplers, flag exact-copy behaviour, and write a report
