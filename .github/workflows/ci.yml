@@ -147,13 +147,11 @@ jobs:
       uses: actions/setup-python@v7
       with:
         python-version: "3.12"
-    - name: Cache the Poetry environment
-      # No project virtualenv here: this job only builds the wheel, so only
-      # Poetry's own download cache is worth keeping.
-      uses: actions/cache@v4
-      with:
-        path: .poetry-cache
-        key: poetry-${{ runner.os }}-build-${{ hashFiles('poetry.lock') }}
+    # Deliberately uncached. This job runs `pip install poetry` and
+    # `poetry build`; it never installs project dependencies, so Poetry's
+    # download cache is never read. Measured with a cache step here, the job
+    # went from 77s to 81s -- a key that costs a little and returns nothing,
+    # which is what the pip keys this change removed were already doing.
     - name: Build package
       run: |
         python -m pip install --upgrade pip
