@@ -10,6 +10,33 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- `.zenodo.json` declares `version`, and a test holds it equal to the version
+  in `pyproject.toml`. It was omitted on the grounds that Zenodo reads the
+  version from the git tag and another copy is another thing to forget — but
+  that is the objection the release-metadata tests already answer for the
+  other five copies, and the omission left the deposit metadata unable to
+  state its own version outside the GitHub-integration path.
+- The Zenodo record links to the documentation site (`isDocumentedBy`) and the
+  PyPI project (`isIdenticalTo`), and carries a `notes` block pointing at the
+  changelog and explaining the concept-versus-version DOI choice. Anyone
+  landing on the record can now reach the installable package and the docs.
+
+### Changed
+
+- Author affiliation is recorded as Faculty of Media Arts and Design,
+  Technical University of Porto in `CITATION.cff`, `.zenodo.json` and
+  `AUTHORS.md`.
+- `CITATION.cff` carries the full descriptive title. It held the bare name
+  while both BibTeX blocks and the Zenodo record used the long form, so
+  GitHub's *Cite this repository* button produced a different title from the
+  one the README told people to paste.
+- `CITATION.cff` keywords match `.zenodo.json`. The two had drifted: ADASYN,
+  distance metrics and scikit-learn were on the Zenodo record but absent from
+  the metadata GitHub serves. Title and keywords are now compared by test,
+  which `docs/citation.md` had asked for in prose without enforcing.
+
 ## [0.6.1] - 2026-08-29
 
 ### Changed

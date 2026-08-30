@@ -247,12 +247,36 @@ def test_recorded_versions_all_appear_in_the_changelog(citation, changelog):
 # --- .zenodo.json ---
 
 
-def test_zenodo_declares_no_version(zenodo):
-    """Zenodo takes the version from the git tag.
+def test_zenodo_version_matches(zenodo, version):
+    """Zenodo would otherwise take the version from the git tag.
 
-    A version here would be a seventh place to forget to update.
+    That worked, but only for the GitHub-integration path, and it left the
+    deposit metadata unable to state its own version if it were ever uploaded
+    by hand. It was omitted on the grounds that it would be a seventh place to
+    forget to update -- which is the objection this module answers for the
+    other six. A copy that is checked on every commit cannot drift.
     """
-    assert "version" not in zenodo
+    assert zenodo["version"] == version
+
+
+def test_zenodo_title_matches_citation(zenodo, citation):
+    """``CITATION.cff`` carried the bare name while everything else did not.
+
+    Both BibTeX blocks and the Zenodo record used the full descriptive title,
+    so GitHub's *Cite this repository* button produced a different title from
+    the one the README told people to paste.
+    """
+    assert zenodo["title"] == citation["title"]
+
+
+def test_zenodo_keywords_match_citation(zenodo, citation):
+    """docs/citation.md says to keep these in sync; nothing checked it.
+
+    ``.zenodo.json`` had drifted to a superset -- ADASYN, distance metrics and
+    scikit-learn were discoverable on the Zenodo record but absent from the
+    citation metadata GitHub serves.
+    """
+    assert zenodo["keywords"] == citation["keywords"]
 
 
 def test_zenodo_author_matches_citation(zenodo, citation):
@@ -277,6 +301,24 @@ def test_zenodo_links_to_the_same_repository_as_citation(zenodo, citation):
     """
     related = json.dumps(zenodo.get("related_identifiers", []))
     assert str(citation["repository-code"]).rstrip("/") in related
+
+
+def test_zenodo_links_to_the_docs_and_the_package(zenodo, pyproject):
+    """A record that names neither is a dead end for anyone who lands on it.
+
+    The URLs are taken from ``pyproject.toml`` rather than repeated here, so
+    moving the documentation or renaming the distribution fails this test
+    instead of silently leaving the Zenodo record pointing somewhere stale.
+    """
+    by_relation = {r["relation"]: r["identifier"] for r in zenodo["related_identifiers"]}
+
+    docs = re.search(r'^documentation = "(.*?)"', pyproject, re.M)
+    assert docs, "no documentation URL in pyproject"
+    assert by_relation.get("isDocumentedBy", "").rstrip("/") == docs.group(1).rstrip("/")
+
+    name = re.search(r'^name = "(.*?)"', pyproject, re.M)
+    assert name, "no package name in pyproject"
+    assert name.group(1) in by_relation.get("isIdenticalTo", "")
 
 
 # --- packaging ---
