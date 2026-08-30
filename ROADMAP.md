@@ -57,6 +57,10 @@ Last revised August 29, 2026, after v0.6.1.
   before the result tables, so row counts, schema context, seeds, metrics,
   hidden ratios, reference mode, folds/repeats and package/runtime versions are
   not trapped in adjacent sidecar files.
+- Quickstart, tutorials, and runnable examples now lead with seeded repeated
+  validation, statistical fold identifiers, fidelity-vs-memorisation context,
+  and benchmark report metadata sidecars instead of single-split point
+  estimates.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 - NumPy-facing annotations now use explicit `NDArray[...]` and `np.dtype[...]`
