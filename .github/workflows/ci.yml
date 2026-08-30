@@ -39,15 +39,24 @@ jobs:
     # platforms would double CI time for little signal, so Windows is covered
     # on one version -- enough to catch path handling and shell assumptions,
     # which is where the cross-platform breakage actually lives.
+    #
+    # The full matrix runs on push to main. A pull request runs one job.
+    #
+    # Measured on a recent PR, the four test jobs were the whole cost: the
+    # suite takes ~117s on Linux and ~148s on Windows, against ~30s to install
+    # and ~10s for lint and mypy together. Running it four times bought a
+    # version-specific signal that has, in practice, almost never differed from
+    # the 3.12 result -- so it now runs once before merge and in full on main,
+    # where a 3.10-only or Windows-only break is still caught, just after the
+    # merge rather than before it.
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.10", "3.11", "3.12"]
-        include:
-          - os: windows-latest
-            python-version: "3.12"
+        include: >-
+          ${{ fromJSON(github.event_name == 'pull_request'
+          && '[{"os":"ubuntu-latest","python-version":"3.12"}]'
+          || '[{"os":"ubuntu-latest","python-version":"3.10"},{"os":"ubuntu-latest","python-version":"3.11"},{"os":"ubuntu-latest","python-version":"3.12"},{"os":"windows-latest","python-version":"3.12"}]') }}
 
     steps:
     - uses: actions/checkout@v7
@@ -134,6 +143,39 @@ jobs:
       uses: actions/upload-pages-artifact@v4
       with:
         path: site
+
+  ci-ok:
+    # The single required status check for main.
+    #
+    # Branch protection used to name the matrix jobs directly -- "test
+    # (ubuntu-latest, 3.10)" and its three siblings. That made the protection
+    # settings a hidden copy of the matrix: changing either one without the
+    # other either blocks every pull request on a check that will never report,
+    # or silently stops requiring a job that still runs. Requiring this job
+    # instead means the matrix can change freely, and adding a job to `needs`
+    # is enough to make it blocking.
+    #
+    # `quality` and `package-smoke` are included deliberately. Neither was a
+    # required check before, so a lint or type error could be merged while
+    # README.md and ROADMAP.md both claimed ruff and mypy pass clean.
+    if: always()
+    needs: [quality, test, package-smoke, docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every upstream job succeeded
+        # `needs` results are checked explicitly rather than relying on this
+        # job being skipped: with `if: always()` it runs regardless, and a
+        # cancelled or skipped dependency must not read as success.
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Upstream results: $results"
+          for result in $results; do
+            if [ "$result" != "success" ]; then
+              echo "::error::A required job reported '$result'"
+              exit 1
+            fi
+          done
+          echo "All required jobs succeeded."
 
   deploy-docs:
     # Publishes what the docs job already built. A second build could differ
