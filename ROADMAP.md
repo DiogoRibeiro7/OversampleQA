@@ -284,21 +284,37 @@ can install and cite without ceremony.
 
 Make the stable base stronger before adding large new workflows.
 
-- **Compatibility tests for public imports and signatures.** Extend the API
-  snapshot into tests that catch accidental signature, default-value and warning
-  changes.
-- **Wheel and installed-package smoke tests.** Build the wheel in CI, install it
-  into a clean environment, import the documented public API, run one small
-  validation, and verify CLI entry points.
-- **Sklearn/imbalanced-learn integration tests.** Add focused tests proving the
-  documented recipes work inside sklearn-style pipelines and with common
-  imbalanced-learn samplers.
-- **Docs link checking.** Add a CI gate for internal documentation links and
-  selected external links that are stable enough to enforce.
-- **Benchmark scaffold.** Introduce a lightweight benchmark harness and publish
-  an initial baseline artifact for core validation paths.
-- **Core trust docs.** Add or expand pages for API stability, choosing metrics,
-  limitations, reproducibility, and production audit workflows.
+The work below has landed on `main`; the section stays here rather than moving
+to *Delivered* because 0.7.0 has not been released. It had drifted badly out of
+date, listing as outstanding several things that shipped some time ago -- which
+is its own small failure of trust, since the roadmap is what a reader consults
+to find out what the project already guarantees.
+
+- **Compatibility tests for public imports and signatures.** *Done.*
+  `tests/test_api_surface.py` snapshots every exported name and its kind, and
+  `tests/api_signatures.json` pins 76 public call signatures including default
+  values. Warning categories were the missing third of this item and are now
+  snapshotted separately in `tests/test_warning_contract.py`: a public function
+  changing from `FutureWarning` to `UserWarning` moves no signature and removes
+  no export, so nothing else would have caught it.
+- **Wheel and installed-package smoke tests.** *Done.* The `package-smoke` CI
+  job builds the wheel, and `scripts/smoke_installed_package.py` installs it
+  into a fresh virtualenv, imports the documented public API, runs a small
+  validation and invokes both console scripts.
+- **Sklearn/imbalanced-learn integration tests.** *Done.*
+  `tests/test_sklearn_integration.py` covers `cross_validate` with a scorer,
+  `GridSearchCV` over nested sampler parameters, the validator as a pipeline
+  step, and SMOTE, BorderlineSMOTE and RandomOverSampler.
+- **Docs link checking.** *Done.* `mkdocs build --strict` validates internal
+  links and `scripts/check_docs_links.py` checks an allowlist of external hosts;
+  both run in the `docs` job.
+- **Benchmark scaffold.** *Partly done.* `scripts/benchmark_core_paths.py` and
+  `scripts/profile_performance.py` exist and run weekly. Publishing the
+  committed baseline is the remaining piece: without `perf_baseline.json` the
+  workflow's regression check was skipped on every run while reporting success.
+- **Core trust docs.** *Done.* `api_stability.md`, `decision_guide.md`,
+  `limitations.md`, `reproducibility.md` and `production_audit.md` are written
+  and in the site navigation.
 
 ### v0.8.0 — export and reporting trust
 
