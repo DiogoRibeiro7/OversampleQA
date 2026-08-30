@@ -817,7 +817,7 @@ class OptimizedDistanceMatrix:
     def _auto_batch_size(
         self,
         n_cols: int,
-        dtype: np.dtype,
+        dtype: np.dtype[Any],
         n_features: int = 1,
         metric: str = "",
         n_rows: int = 0,
@@ -857,7 +857,7 @@ class OptimizedDistanceMatrix:
         self,
         n_rows: int,
         n_cols: int,
-        dtype: np.dtype,
+        dtype: np.dtype[Any],
         n_features: int = 1,
         metric: str = "",
     ) -> float:
@@ -890,7 +890,7 @@ class OptimizedDistanceMatrix:
         self,
         n_rows: int,
         n_cols: int,
-        dtype: np.dtype | None = None,
+        dtype: np.dtype[Any] | None = None,
         n_features: int = 1,
         metric: str = "",
     ) -> float:

@@ -9,19 +9,20 @@ from __future__ import annotations
 import logging
 
 import numpy as np
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
 
 def cluster_based_diagnostics(
-    majority: np.ndarray,
-    synthetic: np.ndarray,
+    majority: NDArray[np.floating],
+    synthetic: NDArray[np.floating],
     n_clusters: int = 5,
     algorithm: str = "kmeans",
     eps: float = 0.5,
     min_samples: int = 5,
     random_state: int | None = None,
-) -> tuple[np.ndarray, float]:
+) -> tuple[NDArray[np.bool_], float]:
     """Flag synthetic samples that fall in majority-dominated clusters.
 
     Parameters

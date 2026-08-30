@@ -89,7 +89,9 @@ def confidence_ratio(dist_min: float, dist_maj: float) -> float:
 
 
 def local_density_divergence(
-    synthetic_samples: np.ndarray, reference_samples: np.ndarray, k: int = 5
+    synthetic_samples: NDArray[np.floating],
+    reference_samples: NDArray[np.floating],
+    k: int = 5,
 ) -> float:
     """Compute divergence of local densities between synthetic and reference data.
 
@@ -138,7 +140,7 @@ def local_density_divergence(
 
 
 def minority_recall_loss(
-    y_true: np.ndarray, y_pred: np.ndarray, minority_label: int
+    y_true: NDArray[Any], y_pred: NDArray[Any], minority_label: int
 ) -> float:
     """Return recall loss for the minority class.
 
@@ -163,8 +165,8 @@ def minority_recall_loss(
 
 
 def umap_manifold_distance(
-    real: np.ndarray,
-    synthetic: np.ndarray,
+    real: NDArray[np.floating],
+    synthetic: NDArray[np.floating],
     n_neighbors: int = 15,
     random_state: int | None = None,
 ) -> float:
@@ -203,9 +205,9 @@ def umap_manifold_distance(
 
 
 def check_model_fairness(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    protected_attr: np.ndarray,
+    y_true: NDArray[Any],
+    y_pred: NDArray[Any],
+    protected_attr: NDArray[Any],
     minority_label: int,
 ) -> float:
     """Return absolute difference in minority recall across protected groups.
@@ -242,11 +244,11 @@ def check_model_fairness(
 
 
 def flip_labels(
-    y: np.ndarray,
-    indices: np.ndarray,
-    labels: np.ndarray,
+    y: NDArray[Any],
+    indices: NDArray[np.integer],
+    labels: NDArray[Any],
     rng: np.random.Generator,
-) -> np.ndarray:
+) -> NDArray[Any]:
     """Return a copy of ``y`` with ``indices`` relabelled to a *different* class.
 
     Drawing replacements from all classes, as this used to, lets a selected
@@ -275,8 +277,8 @@ def flip_labels(
 
 
 def noise_sensitivity_diagnostic(
-    X: np.ndarray,
-    y: np.ndarray,
+    X: NDArray[np.floating],
+    y: NDArray[Any],
     minority_label: int,
     oversampler: Any,
     noise_levels: list[float] | None = None,
