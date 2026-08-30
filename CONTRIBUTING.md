@@ -54,6 +54,21 @@ python scripts/profile_performance.py --check perf_baseline.json --tolerance 1.5
 The check exits non-zero if any benchmark is slower than `tolerance` times its
 baseline, so it can run in CI or a pre-release gate.
 
+`perf_baseline.json` is committed at the repository root and the weekly
+Performance workflow checks against it. It was **measured on a GitHub
+`ubuntu-latest` runner**, not on a developer machine, because that is where the
+check runs -- a baseline recorded on your laptop compares your hardware against
+CI's and reports differences that are not regressions.
+
+To refresh it, run the Performance workflow (Actions -> Performance -> Run
+workflow), download the `performance-profile` artifact, and commit its
+`perf_current.json` as `perf_baseline.json`. Overwriting it from a local
+`--save` run will produce a baseline that is not comparable to CI.
+
+The script warns when the recorded environment differs from the current one, so
+an incomparable comparison is visible rather than silently misleading. Expect
+that warning to appear as GitHub updates its runner images.
+
 ## Questions?
 
 Open an issue or start a discussion on GitHub.
