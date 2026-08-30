@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import ast
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+import oversampleqa
 from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa._json import strict_json_dumps
 from oversampleqa.advanced_benchmark import (
@@ -180,3 +183,54 @@ def test_skipped_fold_reports_no_significant_comparison():
     )
 
     assert _significant_pairwise(analysed, 0.05) == []
+
+
+def _raw_json_encoding_sites() -> dict[str, list[int]]:
+    """Find ``json.dumps``/``json.dump`` calls outside the strict helper."""
+    source_root = Path(oversampleqa.__file__).parent
+    offenders: dict[str, list[int]] = {}
+    for path in sorted(source_root.glob("*.py")):
+        if path.name == "_json.py":
+            # Where the strict helper is defined; it must call the encoder.
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if (
+                isinstance(func, ast.Attribute)
+                and func.attr in {"dumps", "dump"}
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "json"
+            ):
+                offenders.setdefault(path.name, []).append(node.lineno)
+    return offenders
+
+
+def test_no_module_encodes_json_without_the_strict_helper():
+    """The plain encoder writes bare ``NaN``, which is not JSON.
+
+    ``pairwise_p_values`` and ``pairwise_effect_sizes`` called ``json.dumps``
+    directly and shipped an unparseable column whenever a fold was skipped.
+    Fixing those two call sites does not stop a third appearing, and the
+    failure is invisible until someone parses the output strictly -- the
+    package's own ``json.loads`` accepts the bare token quite happily.
+
+    ``strict_json_dumps`` and ``write_json`` are the supported ways to write
+    JSON from this package. If a new call site genuinely needs the plain
+    encoder, add it to the exclusion above with a reason, so the decision is
+    reviewed rather than assumed.
+    """
+    offenders = _raw_json_encoding_sites()
+
+    assert not offenders, (
+        "these modules encode JSON without the strict helper: "
+        + "; ".join(
+            f"{name} (line{'s' if len(lines) > 1 else ''} "
+            + ", ".join(str(line) for line in lines)
+            + ")"
+            for name, lines in sorted(offenders.items())
+        )
+        + " -- use strict_json_dumps or write_json from oversampleqa._json"
+    )

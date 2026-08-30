@@ -331,17 +331,20 @@ export path).
   rather than positional assumptions. Dataset, oversampler, metric, seed,
   hidden ratio, reference mode, repeat/fold index and package version should be
   explicit wherever a row can leave the process.
-- **Report metadata block.** Every Markdown, HTML, JSON and CSV export should
-  carry or sit next to enough metadata to reproduce the run: OversampleQA
-  version, Python version, dependency lock hash when available, platform,
-  random seeds, metric parameters and dataset provenance.
-- **Strict JSON outputs.** *Audit done; the one gap it found is closed.* Every
-  JSON-producing path now goes through `strict_json_dumps`. The two exceptions
-  were the `pairwise_p_values` and `pairwise_effect_sizes` columns, which called
-  `json.dumps` directly and emitted a bare `NaN` token whenever a fold was
-  skipped -- reachable in normal use, since skipped folds are kept as `nan` by
-  design. What remains of this item is keeping it true: a new export path that
-  bypasses the helper would not be caught by anything today.
+- **Strict JSON outputs.** *Done.* Every JSON-producing path goes through
+  `strict_json_dumps`. The two exceptions were the `pairwise_p_values` and
+  `pairwise_effect_sizes` columns, which called `json.dumps` directly and
+  emitted a bare `NaN` token whenever a fold was skipped -- reachable in normal
+  use, since skipped folds are kept as `nan` by design. Fixing two call sites
+  would not have stopped a third appearing, so a test now fails on any
+  `json.dumps` in the package outside the helper that defines it. The failure
+  is otherwise invisible: the package's own `json.loads` accepts the bare token
+  quite happily, and only a stricter consumer downstream would notice.
+- **Report metadata block.** *Done.* `write_export_metadata` writes a sidecar
+  beside every Markdown, HTML, JSON and CSV artifact the package produces --
+  audited call site by call site, including that `export_benchmark_results`
+  writes one after the format branch rather than inside it, so all four formats
+  are covered rather than whichever branch was remembered.
 
 ### v0.8.0 — documentation debt
 
