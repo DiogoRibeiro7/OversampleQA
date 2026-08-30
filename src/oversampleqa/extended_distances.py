@@ -9,7 +9,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def minkowski_distance(x1: np.ndarray, x2: np.ndarray, p: float = 3.0) -> float:
+def minkowski_distance(
+    x1: NDArray[np.floating], x2: NDArray[np.floating], p: float = 3.0
+) -> float:
     """Compute Minkowski distance between two vectors.
 
     Parameters
@@ -35,7 +37,9 @@ def minkowski_distance(x1: np.ndarray, x2: np.ndarray, p: float = 3.0) -> float:
     return float(np.sum(diff**p) ** (1 / p))
 
 
-def chebyshev_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def chebyshev_distance(
+    x1: NDArray[np.floating], x2: NDArray[np.floating]
+) -> float:
     """Compute Chebyshev (L-infinity) distance between two vectors.
 
     This is the maximum absolute difference across all dimensions.
@@ -92,7 +96,7 @@ def mahalanobis_distance(
     return float(np.sqrt(np.dot(diff, np.dot(cov_inv, diff))))
 
 
-def canberra_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def canberra_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:
     """Compute Canberra distance between two vectors.
 
     Canberra distance is a weighted version of Manhattan distance,
@@ -113,7 +117,7 @@ def canberra_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return float(np.sum(ratio))
 
 
-def hamming_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def hamming_distance(x1: NDArray[np.generic], x2: NDArray[np.generic]) -> float:
     """Compute Hamming distance between two vectors.
 
     Counts the number of positions where elements differ.
@@ -127,19 +131,19 @@ def hamming_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return float(np.sum(x1 != x2))
 
 
-def jaccard_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def jaccard_distance(x1: NDArray[np.generic], x2: NDArray[np.generic]) -> float:
     """Compute Jaccard distance between two binary vectors.
 
     Jaccard distance = 1 - Jaccard similarity
     where Jaccard similarity = :math:`|intersection| / |union|`
     """
-    x1 = np.asarray(x1, dtype=bool)
-    x2 = np.asarray(x2, dtype=bool)
-    if x1.shape != x2.shape:
+    x1_bool = np.asarray(x1, dtype=bool)
+    x2_bool = np.asarray(x2, dtype=bool)
+    if x1_bool.shape != x2_bool.shape:
         raise ValueError("Input vectors must have the same shape")
 
-    intersection = np.sum(x1 & x2)
-    union = np.sum(x1 | x2)
+    intersection = np.sum(x1_bool & x2_bool)
+    union = np.sum(x1_bool | x2_bool)
 
     if union == 0:
         return 0.0  # Both vectors are all zeros
@@ -148,7 +152,9 @@ def jaccard_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return 1.0 - similarity
 
 
-def braycurtis_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def braycurtis_distance(
+    x1: NDArray[np.floating], x2: NDArray[np.floating]
+) -> float:
     """Compute Bray-Curtis distance between two vectors.
 
     Often used in ecology and environmental science.
@@ -168,7 +174,9 @@ def braycurtis_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return ratio
 
 
-def correlation_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def correlation_distance(
+    x1: NDArray[np.floating], x2: NDArray[np.floating]
+) -> float:
     """Compute correlation distance between two vectors.
 
     Correlation distance = 1 - Pearson correlation coefficient
@@ -205,7 +213,7 @@ def correlation_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return float(np.clip(1.0 - coefficient, 0.0, 2.0))
 
 
-def hellinger_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def hellinger_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:
     """Compute the Hellinger distance between two probability vectors.
 
     The input vectors are normalized to sum to ``1`` and must contain
@@ -225,7 +233,9 @@ def hellinger_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return float(np.linalg.norm(np.sqrt(p) - np.sqrt(q)) / np.sqrt(2.0))
 
 
-def jensen_shannon_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def jensen_shannon_distance(
+    x1: NDArray[np.floating], x2: NDArray[np.floating]
+) -> float:
     """Compute the Jensen-Shannon distance between two probability vectors.
 
     The Jensen-Shannon distance is the square root of the
@@ -244,7 +254,7 @@ def jensen_shannon_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     q = x2 / x2.sum() if x2.sum() != 0 else np.zeros_like(x2)
     m = 0.5 * (p + q)
 
-    def _kl_div(a: np.ndarray, b: np.ndarray) -> float:
+    def _kl_div(a: NDArray[np.floating], b: NDArray[np.floating]) -> float:
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio = np.where(a == 0, 1.0, a / b)
             log_term = np.log(ratio)
@@ -254,7 +264,7 @@ def jensen_shannon_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return float(np.sqrt(js_div))
 
 
-def energy_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def energy_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:
     """Compute energy distance between two 1D or 2D vectors.
 
     The implementation follows the definition from energy statistics.
@@ -277,22 +287,26 @@ def energy_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     diff_cross = np.linalg.norm(x1[:, None, :] - x2[None, :, :], axis=-1)
     term_a = diff_cross.mean()
 
+    term_b: float
     if len(x1) > 1:
         diff_x1 = np.linalg.norm(x1[:, None, :] - x1[None, :, :], axis=-1)
-        term_b = diff_x1[np.triu_indices(len(x1), 1)].mean()
+        term_b = float(diff_x1[np.triu_indices(len(x1), 1)].mean())
     else:
         term_b = 0.0
 
+    term_c: float
     if len(x2) > 1:
         diff_x2 = np.linalg.norm(x2[:, None, :] - x2[None, :, :], axis=-1)
-        term_c = diff_x2[np.triu_indices(len(x2), 1)].mean()
+        term_c = float(diff_x2[np.triu_indices(len(x2), 1)].mean())
     else:
         term_c = 0.0
 
     return float(2.0 * term_a - term_b - term_c)
 
 
-def wasserstein_1d_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def wasserstein_1d_distance(
+    x1: NDArray[np.floating], x2: NDArray[np.floating]
+) -> float:
     """Compute the 1D Wasserstein distance between two empirical distributions.
 
     .. warning::
