@@ -9,7 +9,7 @@ import re
 import sys
 import textwrap
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 from pathlib import Path
@@ -610,6 +610,26 @@ def _slugify(value: str) -> str:
     return slug or "experiment"
 
 
+def _looks_like_path(value: str) -> bool:
+    """Whether a dataset reference is meant as a path rather than a name."""
+    return "/" in value or "\\" in value or Path(value).suffix != ""
+
+
+def _coerce(value: Any, kind: Callable[[Any], Any], field: str, where: str) -> Any:
+    """Convert a manifest scalar, reporting failure as a CLI error.
+
+    ``int("positive")`` reaches the user as a bare traceback with no output at
+    all, which says nothing about which experiment or which field was wrong.
+    """
+    try:
+        return kind(value)
+    except (TypeError, ValueError) as exc:
+        raise click.ClickException(
+            f"{where}: field {field!r} has value {value!r}, "
+            f"which is not a valid {kind.__name__}"
+        ) from exc
+
+
 def _manifest_path(base_dir: Path, value: Any, field: str) -> Path:
     """Resolve a path from the manifest, relative to the manifest file."""
     if not isinstance(value, str) or not value:
@@ -713,6 +733,20 @@ def _manifest_dataset_spec(
         else:
             dataset_spec = _require_mapping(dataset, f"datasets.{dataset_ref}")
     else:
+        # An undeclared reference is taken as an inline path, which is the
+        # convenience the syntax is for -- but it also swallows a typo in a
+        # declared name, reporting it much later as a missing file the author
+        # never wrote. Only a reference that looks like a path gets that
+        # benefit; a bare word is judged against the declared names instead.
+        if datasets and not _looks_like_path(dataset_ref):
+            hint = get_close_matches(dataset_ref, sorted(datasets), n=1)
+            suggestion = f" Did you mean {hint[0]!r}?" if hint else ""
+            known = ", ".join(sorted(datasets)) or "none"
+            raise click.ClickException(
+                f"Unknown dataset {dataset_ref!r}; declared datasets are: "
+                f"{known}.{suggestion} Use an explicit path (with a suffix or a "
+                "directory separator) to reference a file that is not declared."
+            )
         dataset_spec = {"path": dataset_ref}
 
     resolved = dict(dataset_spec)
@@ -775,21 +809,28 @@ def _resolved_manifest_experiments(
         if resume_override is not None:
             resume = resume_override
 
+        where = f"Experiment {index} ({name!r})"
         jobs.append(
             {
                 "name": name,
                 "dataset_path": dataset["path"],
                 "target": params["target"],
-                "minority_label": int(params["minority_label"]),
+                "minority_label": _coerce(
+                    params["minority_label"], int, "minority_label", where
+                ),
                 "oversampler_name": str(params["oversampler"]),
                 "metric": str(params["metric"]),
-                "hidden_ratio": float(params["hidden_ratio"]),
+                "hidden_ratio": _coerce(
+                    params["hidden_ratio"], float, "hidden_ratio", where
+                ),
                 "random_state": (
                     None
                     if params.get("random_state") is None
-                    else int(params.get("random_state", 42))
+                    else _coerce(
+                        params.get("random_state", 42), int, "random_state", where
+                    )
                 ),
-                "n_repeats": int(params.get("n_repeats", 1)),
+                "n_repeats": _coerce(params.get("n_repeats", 1), int, "n_repeats", where),
                 "calibrate": bool(params.get("calibrate", False)),
                 "export_formats": _normalise_exports(params.get("export", [])),
                 "resume": resume,
@@ -797,7 +838,48 @@ def _resolved_manifest_experiments(
                 "output_dir": output_dir,
             }
         )
+
+    _reject_colliding_outputs(jobs)
+    _reject_missing_datasets(jobs)
     return output_root, jobs
+
+
+def _reject_colliding_outputs(jobs: list[dict[str, Any]]) -> None:
+    """Two experiments writing to one directory silently lose a result.
+
+    Slugifying is lossy -- ``run 1`` and ``run/1`` both become ``run-1`` -- so
+    distinct experiments could share an output directory, and the second
+    overwrote the first with no warning. Naming is the author's to fix; the
+    runner cannot guess which result was meant to survive.
+    """
+    seen: dict[Path, str] = {}
+    for job in jobs:
+        first = seen.get(job["output_dir"])
+        if first is not None:
+            raise click.ClickException(
+                f"Experiments {first!r} and {job['name']!r} both write to "
+                f"{job['output_dir']}; give one an explicit distinct 'output'."
+            )
+        seen[job["output_dir"]] = job["name"]
+
+
+def _reject_missing_datasets(jobs: list[dict[str, Any]]) -> None:
+    """Check every dataset before the first experiment starts.
+
+    A path that does not exist used to surface only when its experiment was
+    reached, so a typo in the last of five experiments was reported after the
+    first four had already run -- exactly what parsing the manifest up front is
+    supposed to prevent.
+    """
+    missing = [
+        f"{job['name']!r} -> {job['dataset_path']}"
+        for job in jobs
+        if not job["dataset_path"].exists()
+    ]
+    if missing:
+        raise click.ClickException(
+            "Dataset file(s) not found:\n  " + "\n  ".join(missing)
+        )
 
 
 def run_experiment_manifest(
@@ -837,11 +919,13 @@ def run_experiment_manifest(
     )
 
     summaries: list[dict[str, Any]] = []
+    failure: Exception | None = None
     for job in jobs:
         console.print(
             Panel.fit(f"Running manifest experiment: {job['name']}", style="bold blue")
         )
-        results = run_validation_with_progress(
+        try:
+            results = run_validation_with_progress(
             dataset_path=job["dataset_path"],
             target=job["target"],
             minority_label=job["minority_label"],
@@ -855,9 +939,32 @@ def run_experiment_manifest(
             resume=job["resume"],
             output_dir=job["output_dir"],
             mlflow_override=job["mlflow"],
-            mlflow_config=mlflow_config or {},
-            verbose=verbose,
-        )
+                mlflow_config=mlflow_config or {},
+                verbose=verbose,
+            )
+        except Exception as exc:
+            # The run still stops here, but the experiments that did finish are
+            # written down before it does. Losing the summary for four completed
+            # experiments because the fifth failed discards hours of work and
+            # leaves no record of what ran.
+            failure = exc
+            summaries.append(
+                {
+                    "name": job["name"],
+                    "type": "validation",
+                    "status": "failed",
+                    "reason": f"{type(exc).__name__}: {exc}",
+                    "dataset": str(job["dataset_path"]),
+                    "output": str(job["output_dir"]),
+                    "oversampler": job["oversampler_name"],
+                    "metric": job["metric"],
+                    "hidden_ratio": job["hidden_ratio"],
+                    "random_state": job["random_state"],
+                    "n_repeats": job["n_repeats"],
+                    "error_rate": None,
+                }
+            )
+            break
         summaries.append(
             {
                 "name": job["name"],
@@ -874,10 +981,12 @@ def run_experiment_manifest(
             }
         )
 
+    completed = [s for s in summaries if s["status"] == "completed"]
     summary = {
         "manifest": str(manifest_path),
         "manifest_version": MANIFEST_VERSION,
-        "n_experiments": len(summaries),
+        "n_experiments": len(completed),
+        "n_planned": len(jobs),
         "experiments": summaries,
     }
     summary_path = output_root / "manifest_summary.json"
@@ -889,6 +998,12 @@ def run_experiment_manifest(
         extra={"source": {"manifest": str(manifest_path)}},
     )
     console.print(f"[green]Manifest results stored in {output_root}[/green]")
+    if failure is not None:
+        raise click.ClickException(
+            f"Experiment {summaries[-1]['name']!r} failed: {failure}. "
+            f"{len(completed)} of {len(jobs)} experiment(s) completed; "
+            f"see {summary_path}."
+        ) from failure
     return summary
 
 
