@@ -59,7 +59,12 @@ jobs:
             --output core_paths_current.json
 
       - name: Check against committed baseline
-        if: hashFiles('perf_baseline.json') != ''
+        # Deliberately unguarded. This step used to be conditional on
+        # perf_baseline.json existing, and the file never did -- so every
+        # scheduled run reported success while skipping the only step that
+        # detects a regression. A missing baseline is now a visible failure
+        # rather than a silent skip; the job is continue-on-error, so it
+        # reports without blocking anything.
         run: |
           poetry run python scripts/profile_performance.py \
             --check perf_baseline.json \
