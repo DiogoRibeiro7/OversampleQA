@@ -1,0 +1,43 @@
+{
+  "advanced_benchmark.DatasetRepository._load_medical": [
+    "UserWarning"
+  ],
+  "advanced_benchmark.StatisticalBenchmark._fold_records": [
+    "UserWarning",
+    "UserWarning"
+  ],
+  "advanced_benchmark.StatisticalBenchmark.run_comprehensive_benchmark": [
+    "UserWarning"
+  ],
+  "benchmark.compute_ranking": [
+    "UserWarning"
+  ],
+  "benchmark.run_benchmark": [
+    "UserWarning"
+  ],
+  "deprecation.deprecated.decorate.init_wrapper": [
+    "<runtime>"
+  ],
+  "deprecation.deprecated.decorate.wrapper": [
+    "<runtime>"
+  ],
+  "fidelity._warn_if_high_dimensional": [
+    "UserWarning"
+  ],
+  "memory_efficient_validator.MemoryEfficientValidator.validate_oversampling": [
+    "ResourceWarning",
+    "ResourceWarning",
+    "UserWarning"
+  ],
+  "plugin_system.PluginManager.discover_entry_points": [
+    "RuntimeWarning"
+  ],
+  "validator.validate_oversampling": [
+    "UserWarning",
+    "UserWarning",
+    "UserWarning"
+  ],
+  "validator.warn_reference_bias": [
+    "FutureWarning"
+  ]
+}
