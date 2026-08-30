@@ -1,6 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this package, please cite it as below."
-title: "OversampleQA"
+title: "OversampleQA: a diagnostic toolkit to validate, audit, and benchmark
+  oversampling methods"
 abstract: >-
   A diagnostic toolkit to validate, audit, and benchmark oversampling methods
   for imbalanced classification. OversampleQA hides part of the majority class
@@ -25,10 +26,13 @@ keywords:
   - imbalanced classification
   - synthetic data
   - SMOTE
+  - ADASYN
   - data quality
   - validation
   - benchmarking
+  - distance metrics
   - machine learning
+  - scikit-learn
   - Python
 identifiers:
   - type: doi

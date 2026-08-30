@@ -9,6 +9,8 @@
       "orcid": "0009-0001-2022-7072"
     }
   ],
+  "contributors": [],
+  "version": "0.6.1",
   "license": "mit",
   "access_right": "open",
   "language": "eng",
@@ -32,6 +34,16 @@
       "identifier": "https://github.com/diogoribeiro7/OversampleQA",
       "relation": "isSupplementTo",
       "scheme": "url"
+    },
+    {
+      "identifier": "https://diogoribeiro7.github.io/OversampleQA/",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://pypi.org/project/oversampleqa/",
+      "relation": "isIdenticalTo",
+      "scheme": "url"
     }
   ],
   "references": [
@@ -39,5 +51,6 @@
     "Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic Minority Over-sampling Technique. Journal of Artificial Intelligence Research, 16, 321-357.",
     "He, H., Bai, Y., Garcia, E. A., & Li, S. (2008). ADASYN: Adaptive Synthetic Sampling Approach for Imbalanced Learning.",
     "Hassanat, A. B. (2014). Dimensionality Invariant Similarity Measure."
-  ]
+  ],
+  "notes": "<p>Install from PyPI with <code>pip install oversampleqa</code>. Documentation: <a href=\"https://diogoribeiro7.github.io/OversampleQA/\">diogoribeiro7.github.io/OversampleQA</a>. Changes for this and every earlier release are listed in <a href=\"https://github.com/diogoribeiro7/OversampleQA/blob/main/CHANGELOG.md\">CHANGELOG.md</a>.</p><p>Cite the concept DOI <code>10.5281/zenodo.21940361</code> to refer to the project as a whole; cite this record's own DOI to refer to this exact release. Both forms, and the DOI of every archived version, are given in <a href=\"https://github.com/diogoribeiro7/OversampleQA/blob/main/CITATION.cff\">CITATION.cff</a>.</p>"
 }

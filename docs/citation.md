@@ -12,8 +12,10 @@ Deposit metadata for Zenodo. When a GitHub release is archived, Zenodo
 reads this file from the release tarball and uses it instead of the
 defaults it would otherwise infer from the repository.
 
-Keep the two in sync: title, authors, ORCID, license, and keywords
-should say the same thing in both.
+Keep the two in sync: title, version, authors, ORCID, license, and
+keywords should say the same thing in both. This is no longer a matter of
+remembering — `tests/test_release_metadata.py` compares every one of those
+fields across the two files on each commit.
 
 ## BibTeX
 
@@ -81,9 +83,12 @@ environment field empty in PyPI's trusted-publisher settings unless you
 deliberately add a GitHub environment later.
 
 1.  Update `version` and `date-released` in `CITATION.cff`, the version
-    in `pyproject.toml`, `[tool.commitizen]`, and
-    `src/oversampleqa/__init__.py`, and promote the *Unreleased*
-    changelog section. Commit.
+    in `pyproject.toml`, `[tool.commitizen]`,
+    `src/oversampleqa/__init__.py`, and `.zenodo.json`, and promote the
+    *Unreleased* changelog section. Commit.
+
+    All five versions are compared on every commit, so a missed one turns
+    CI red immediately rather than at release time.
 
 2.  Run the local release checks:
 
@@ -131,9 +136,11 @@ that:
   `CITATION.cff`;
 - the README badge points at the *concept* DOI, and the "cite this exact
   release" line points at the *current version* DOI;
-- author, affiliation, ORCID and licence agree between `CITATION.cff`
-  and `.zenodo.json`;
-- `.zenodo.json` declares no `version` field.
+- author, affiliation, ORCID, licence, title, version and keywords agree
+  between `CITATION.cff` and `.zenodo.json`;
+- `.zenodo.json` points at the documentation URL and the PyPI project named
+  in `pyproject.toml`, so a moved site or a renamed distribution cannot
+  leave the Zenodo record pointing at a dead link.
 
 A failing test names the file and the expected value. Two things it
 cannot check, which remain manual:
@@ -151,5 +158,10 @@ flag to be switched off during the release window, and it blocks the
 next version bump until the last one's DOI is recorded. Both 0.4.0 and
 0.5.0 shipped without theirs because nothing failed to remind anyone.
 
-`.zenodo.json` deliberately omits a `version` field: Zenodo takes the
-version from the git tag, so there is nothing to keep in sync there.
+`.zenodo.json` used to omit `version` deliberately, on the grounds that
+Zenodo derives it from the git tag and a field here would be one more place
+to forget. It now declares one. The omission relied on the GitHub
+integration being the only route to a deposit, and left the metadata unable
+to state its own version if it were ever uploaded by hand; the objection it
+rested on — another copy to keep in step — is the objection this test module
+answers for every other version string in the repository.
