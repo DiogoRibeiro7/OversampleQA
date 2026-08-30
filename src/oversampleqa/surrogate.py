@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.base import clone
 from sklearn.metrics import f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
@@ -15,11 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 def evaluate_surrogate_models(
-    X: np.ndarray,
-    y: np.ndarray,
+    X: NDArray[np.floating],
+    y: NDArray[Any],
     minority_label: int,
-    oversampler,
-    model,
+    oversampler: Any,
+    model: Any,
     test_size: float = 0.3,
     random_state: int | None = None,
 ) -> dict[str, dict[str, float]]:
@@ -89,7 +91,7 @@ def evaluate_surrogate_models(
     model_syn.fit(X_syn, y_syn)
     pred_syn = model_syn.predict(X_test)
 
-    def _scores(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+    def _scores(y_true: NDArray[Any], y_pred: NDArray[Any]) -> dict[str, float]:
         mask_true = y_true == minority_label
         mask_pred = y_pred == minority_label
         return {

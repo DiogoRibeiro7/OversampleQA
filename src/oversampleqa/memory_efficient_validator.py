@@ -389,7 +389,7 @@ class MemoryEfficientValidator:
 
         return rate
 
-    def _stream_chunk_size(self, n_cols: int, dtype: np.dtype) -> int:
+    def _stream_chunk_size(self, n_cols: int, dtype: np.dtype[Any]) -> int:
         """Return streaming chunk size based on memory limit.
 
         Args:

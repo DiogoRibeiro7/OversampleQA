@@ -59,6 +59,9 @@ Last revised August 29, 2026, after v0.6.1.
   not trapped in adjacent sidecar files.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
+- NumPy-facing annotations now use explicit `NDArray[...]` and `np.dtype[...]`
+  parameters on core distance, cache, metric and surrogate paths, so the mypy
+  gate remains stable when lockfile refreshes pull newer NumPy typing rules.
 
 **0.6.0 was a correctness release.** The null calibration, benchmark ranking,
 pairwise inference and permutation tests each reported a different quantity

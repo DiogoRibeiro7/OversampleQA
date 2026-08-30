@@ -100,7 +100,7 @@ def hassanat_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> flo
     return float(np.sum(1.0 - (1.0 + mn + shift) / (1.0 + mx + shift)))
 
 
-def euclidean_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def euclidean_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:
     """Compute Euclidean distance between two vectors.
 
     Args:
@@ -117,7 +117,7 @@ def euclidean_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return float(np.linalg.norm(x1 - x2))
 
 
-def manhattan_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def manhattan_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:
     """Compute Manhattan distance between two vectors.
 
     Args:
@@ -134,7 +134,7 @@ def manhattan_distance(x1: np.ndarray, x2: np.ndarray) -> float:
     return float(np.sum(np.abs(x1 - x2)))
 
 
-def cosine_distance(x1: np.ndarray, x2: np.ndarray) -> float:
+def cosine_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:
     """Compute Cosine distance between two vectors.
 
     Args:

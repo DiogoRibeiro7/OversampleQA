@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 import joblib
 import numpy as np
+from numpy.typing import NDArray
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard
     from .optimized_distance import OptimizedDistanceMatrix
@@ -86,7 +87,7 @@ class ValidationCache:
         self.max_entries = max_entries
         self._memory: joblib.Memory | None = None
         self._lock = threading.Lock()
-        self._store: OrderedDict[str, np.ndarray] = OrderedDict()
+        self._store: OrderedDict[str, NDArray[np.floating]] = OrderedDict()
         self._nbytes = 0
 
     def _ensure_dir(self) -> None:
@@ -113,7 +114,7 @@ class ValidationCache:
             self._store.clear()
             self._nbytes = 0
 
-    def get_data_hash(self, X: np.ndarray, y: np.ndarray) -> str:
+    def get_data_hash(self, X: NDArray[Any], y: NDArray[Any]) -> str:
         """Return stable SHA256 hash for dataset.
 
         Args:
@@ -157,12 +158,12 @@ class ValidationCache:
     def cached_distance_matrix(
         self,
         optimizer: OptimizedDistanceMatrix,
-        X1: np.ndarray,
-        X2: np.ndarray,
+        X1: NDArray[np.floating],
+        X2: NDArray[np.floating],
         metric: str,
         batch_size: int | str = "auto",
         **kwargs: Any,
-    ) -> np.ndarray:
+    ) -> NDArray[np.floating]:
         """Return cached distance matrix or compute and cache it.
 
         The returned array is **read-only**. Cache hits hand back the stored
@@ -203,7 +204,7 @@ class ValidationCache:
         self._remember(key, result)
         return result
 
-    def _remember(self, key: str, arr: np.ndarray) -> None:
+    def _remember(self, key: str, arr: NDArray[np.floating]) -> None:
         """Store ``arr`` under ``key``, evicting until the limits are met."""
         with self._lock:
             if key in self._store:
@@ -224,8 +225,8 @@ class ValidationCache:
 
     def _distance_key(
         self,
-        X1: np.ndarray,
-        X2: np.ndarray,
+        X1: NDArray[np.floating],
+        X2: NDArray[np.floating],
         metric: str,
         kwargs: dict[str, Any],
     ) -> str:
@@ -250,7 +251,7 @@ class ValidationCache:
         return hasher.hexdigest()
 
     @staticmethod
-    def _update_hasher(hasher: hashlib._Hash, arr: np.ndarray) -> None:
+    def _update_hasher(hasher: hashlib._Hash, arr: NDArray[Any]) -> None:
         """Update the hasher with array shape, dtype, and data bytes.
 
         Args:
