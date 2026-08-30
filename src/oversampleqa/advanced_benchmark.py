@@ -19,6 +19,7 @@ from sklearn.preprocessing import StandardScaler
 
 from . import __version__ as _PACKAGE_VERSION
 from ._export_metadata import write_export_metadata
+from ._json import strict_json_dumps
 from ._provenance import (
     bundled_provenance,
     openml_provenance,
@@ -493,8 +494,19 @@ class StatisticalBenchmark:
             pvals = self._pairwise_statistical_tests(group)
             effects = self._calculate_effect_sizes(group)
             for idx in group.index:
-                frame.at[idx, "pairwise_p_values"] = json.dumps(pvals)
-                frame.at[idx, "pairwise_effect_sizes"] = json.dumps(effects)
+                # strict_json_dumps, not json.dumps: a skipped fold leaves a
+                # nan in error_rates, Wilcoxon then returns nan, and the plain
+                # encoder writes a bare `NaN` token. That is not JSON -- a
+                # strict parser rejects the column outright -- and these two
+                # columns are the only export path that had bypassed the
+                # helper. nan becomes null, which parsers accept and which says
+                # the same thing: no comparison was available.
+                frame.at[idx, "pairwise_p_values"] = strict_json_dumps(
+                    pvals, indent=None
+                )
+                frame.at[idx, "pairwise_effect_sizes"] = strict_json_dumps(
+                    effects, indent=None
+                )
         return frame
 
     def _pairwise_statistical_tests(

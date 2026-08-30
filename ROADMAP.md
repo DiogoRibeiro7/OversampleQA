@@ -333,9 +333,13 @@ export path).
   carry or sit next to enough metadata to reproduce the run: OversampleQA
   version, Python version, dependency lock hash when available, platform,
   random seeds, metric parameters and dataset provenance.
-- **Strict JSON outputs.** Audit every JSON-producing path for `NaN`,
-  infinities and NumPy scalars. Machine-readable exports should be accepted by
-  strict parsers without relying on pandas' permissive defaults.
+- **Strict JSON outputs.** *Audit done; the one gap it found is closed.* Every
+  JSON-producing path now goes through `strict_json_dumps`. The two exceptions
+  were the `pairwise_p_values` and `pairwise_effect_sizes` columns, which called
+  `json.dumps` directly and emitted a bare `NaN` token whenever a fold was
+  skipped -- reachable in normal use, since skipped folds are kept as `nan` by
+  design. What remains of this item is keeping it true: a new export path that
+  bypasses the helper would not be caught by anything today.
 
 ### v0.8.0 — documentation debt
 
