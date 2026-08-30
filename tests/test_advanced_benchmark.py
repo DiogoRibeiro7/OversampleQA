@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.advanced_benchmark import (
     DatasetRepository,
     StatisticalBenchmark,
@@ -33,6 +34,17 @@ def test_statistical_benchmark_generates_results():
     )
     assert not df.empty
     assert {"pairwise_p_values", "pairwise_effect_sizes"}.issubset(df.columns)
+    assert {
+        "hidden_ratio",
+        "reference",
+        "minority_label",
+        "random_state",
+        "n_folds",
+        "n_repeats",
+        "oversampleqa_version",
+    }.issubset(df.columns)
+    assert set(df["reference"]) == {"hidden_minority"}
+    assert set(df["hidden_ratio"]) == {0.1}
     p_values = json.loads(df.iloc[0]["pairwise_p_values"])
     assert isinstance(p_values, dict)
 
@@ -63,6 +75,13 @@ def test_benchmark_report_creation(tmp_path: Path):
             "dataset_name": ["toy"],
             "oversampler_name": ["RandomOverSampler"],
             "metric": ["hassanat"],
+            "hidden_ratio": [0.1],
+            "reference": ["hidden_minority"],
+            "minority_label": [1],
+            "random_state": [7],
+            "n_folds": [2],
+            "n_repeats": [3],
+            "oversampleqa_version": ["0.6.1"],
             "mean_error": [0.1],
             "std_error": [0.01],
             "ci_lower": [0.05],
@@ -77,6 +96,25 @@ def test_benchmark_report_creation(tmp_path: Path):
     assert report_path.exists()
     content = report_path.read_text(encoding="utf-8")
     assert "OversampleQA Benchmark Report" in content
+    assert "Run metadata" in content
+    assert "hidden_minority" in content
+    assert "0.6.1" in content
+    metadata = json.loads(metadata_sidecar_path(report_path).read_text())
+    assert metadata["export_kind"] == "statistical_benchmark_report"
+    assert metadata["data"]["row_count"] == 1
+
+
+def test_empty_benchmark_report_creation_writes_metadata(tmp_path: Path):
+    report_path = create_benchmark_report(
+        pd.DataFrame(), output_path=tmp_path / "empty.html"
+    )
+
+    assert report_path.exists()
+    content = report_path.read_text(encoding="utf-8")
+    assert "Run metadata" in content
+    assert "result_rows" in content
+    metadata = json.loads(metadata_sidecar_path(report_path).read_text())
+    assert metadata["export_kind"] == "statistical_benchmark_report"
 
 
 def test_format_statistical_summary_reports_significance():

@@ -6,7 +6,9 @@ from typing import Any
 
 import pandas as pd
 
+from ._export_metadata import write_export_metadata
 from ._render import frame_to_html, frame_to_markdown
+from ._report_metadata import report_metadata_html, report_metadata_markdown
 from .benchmark import compute_ranking
 from .plotting import plot_error_boxplot, plot_error_ranking
 
@@ -91,10 +93,25 @@ def generate_report(
     summary = compute_ranking(benchmark_results)
     if output_format == "markdown":
         content = "\n".join(
-            ["# OversampleQA Report", "", "## Ranking", "", frame_to_markdown(summary)]
+            [
+                "# OversampleQA Report",
+                "",
+                "## Run metadata",
+                "",
+                report_metadata_markdown(benchmark_results),
+                "",
+                "## Ranking",
+                "",
+                frame_to_markdown(summary),
+            ]
         )
     else:
-        content = "<h1>OversampleQA Report</h1><h2>Ranking</h2>" + summary.to_html()
+        content = (
+            "<h1>OversampleQA Report</h1><h2>Run metadata</h2>"
+            + report_metadata_html(benchmark_results)
+            + "<h2>Ranking</h2>"
+            + summary.to_html()
+        )
 
     if fidelity_reports:
         content += _fidelity_section(fidelity_reports, output_format)
@@ -111,4 +128,16 @@ def generate_report(
     if output_path:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
+        write_export_metadata(
+            output_path,
+            export_kind="benchmark_report",
+            data=summary,
+            extra={
+                "source": {
+                    "row_count": len(benchmark_results),
+                    "columns": [str(column) for column in benchmark_results.columns],
+                    "attrs": dict(benchmark_results.attrs),
+                }
+            },
+        )
     return content

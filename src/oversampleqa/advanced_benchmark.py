@@ -17,11 +17,14 @@ from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
+from . import __version__ as _PACKAGE_VERSION
+from ._export_metadata import write_export_metadata
 from ._provenance import (
     bundled_provenance,
     openml_provenance,
     synthetic_provenance,
 )
+from ._report_metadata import report_metadata_html
 from .validator import infer_minority_label, validate_oversampling
 
 # The tidy long-format column set: one row per
@@ -31,6 +34,13 @@ _RESULT_COLUMNS = (
     "dataset_name",
     "oversampler_name",
     "metric",
+    "hidden_ratio",
+    "reference",
+    "minority_label",
+    "random_state",
+    "n_folds",
+    "n_repeats",
+    "oversampleqa_version",
     "mean_error",
     "std_error",
     "ci_lower",
@@ -46,6 +56,13 @@ class BenchmarkResult:
     dataset_name: str
     oversampler_name: str
     metric: str
+    hidden_ratio: float
+    reference: str
+    minority_label: int
+    random_state: int | None
+    n_folds: int
+    n_repeats: int
+    oversampleqa_version: str
     error_rates: list[float]
     mean_error: float
     std_error: float
@@ -68,6 +85,12 @@ _FOLD_COLUMNS = (
     "fold",
     "split_seed",
     "hidden_ratio",
+    "reference",
+    "minority_label",
+    "random_state",
+    "n_folds",
+    "n_repeats",
+    "oversampleqa_version",
     "error_rate",
     "skipped",
     "skip_reason",
@@ -97,6 +120,12 @@ class FoldRecord:
     fold: int
     split_seed: int | None
     hidden_ratio: float
+    reference: str
+    minority_label: int
+    random_state: int | None
+    n_folds: int
+    n_repeats: int
+    oversampleqa_version: str
     error_rate: float
     skipped: bool
     skip_reason: str
@@ -242,6 +271,13 @@ class StatisticalBenchmark:
                         dataset_name=dataset_name,
                         oversampler_name=oversampler.__class__.__name__,
                         metric=metric,
+                        hidden_ratio=_FOLD_HIDDEN_RATIO,
+                        reference="hidden_minority",
+                        minority_label=minority_label,
+                        random_state=self.random_state,
+                        n_folds=self.n_folds,
+                        n_repeats=self.n_repeats,
+                        oversampleqa_version=_PACKAGE_VERSION,
                         error_rates=error_rates,
                         mean_error=mean_error,
                         std_error=std_error,
@@ -315,6 +351,12 @@ class StatisticalBenchmark:
                     fold=fold,
                     split_seed=seed,
                     hidden_ratio=_FOLD_HIDDEN_RATIO,
+                    reference="hidden_minority",
+                    minority_label=minority_label,
+                    random_state=self.random_state,
+                    n_folds=self.n_folds,
+                    n_repeats=self.n_repeats,
+                    oversampleqa_version=_PACKAGE_VERSION,
                     error_rate=error,
                     skipped=bool(reason),
                     skip_reason=reason,
@@ -658,6 +700,13 @@ class StatisticalBenchmark:
             "dataset_name": result.dataset_name,
             "oversampler_name": result.oversampler_name,
             "metric": result.metric,
+            "hidden_ratio": result.hidden_ratio,
+            "reference": result.reference,
+            "minority_label": result.minority_label,
+            "random_state": result.random_state,
+            "n_folds": result.n_folds,
+            "n_repeats": result.n_repeats,
+            "oversampleqa_version": result.oversampleqa_version,
             "mean_error": result.mean_error,
             "std_error": result.std_error,
             "ci_lower": result.confidence_interval[0],
@@ -1048,8 +1097,13 @@ def create_benchmark_report(
     output.parent.mkdir(parents=True, exist_ok=True)
 
     if results_df.empty:
-        html = "<html><body><h1>No benchmark results available.</h1></body></html>"
+        html = (
+            "<html><body><h1>No benchmark results available.</h1>"
+            "<h2>Run metadata</h2>"
+            f"{report_metadata_html(results_df)}</body></html>"
+        )
         output.write_text(html, encoding="utf-8")
+        write_export_metadata(output, export_kind="statistical_benchmark_report")
         return output
 
     summary = results_df.copy()
@@ -1085,9 +1139,17 @@ def create_benchmark_report(
         </head>
         <body>
             <h1>OversampleQA Benchmark Report</h1>
+            <h2>Run metadata</h2>
+            {report_metadata_html(results_df)}
+            <h2>Results</h2>
             {table_html}
         </body>
     </html>
     """
     output.write_text(html, encoding="utf-8")
+    write_export_metadata(
+        output,
+        export_kind="statistical_benchmark_report",
+        data=summary,
+    )
     return output

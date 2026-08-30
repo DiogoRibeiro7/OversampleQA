@@ -2,7 +2,7 @@
 
 ## Lead Developer
 - **Diogo Ribeiro** ([@diogoribeiro7](https://github.com/diogoribeiro7))
-  - ESMAD - Instituto Politecnico do Porto
+  - Faculty of Media Arts and Design, Technical University of Porto
   - Lead Data Scientist at Mysense.ai
   - Email: dfr@esmad.ipp.pt
   - ORCID: https://orcid.org/0009-0001-2022-7072

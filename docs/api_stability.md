@@ -3,9 +3,10 @@
 ## What is public
 
 Anything listed in `oversampleqa.__all__` and importable from the package root.
-That set is snapshotted in `tests/api_surface.json` and guarded by
-`tests/test_api_surface.py`, so an addition, removal, or change of kind fails CI
-rather than surfacing at release.
+That set is snapshotted in `tests/api_surface.json`, and stable call contracts
+are snapshotted in `tests/api_signatures.json`. Both are guarded by
+`tests/test_api_surface.py`, so an addition, removal, change of kind, or
+parameter/default change fails CI rather than surfacing at release.
 
 Everything else is internal, including:
 
@@ -82,15 +83,27 @@ pre-0.3 numbers can be reproduced.
 When a change to the public surface is intended:
 
 1. make the change,
-2. regenerate the snapshot in the **same commit**:
+2. regenerate the snapshots in the **same commit**:
 
    ```bash
    python -c "import json,sys; sys.path.insert(0,'tests'); \
    from test_api_surface import current_surface; \
    print(json.dumps(current_surface(), indent=2, sort_keys=True))" > tests/api_surface.json
+   python -c "import json,sys; sys.path.insert(0,'tests'); \
+   from test_api_surface import current_signatures; \
+   print(json.dumps(current_signatures(), indent=2, sort_keys=True))" > tests/api_signatures.json
    ```
 
 3. record it in `CHANGELOG.md`.
 
-The point of the snapshot is not to prevent change but to make it visible in the
-diff, where a reviewer can weigh it.
+The signature snapshot covers public objects where Python exposes a stable,
+informative call signature. It records parameter names, ordering, keyword-only
+markers, varargs, and defaults, while intentionally omitting annotations because
+runtime annotation rendering differs across supported Python versions.
+Exception classes, typing/protocol artefacts, and Pydantic-generated runtime
+constructors are excluded because they either have no public constructor
+contract or expose signatures that are generic or coupled to runtime
+implementation details.
+
+The point of the snapshots is not to prevent change but to make it visible in
+the diff, where a reviewer can weigh it.

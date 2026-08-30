@@ -99,3 +99,6 @@ OversampleQA measures similarity to hidden majority vs real minority
 samples. It does not replace full model evaluation, and it does not
 guarantee improved downstream performance. Use it as a diagnostic signal
 alongside standard validation.
+
+For practical guidance on when that diagnostic is strong or weak, see
+[Decision Guide](decision_guide.md) and [Limitations](limitations.md).

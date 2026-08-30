@@ -83,6 +83,29 @@ jobs:
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
       uses: codecov/codecov-action@v7
 
+  package-smoke:
+    # Source-tree tests can pass while the built wheel is broken: missing
+    # package data, undeclared runtime dependencies, or console scripts that
+    # only work in an editable install. Build the wheel and exercise it from a
+    # clean virtual environment before merge.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+        cache: "pip"
+        cache-dependency-path: poetry.lock
+    - name: Build package
+      run: |
+        python -m pip install --upgrade pip
+        pip install "poetry==2.4.1"
+        poetry check --lock
+        poetry build
+    - name: Smoke test installed wheel
+      run: python scripts/smoke_installed_package.py dist/*.whl
+
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -101,6 +124,8 @@ jobs:
         poetry install --with dev,docs
     - name: Build docs
       run: poetry run mkdocs build --strict
+    - name: Check documentation links
+      run: poetry run python scripts/check_docs_links.py
 
     # Uploaded from every run, so a pull request proves the artifact is
     # publishable, not merely that the build exits zero. Only the deploy job

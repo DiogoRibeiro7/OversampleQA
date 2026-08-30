@@ -7,11 +7,13 @@ rendered as one run-on paragraph in any viewer.
 
 from __future__ import annotations
 
+import json
 import warnings
 
 import pandas as pd
 import pytest
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.report import frame_to_markdown, generate_report
 
 
@@ -21,8 +23,13 @@ def results():
         {
             "dataset": ["a"] * 4,
             "oversampler": ["SMOTE", "SMOTE", "ROS", "ROS"],
+            "metric": ["hassanat"] * 4,
             "hidden_ratio": [0.1] * 4,
+            "reference": ["hidden_minority"] * 4,
             "run": [0, 1, 0, 1],
+            "random_state": [7] * 4,
+            "minority_label": [1] * 4,
+            "oversampleqa_version": ["0.6.1"] * 4,
             "error_rate": [0.10, 0.12, 0.20, 0.22],
         }
     )
@@ -74,6 +81,16 @@ def test_named_index_becomes_a_column():
 def test_unknown_format_raises(results):
     with pytest.raises(ValueError, match="markdown"):
         generate_report(results, output_format="latex", include_plots=False)
+
+
+def test_markdown_report_includes_run_metadata(results):
+    content = generate_report(results, output_format="markdown", include_plots=False)
+
+    assert "## Run metadata" in content
+    assert "| result_rows" in content
+    assert "hidden_minority" in content
+    assert "hassanat" in content
+    assert "0.6.1" in content
 
 
 def test_fidelity_section_is_appended(results):
@@ -148,6 +165,7 @@ def test_html_output_includes_fidelity(results):
         include_plots=False,
         fidelity_reports={"SMOTE": {"error_rate": 0.2}},
     )
+    assert "<h2>Run metadata</h2>" in content
     assert "<h2>Fidelity and diversity</h2>" in content
     assert "<table" in content
 
@@ -156,3 +174,19 @@ def test_report_without_fidelity_is_unchanged(results):
     """The parameter is optional; omitting it must not alter the ranking output."""
     plain = generate_report(results, output_format="markdown", include_plots=False)
     assert "Fidelity" not in plain
+
+
+def test_report_export_writes_metadata_sidecar(results, tmp_path):
+    out = tmp_path / "report.md"
+    generate_report(
+        results,
+        output_format="markdown",
+        output_path=str(out),
+        include_plots=False,
+    )
+
+    metadata = json.loads(metadata_sidecar_path(out).read_text(encoding="utf-8"))
+
+    assert metadata["export_kind"] == "benchmark_report"
+    assert metadata["data"]["columns"]
+    assert metadata["source"]["row_count"] == len(results)

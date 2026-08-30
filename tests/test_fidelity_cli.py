@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
+from oversampleqa._export_metadata import metadata_sidecar_path
 from oversampleqa.cli_enhanced import cli
 
 
@@ -54,6 +55,9 @@ def test_fidelity_writes_json(dataset, tmp_path):
         "coverage",
         "memorisation_distance_ratio",
     } <= set(payload)
+    metadata = json.loads(metadata_sidecar_path(out).read_text(encoding="utf-8"))
+    assert metadata["export_kind"] == "fidelity_report"
+    assert metadata["data"]["values"]["error_rate"] is not None
 
 
 def test_fidelity_separates_a_copying_sampler(dataset, tmp_path):
