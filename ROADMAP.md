@@ -1,6 +1,6 @@
 # OversampleQA Roadmap
 
-Last revised August 18, 2026, after v0.6.0.
+Last revised August 29, 2026, after v0.6.1.
 
 ## Project Goals
 
@@ -9,8 +9,11 @@ Last revised August 18, 2026, after v0.6.0.
 - Keep workflows reproducible with clear configuration, benchmarking, and exportable reports.
 - Offer a fast path for practitioners and a deeper path for research use cases.
 - Stay compatible with scikit-learn and imbalanced-learn conventions.
+- Raise the package toward scikit-learn-grade trust: stable APIs, rigorous
+  numerical behaviour, reproducible examples, clear limits, and boring release
+  mechanics.
 
-## Current State (post-v0.6.0)
+## Current State (post-v0.6.1)
 
 - 664 tests in the main suite, plus 13 in the reference plugin. CI runs the main
   suite on Linux across Python 3.10-3.12 and on Windows for Python 3.12, then
@@ -18,13 +21,42 @@ Last revised August 18, 2026, after v0.6.0.
 - `ruff check src tests` and `mypy src` are enforced by CI, not merely claimed.
   The numerical core is fully strict; the CLI, plotting and benchmark modules
   carry scoped, documented relaxations at their untyped third-party boundaries.
-- Docs build under `-W` and deploy to GitHub Pages from the artifact that build
-  produced, so what is published is what passed the gate.
+- Docs build with MkDocs in strict mode and deploy to GitHub Pages from the
+  artifact that build produced, so what is published is what passed the gate.
+- Documentation links are gated: MkDocs validates internal pages and anchors,
+  and CI checks stable external targets such as the project docs, GitHub, PyPI
+  and DOI links.
 - `poetry.lock` is tracked, poetry is pinned, `poetry check --lock` gates
   installs, and the docs toolchain lives in the locked `docs` group, so tests
   and docs run against one governed dependency set.
 - Public API frozen behind a snapshot test; deprecation policy documented and
   mechanised. `py.typed` ships, so the annotations reach downstream checkers.
+- Sklearn integration is covered by focused CI tests for `cross_validate`,
+  `GridSearchCV`, nested sampler parameters, sklearn `Pipeline` composition and
+  common imbalanced-learn sampler paths.
+- Core-path benchmark artifacts record runtime, peak traced memory,
+  environment metadata and benchmark parameters for distance-matrix and
+  validation paths. The scheduled Performance workflow uploads them for trend
+  inspection without making noisy timing results a merge gate.
+- Core trust documentation now covers metric choice, result interpretation
+  limits and production audit workflows, while linking those decisions back to
+  API stability and reproducibility guidance.
+- Machine-readable JSON exports use a shared strict serializer: NumPy and
+  pandas scalars are normalized, non-finite values become `null`, and exports
+  are emitted with `allow_nan=False` so standards-compliant parsers can read
+  them.
+- Exported validation results, benchmark summaries and benchmark reports write
+  adjacent metadata sidecars with package/runtime versions, lockfile hash when
+  available, row/column shape and dataset provenance where the source data
+  carries it.
+- Result rows now carry explicit reproducibility identifiers across the simple
+  benchmark, statistical benchmark, fold-level outputs and validation report
+  frame: metric, hidden ratio, reference mode, minority label, seeds/repeat
+  settings and package version are visible without relying on call-site memory.
+- Markdown and HTML benchmark reports now render a visible run metadata block
+  before the result tables, so row counts, schema context, seeds, metrics,
+  hidden ratios, reference mode, folds/repeats and package/runtime versions are
+  not trapped in adjacent sidecar files.
 - Release-facing metadata is checked as one unit on every commit, and the check
   blocks a version bump until the previous release's DOI is recorded.
 
@@ -46,6 +78,7 @@ Documentation: https://diogoribeiro7.github.io/OversampleQA/
 | Version | DOI |
 |---|---|
 | Concept (all versions) | [10.5281/zenodo.21940361](https://doi.org/10.5281/zenodo.21940361) |
+| 0.6.1 | [10.5281/zenodo.22159067](https://doi.org/10.5281/zenodo.22159067) |
 | 0.6.0 | [10.5281/zenodo.21993371](https://doi.org/10.5281/zenodo.21993371) |
 | 0.5.1 | none — see below |
 | 0.5.0 | [10.5281/zenodo.21967099](https://doi.org/10.5281/zenodo.21967099) |
@@ -177,6 +210,16 @@ mean. The measurements below are from the codebase, not estimates.
   binary data.
 - Removed `recommended_samples`, which reported 1 on every row of every run.
 
+### v0.6.1 — MkDocs documentation
+
+- Documentation migrated from Sphinx/RST to MkDocs/Markdown.
+- API reference pages now use mkdocstrings, keeping the docs close to the
+  installed Python package surface.
+- Repository, README and support links point readers at the published GitHub
+  Pages documentation.
+- The release DOI is recorded in `CITATION.cff`, README and
+  `docs/citation.md`.
+
 ## Open Work
 
 Not scheduled against dates. This is a research toolkit maintained by one
@@ -184,7 +227,65 @@ person; the ordering below reflects priority, not a delivery commitment. Each
 item should land with tests or documentation that would have caught the failure
 mode it addresses.
 
-### v0.7.0 — export and reporting trust
+### Strategic target — scikit-learn-grade trust
+
+OversampleQA should become a main tool people can rely on in serious imbalanced
+classification work. That means the roadmap is now about trust as much as
+capability: stable public contracts, sklearn-native workflows, defensible
+statistics, scalable execution, strong documentation, and releases that users
+can install and cite without ceremony.
+
+- **Public API contract.** Keep the public API snapshot as a release gate, but
+  expand it into an explicit compatibility contract: supported imports,
+  signatures, default behaviours, warning classes, CLI commands and serialized
+  output schemas. Every new public entry point should be documented or marked
+  private before merge.
+- **Sklearn-native integration.** Provide first-class helpers that fit
+  scikit-learn and imbalanced-learn workflows: scorer-style callables,
+  pipeline/grid-search examples, sampler comparison recipes, and compatibility
+  tests against common `Pipeline`, `GridSearchCV` and imbalanced-learn sampler
+  paths.
+- **Scientific validation suite.** Add oracle datasets, adversarial samplers,
+  property-based metric tests and calibration examples where expected behaviour
+  is known. The aim is to prove not only that code runs, but that the reported
+  quantities mean what the docs say they mean.
+- **Limitations and decision guidance.** Document when each metric is strong,
+  weak, misleading or undefined. Serious users need guidance for tiny minority
+  classes, high-dimensional features, duplicate-producing samplers, multiclass
+  data and noisy labels.
+- **Performance discipline.** Add a benchmark harness with tracked runtime and
+  memory profiles across sample count, dimensionality, metrics and samplers.
+  Performance regressions should be visible before users discover them in long
+  benchmark runs.
+- **Distribution confidence.** Add clean-environment wheel install tests,
+  minimum/latest dependency lanes where practical, strict link checks for docs,
+  and post-release verification for PyPI, GitHub Pages and Zenodo.
+- **Adoption-quality examples.** Ship recipes that look like real ML work:
+  comparing SMOTE variants, checking a production dataset before oversampling,
+  generating an audit bundle, and interpreting when a sampler should not be
+  used.
+
+### v0.7.0 — sklearn-grade foundation
+
+Make the stable base stronger before adding large new workflows.
+
+- **Compatibility tests for public imports and signatures.** Extend the API
+  snapshot into tests that catch accidental signature, default-value and warning
+  changes.
+- **Wheel and installed-package smoke tests.** Build the wheel in CI, install it
+  into a clean environment, import the documented public API, run one small
+  validation, and verify CLI entry points.
+- **Sklearn/imbalanced-learn integration tests.** Add focused tests proving the
+  documented recipes work inside sklearn-style pipelines and with common
+  imbalanced-learn samplers.
+- **Docs link checking.** Add a CI gate for internal documentation links and
+  selected external links that are stable enough to enforce.
+- **Benchmark scaffold.** Introduce a lightweight benchmark harness and publish
+  an initial baseline artifact for core validation paths.
+- **Core trust docs.** Add or expand pages for API stability, choosing metrics,
+  limitations, reproducibility, and production audit workflows.
+
+### v0.8.0 — export and reporting trust
 
 Improve how results leave the package, without changing statistical meaning
 again. Two of the original items shipped in 0.6.0: the fold-level export
@@ -205,7 +306,7 @@ export path).
   infinities and NumPy scalars. Machine-readable exports should be accepted by
   strict parsers without relying on pandas' permissive defaults.
 
-### v0.7.0 — documentation debt
+### v0.8.0 — documentation debt
 
 The benchmarking-docs correction and the concepts-page calibration claim are
 done; what remains is the material that helps a reader assemble the pieces.
@@ -219,7 +320,7 @@ done; what remains is the material that helps a reader assemble the pieces.
   and benchmark rankings. The current docs explain the pieces but leave too much
   assembly to the reader.
 
-### v0.8.0 — user-facing features
+### v0.9.0 — user-facing features
 
 - **Experiment manifest runner.** Add a YAML-driven command that can run
   validation, fidelity diagnostics and benchmarks from one checked-in manifest.
@@ -252,7 +353,7 @@ done; what remains is the material that helps a reader assemble the pieces.
   intervals, skip reasons and provenance metadata. This should remain static
   HTML, not a hosted service.
 
-### v0.9.0 — benchmark quality
+### v0.10.0 — benchmark quality
 
 - **Pinned benchmark catalog.** Define a small catalog of reference datasets
   that is stable enough to cite: generated datasets with fixed seeds, OpenML
@@ -272,7 +373,7 @@ done; what remains is the material that helps a reader assemble the pieces.
   structured result table. A benchmark with no usable folds should be easy to
   summarize programmatically.
 
-### v0.10.0 — scalability and runtime behaviour
+### v0.11.0 — scalability and runtime behaviour
 
 - **Process-level parallelism.** Add real parallelism across repeats, folds,
   datasets and sampler/metric combinations. `ValidationMode.ASYNC` raises
@@ -320,11 +421,9 @@ done; what remains is the material that helps a reader assemble the pieces.
   extra would cut install weight substantially, but it breaks anyone calling
   `plot_sample_distribution(method="umap")`, so it belongs in a deliberate minor
   bump rather than a patch.
-- **Generated gallery output is tracked in git.** `docs/gallery/` is build
-  output regenerated by every docs build, so it shows as dirty after any local
-  build. Nothing depends on it being committed now that Pages deploys from the
-  CI artifact. Untracking it would remove a standing nuisance; keeping it is
-  also defensible, but the current arrangement costs something every time.
+- **Docs build output should stay out of git.** The MkDocs site is generated in
+  `site/` and published from CI artifacts. Keep generated docs output ignored so
+  local builds do not create review noise.
 - **API-stability audit.** Before each minor release, compare the committed API
   snapshot with docs and examples. Any new export either needs documentation or
   an explicit decision that it is private.

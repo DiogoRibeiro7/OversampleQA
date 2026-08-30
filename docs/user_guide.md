@@ -28,16 +28,19 @@ example:
 - `mahalanobis` accounts for feature covariance when you pass an inverse
   covariance matrix.
 
-See `distances` for a full list.
+See [Distance Metrics](distances.md) for the full list and
+[Decision Guide](decision_guide.md) for practical metric selection.
 
 ## Interpreting the error rate
 
-The error rate is the fraction of synthetic samples that are closer to
-hidden majority samples than to real minority samples. Lower is better.
+The error rate is the fraction of synthetic samples that are closer to hidden
+majority samples than to real minority samples. Lower is better only within the
+same dataset, metric, preprocessing and `hidden_ratio`.
 
-- **\< 0.1**: excellent
-- **0.1 - 0.3**: moderate
-- **\> 0.3**: high risk
+Do not use fixed universal thresholds. Calibrate the result with
+`null_error_rate` or `oversampleqa validate --calibrate`, then compare samplers
+under the same configuration. If repeated runs overlap heavily, the diagnostic
+does not distinguish the samplers.
 
 ## Reproducibility
 
@@ -64,5 +67,8 @@ For consistent results across runs and machines:
 ## See also
 
 - [Benchmarking](benchmarking.md)
+- [Decision Guide](decision_guide.md)
+- [Limitations](limitations.md)
 - [Plotting](plotting.md)
 - [Metrics](metrics.md)
+- [Production Audit Workflow](production_audit.md)

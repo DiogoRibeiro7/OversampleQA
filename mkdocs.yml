@@ -6,6 +6,16 @@ repo_name: diogoribeiro7/OversampleQA
 edit_uri: edit/main/docs/
 strict: true
 
+validation:
+  nav:
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    absolute_links: warn
+    unrecognized_links: warn
+    anchors: warn
+
 theme:
   name: material
   features:
@@ -55,6 +65,8 @@ nav:
   - Algorithms: algorithms.md
   - Distances: distances.md
   - Metrics: metrics.md
+  - Decision Guide: decision_guide.md
+  - Limitations: limitations.md
   - Benchmarking: benchmarking.md
   - Plotting: plotting.md
   - Inference: inference.md
@@ -63,6 +75,7 @@ nav:
   - CLI: cli.md
   - Configuration: configuration.md
   - Reproducibility: reproducibility.md
+  - Production Audit: production_audit.md
   - API:
       - Overview: api_landing.md
       - Reference: api_reference.md

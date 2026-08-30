@@ -13,7 +13,6 @@ Exported results outlive the code that produced them, so every export carries a
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Any
@@ -21,6 +20,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+
+from ._json import json_safe as _json_safe
+from ._json import strict_json_dumps
 
 __all__ = [
     "SCHEMA_VERSION",
@@ -35,28 +37,6 @@ Bump the minor part for additive changes and the major part when a field is
 removed or changes meaning. Consumers should refuse a major version they do not
 recognise rather than guess.
 """
-
-
-def _json_safe(value: Any) -> Any:
-    """Convert a value to something ``json.dumps`` accepts.
-
-    JSON has no ``NaN``: ``json.dumps`` emits a bare ``NaN`` token by default,
-    which is invalid JSON and rejected by most strict parsers. Non-finite floats
-    therefore become ``null``, and a reader must treat ``null`` as "not
-    measured" rather than zero -- which is the same distinction
-    ``calculate_error_rate`` makes by returning ``nan`` instead of ``0.0``.
-    """
-    if isinstance(value, float):
-        return value if np.isfinite(value) else None
-    if isinstance(value, (np.floating, np.integer)):
-        return _json_safe(value.item())
-    if isinstance(value, np.ndarray):
-        return [_json_safe(v) for v in value.tolist()]
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(v) for v in value]
-    if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
-    return value
 
 
 def _dataset_hash(X: NDArray[np.floating], y: NDArray[np.integer]) -> str:
@@ -242,13 +222,21 @@ class ValidationReport:
 
     def to_json(self, indent: int = 2) -> str:
         """Serialise to JSON. ``allow_nan=False`` guarantees valid output."""
-        return json.dumps(self.to_dict(), indent=indent, allow_nan=False)
+        return strict_json_dumps(self.to_dict(), indent=indent)
 
     def to_frame(self) -> pd.DataFrame:
         """Tidy one-row frame with every scalar flattened."""
         flat: dict[str, Any] = {
             "schema_version": self.schema_version,
             "error_rate": self.error_rate,
+            "oversampler": self.metadata.oversampler,
+            "metric": self.metadata.metric,
+            "hidden_ratio": self.metadata.hidden_ratio,
+            "reference": self.metadata.reference,
+            "random_state": self.metadata.random_state,
+            "n_repeats": self.metadata.n_repeats,
+            "minority_label": self.metadata.minority_label,
+            "oversampleqa_version": self.metadata.oversampleqa_version,
         }
         flat.update(
             {

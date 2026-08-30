@@ -303,6 +303,16 @@ def test_report_to_frame_is_one_tidy_row(data):
     assert isinstance(frame, pd.DataFrame)
     assert len(frame) == 1
     assert "error_rate" in frame.columns
+    assert {
+        "oversampler",
+        "metric",
+        "hidden_ratio",
+        "reference",
+        "random_state",
+        "n_repeats",
+        "minority_label",
+        "oversampleqa_version",
+    }.issubset(frame.columns)
     assert any(c.startswith("meta_") for c in frame.columns)
 
 

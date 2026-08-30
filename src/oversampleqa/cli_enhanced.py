@@ -32,6 +32,8 @@ from rich.progress import (
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from ._export_metadata import write_export_metadata
+from ._json import strict_json_dumps, write_json
 from .advanced_benchmark import (
     StatisticalBenchmark,
     create_benchmark_report,
@@ -289,7 +291,7 @@ def save_checkpoint(output_dir: Path | None, payload: dict[str, Any]) -> None:
         return
     checkpoint_path = output_dir / CHECKPOINT_FILE
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-    checkpoint_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    write_json(checkpoint_path, payload)
 
 
 def estimate_runtime(seconds: float) -> str:
@@ -548,12 +550,18 @@ def export_results(
             )
             continue
         if fmt_lower == "json":
-            (output_dir / "validation_results.json").write_text(
-                json.dumps(results, indent=2), encoding="utf-8"
+            artifact = output_dir / "validation_results.json"
+            write_json(artifact, results)
+            write_export_metadata(
+                artifact, export_kind="validation_results", data=results
             )
         elif fmt_lower == "yaml":
-            (output_dir / "validation_results.yaml").write_text(
+            artifact = output_dir / "validation_results.yaml"
+            artifact.write_text(
                 yaml.safe_dump(results, sort_keys=False), encoding="utf-8"
+            )
+            write_export_metadata(
+                artifact, export_kind="validation_results", data=results
             )
         elif fmt_lower == "markdown":
             markdown = textwrap.dedent(
@@ -574,8 +582,10 @@ def export_results(
                 - Estimated Runtime: {results["runtime_estimate"]}
                 """
             ).strip()
-            (output_dir / "validation_results.md").write_text(
-                markdown + "\n", encoding="utf-8"
+            artifact = output_dir / "validation_results.md"
+            artifact.write_text(markdown + "\n", encoding="utf-8")
+            write_export_metadata(
+                artifact, export_kind="validation_results", data=results
             )
 
 
@@ -1098,8 +1108,6 @@ def fidelity(
         utility: Whether to measure downstream utility.
         output: Optional JSON output path.
     """
-    import json as _json
-
     from .fidelity import fidelity_report
 
     X, y = load_dataset(dataset, target)
@@ -1163,8 +1171,9 @@ def fidelity(
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(
-            _json.dumps(report.to_dict(), indent=2, default=str), encoding="utf-8"
+            strict_json_dumps(report.to_dict()), encoding="utf-8"
         )
+        write_export_metadata(output, export_kind="fidelity_report", data=report.to_dict())
         console.print(f"[green]Report written to {output}[/green]")
 
 
@@ -1280,9 +1289,23 @@ def _run_statistical_benchmark(
     console.print(table)
 
     output.mkdir(parents=True, exist_ok=True)
-    frame.to_csv(output / "benchmark_statistics.csv", index=False)
+    statistics_path = output / "benchmark_statistics.csv"
+    frame.to_csv(statistics_path, index=False)
+    write_export_metadata(
+        statistics_path,
+        export_kind="statistical_benchmark_statistics",
+        data=frame,
+        extra={"benchmark_parameters": {"folds": folds, "repeats": repeats}},
+    )
     summary_md = format_statistical_summary(frame)
-    (output / "benchmark_summary.md").write_text(summary_md, encoding="utf-8")
+    summary_path = output / "benchmark_summary.md"
+    summary_path.write_text(summary_md, encoding="utf-8")
+    write_export_metadata(
+        summary_path,
+        export_kind="statistical_benchmark_summary",
+        data=frame,
+        extra={"benchmark_parameters": {"folds": folds, "repeats": repeats}},
+    )
     create_benchmark_report(frame, str(output / "benchmark_report.html"))
     console.print(
         f"[green]Statistical results stored in {output}[/green] "

@@ -15,7 +15,7 @@ authors:
   - family-names: Ribeiro
     given-names: Diogo
     email: dfr@esmad.ipp.pt
-    affiliation: ESMAD - Instituto Politécnico do Porto
+    affiliation: Faculty of Media Arts and Design, Technical University of Porto
     orcid: https://orcid.org/0009-0001-2022-7072
 repository-code: "https://github.com/diogoribeiro7/OversampleQA"
 url: "https://github.com/diogoribeiro7/OversampleQA"
@@ -34,6 +34,9 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.21940361
     description: Concept DOI for all versions of OversampleQA.
+  - type: doi
+    value: 10.5281/zenodo.22159067
+    description: DOI for version 0.6.1.
   - type: doi
     value: 10.5281/zenodo.21993371
     description: DOI for version 0.6.0.
