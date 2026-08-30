@@ -7,6 +7,7 @@ that some warning appeared.
 
 from __future__ import annotations
 
+import os
 import warnings
 
 import pytest
@@ -79,7 +80,13 @@ def test_stacklevel_points_at_the_caller():
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         old_function(1)
-    assert caught[0].filename == __file__
+    # Compared case-insensitively on Windows, where the drive letter reaches
+    # the warning as "c:" but ``__file__`` as "C:" (or the reverse, depending
+    # on how the module was imported). The paths denote the same file; only
+    # their spelling differs, so a plain == failed for every Windows
+    # contributor while saying nothing about the stacklevel this asserts.
+    # ``normcase`` is a no-op on POSIX, so the check stays exact there.
+    assert os.path.normcase(caught[0].filename) == os.path.normcase(__file__)
 
 
 def test_category_is_configurable():
