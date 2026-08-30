@@ -284,8 +284,8 @@ can install and cite without ceremony.
 
 Make the stable base stronger before adding large new workflows.
 
-The work below has landed on `main`; the section stays here rather than moving
-to *Delivered* because 0.7.0 has not been released. It had drifted badly out of
+Every item below has landed on `main`; the section stays here rather than
+moving to *Delivered* because 0.7.0 has not been released. It had drifted badly out of
 date, listing as outstanding several things that shipped some time ago -- which
 is its own small failure of trust, since the roadmap is what a reader consults
 to find out what the project already guarantees.
@@ -308,10 +308,12 @@ to find out what the project already guarantees.
 - **Docs link checking.** *Done.* `mkdocs build --strict` validates internal
   links and `scripts/check_docs_links.py` checks an allowlist of external hosts;
   both run in the `docs` job.
-- **Benchmark scaffold.** *Partly done.* `scripts/benchmark_core_paths.py` and
-  `scripts/profile_performance.py` exist and run weekly. Publishing the
-  committed baseline is the remaining piece: without `perf_baseline.json` the
-  workflow's regression check was skipped on every run while reporting success.
+- **Benchmark scaffold.** *Done.* `scripts/benchmark_core_paths.py` and
+  `scripts/profile_performance.py` run weekly, and `perf_baseline.json` is
+  committed so the regression check actually compares. Until it was, that check
+  was skipped on every run while the workflow reported success, so the baseline
+  is measured on an `ubuntu-latest` runner rather than a developer machine --
+  see `CONTRIBUTING.md` for why the distinction matters when refreshing it.
 - **Core trust docs.** *Done.* `api_stability.md`, `decision_guide.md`,
   `limitations.md`, `reproducibility.md` and `production_audit.md` are written
   and in the site navigation.
