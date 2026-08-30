@@ -11,18 +11,35 @@ class counts and feature list. Keep preprocessing inside the model-selection
 pipeline so held-out rows do not leak into encoders, scalers, imputers or
 feature selectors.
 
-Create a checked-in OversampleQA config:
+Create a checked-in OversampleQA manifest:
 
 ```yaml
+version: 1
+output: audit
 defaults:
   target: target
   minority_label: 1
   oversampler: SMOTE
   metric: hassanat
   hidden_ratio: 0.1
+  random_state: 42
+  n_repeats: 20
   export:
     - json
     - markdown
+datasets:
+  production_sample:
+    path: data.csv
+experiments:
+  - name: smote-calibrated
+    dataset: production_sample
+    calibrate: true
+```
+
+Then run it with:
+
+```bash
+oversampleqa run oversampleqa-experiment.yaml
 ```
 
 ## 2. Calibrate the Baseline

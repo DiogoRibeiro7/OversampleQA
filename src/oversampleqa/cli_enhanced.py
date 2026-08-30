@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import re
 import sys
 import textwrap
 import time
@@ -78,6 +79,20 @@ KNOWN_PARAMS = {
     "hidden_ratio",
     "export",
     "resume",
+}
+MANIFEST_VERSION = 1
+MANIFEST_DEFAULT_KEYS = KNOWN_PARAMS | {
+    "random_state",
+    "n_repeats",
+    "calibrate",
+    "mlflow",
+}
+MANIFEST_DATASET_KEYS = {"path", "target", "minority_label"}
+MANIFEST_EXPERIMENT_KEYS = MANIFEST_DEFAULT_KEYS | {
+    "name",
+    "dataset",
+    "type",
+    "output",
 }
 
 
@@ -589,6 +604,294 @@ def export_results(
             )
 
 
+def _slugify(value: str) -> str:
+    """Return a filesystem-friendly name for a manifest experiment."""
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip()).strip("-")
+    return slug or "experiment"
+
+
+def _manifest_path(base_dir: Path, value: Any, field: str) -> Path:
+    """Resolve a path from the manifest, relative to the manifest file."""
+    if not isinstance(value, str) or not value:
+        raise click.ClickException(f"Manifest field '{field}' must be a non-empty path")
+    path = Path(value).expanduser()
+    return path if path.is_absolute() else base_dir / path
+
+
+def _require_mapping(value: Any, field: str) -> dict[str, Any]:
+    """Return ``value`` as a mapping or raise a Click-friendly error."""
+    if not isinstance(value, dict):
+        raise click.ClickException(f"Manifest field '{field}' must be a mapping")
+    return dict(value)
+
+
+def load_experiment_manifest(manifest_path: Path) -> dict[str, Any]:
+    """Load and validate an experiment manifest.
+
+    The first manifest version is deliberately narrow: it runs validation
+    experiments and leaves fidelity/benchmark orchestration for later roadmap
+    slices. Keeping this parser explicit makes unsupported manifest fields fail
+    before a long experiment starts.
+    """
+    try:
+        raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise click.ClickException(f"Failed to load manifest: {exc}") from exc
+
+    manifest = _require_mapping(raw, "manifest")
+    allowed_root = {"version", "output", "defaults", "datasets", "experiments"}
+    unknown_root = sorted(set(manifest) - allowed_root)
+    if unknown_root:
+        raise click.ClickException(
+            "Unknown manifest field(s): " + ", ".join(unknown_root)
+        )
+
+    version = manifest.get("version", MANIFEST_VERSION)
+    if version != MANIFEST_VERSION:
+        raise click.ClickException(
+            f"Unsupported manifest version {version!r}; expected {MANIFEST_VERSION}"
+        )
+
+    defaults = _require_mapping(manifest.get("defaults", {}), "defaults")
+    unknown_defaults = sorted(set(defaults) - MANIFEST_DEFAULT_KEYS)
+    if unknown_defaults:
+        raise click.ClickException(
+            "Unknown manifest default(s): " + ", ".join(unknown_defaults)
+        )
+
+    datasets = _require_mapping(manifest.get("datasets", {}), "datasets")
+    for name, spec in datasets.items():
+        if isinstance(spec, str):
+            continue
+        dataset_spec = _require_mapping(spec, f"datasets.{name}")
+        unknown_dataset = sorted(set(dataset_spec) - MANIFEST_DATASET_KEYS)
+        if unknown_dataset:
+            raise click.ClickException(
+                f"Unknown field(s) in dataset '{name}': " + ", ".join(unknown_dataset)
+            )
+        if "path" not in dataset_spec:
+            raise click.ClickException(f"Dataset '{name}' must define 'path'")
+
+    experiments = manifest.get("experiments")
+    if not isinstance(experiments, list) or not experiments:
+        raise click.ClickException(
+            "Manifest field 'experiments' must be a non-empty list"
+        )
+    for index, experiment in enumerate(experiments, start=1):
+        experiment_spec = _require_mapping(experiment, f"experiments[{index}]")
+        unknown_experiment = sorted(set(experiment_spec) - MANIFEST_EXPERIMENT_KEYS)
+        if unknown_experiment:
+            raise click.ClickException(
+                f"Unknown field(s) in experiment {index}: "
+                + ", ".join(unknown_experiment)
+            )
+        if experiment_spec.get("type", "validation") != "validation":
+            raise click.ClickException(
+                "Only validation experiments are supported by manifest version 1"
+            )
+        if "dataset" not in experiment_spec:
+            raise click.ClickException(f"Experiment {index} must define 'dataset'")
+
+    return manifest
+
+
+def _manifest_dataset_spec(
+    manifest: dict[str, Any], experiment: dict[str, Any], manifest_dir: Path
+) -> dict[str, Any]:
+    """Resolve the dataset referenced by a manifest experiment."""
+    datasets = _require_mapping(manifest.get("datasets", {}), "datasets")
+    dataset_ref = experiment["dataset"]
+    if not isinstance(dataset_ref, str) or not dataset_ref:
+        raise click.ClickException(
+            "Experiment field 'dataset' must be a non-empty string"
+        )
+
+    if dataset_ref in datasets:
+        dataset = datasets[dataset_ref]
+        if isinstance(dataset, str):
+            dataset_spec = {"path": dataset}
+        else:
+            dataset_spec = _require_mapping(dataset, f"datasets.{dataset_ref}")
+    else:
+        dataset_spec = {"path": dataset_ref}
+
+    resolved = dict(dataset_spec)
+    resolved["path"] = _manifest_path(manifest_dir, resolved["path"], "dataset.path")
+    return resolved
+
+
+def _normalise_exports(value: Any) -> tuple[str, ...]:
+    """Return manifest export formats as a tuple."""
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, list | tuple):
+        if not all(isinstance(item, str) for item in value):
+            raise click.ClickException("Manifest field 'export' must list strings")
+        return tuple(value)
+    raise click.ClickException("Manifest field 'export' must be a string or list")
+
+
+def _resolved_manifest_experiments(
+    manifest: dict[str, Any],
+    manifest_path: Path,
+    output_override: Path | None,
+    resume_override: bool | None,
+) -> tuple[Path, list[dict[str, Any]]]:
+    """Build validated, fully resolved validation jobs from a manifest."""
+    manifest_dir = manifest_path.parent
+    defaults = copy.deepcopy(DEFAULT_CONFIG["defaults"])
+    defaults.update(_require_mapping(manifest.get("defaults", {}), "defaults"))
+
+    configured_output = output_override or manifest.get("output", "oversampleqa_runs")
+    output_root = _manifest_path(manifest_dir, str(configured_output), "output")
+
+    jobs: list[dict[str, Any]] = []
+    for index, raw_experiment in enumerate(manifest["experiments"], start=1):
+        experiment = _require_mapping(raw_experiment, f"experiments[{index}]")
+        dataset = _manifest_dataset_spec(manifest, experiment, manifest_dir)
+
+        params = copy.deepcopy(defaults)
+        params.update({key: value for key, value in dataset.items() if key != "path"})
+        params.update(
+            {
+                key: value
+                for key, value in experiment.items()
+                if key not in {"dataset", "name", "type", "output"}
+            }
+        )
+
+        name = str(experiment.get("name") or f"experiment-{index}")
+        experiment_output = experiment.get("output")
+        if experiment_output is None:
+            output_dir = output_root / _slugify(name)
+        else:
+            output_dir = Path(str(experiment_output)).expanduser()
+            if not output_dir.is_absolute():
+                output_dir = output_root / output_dir
+
+        resume = bool(params.get("resume", True))
+        if resume_override is not None:
+            resume = resume_override
+
+        jobs.append(
+            {
+                "name": name,
+                "dataset_path": dataset["path"],
+                "target": params["target"],
+                "minority_label": int(params["minority_label"]),
+                "oversampler_name": str(params["oversampler"]),
+                "metric": str(params["metric"]),
+                "hidden_ratio": float(params["hidden_ratio"]),
+                "random_state": (
+                    None
+                    if params.get("random_state") is None
+                    else int(params.get("random_state", 42))
+                ),
+                "n_repeats": int(params.get("n_repeats", 1)),
+                "calibrate": bool(params.get("calibrate", False)),
+                "export_formats": _normalise_exports(params.get("export", [])),
+                "resume": resume,
+                "mlflow": bool(params.get("mlflow", False)),
+                "output_dir": output_dir,
+            }
+        )
+    return output_root, jobs
+
+
+def run_experiment_manifest(
+    manifest_path: Path,
+    *,
+    output_override: Path | None = None,
+    resume_override: bool | None = None,
+    mlflow_config: dict[str, Any] | None = None,
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """Run every validation experiment in a checked-in YAML manifest."""
+    manifest = load_experiment_manifest(manifest_path)
+    output_root, jobs = _resolved_manifest_experiments(
+        manifest, manifest_path, output_override, resume_override
+    )
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    resolved_payload = {
+        "version": MANIFEST_VERSION,
+        "experiments": [
+            {
+                key: (
+                    str(value)
+                    if isinstance(value, Path)
+                    else list(value)
+                    if key == "export_formats"
+                    else value
+                )
+                for key, value in job.items()
+            }
+            for job in jobs
+        ],
+    }
+    resolved_path = output_root / "resolved_manifest.yaml"
+    resolved_path.write_text(
+        yaml.safe_dump(resolved_payload, sort_keys=False), encoding="utf-8"
+    )
+
+    summaries: list[dict[str, Any]] = []
+    for job in jobs:
+        console.print(
+            Panel.fit(f"Running manifest experiment: {job['name']}", style="bold blue")
+        )
+        results = run_validation_with_progress(
+            dataset_path=job["dataset_path"],
+            target=job["target"],
+            minority_label=job["minority_label"],
+            oversampler_name=job["oversampler_name"],
+            metric=job["metric"],
+            hidden_ratio=job["hidden_ratio"],
+            random_state=job["random_state"],
+            n_repeats=job["n_repeats"],
+            calibrate=job["calibrate"],
+            export_formats=job["export_formats"],
+            resume=job["resume"],
+            output_dir=job["output_dir"],
+            mlflow_override=job["mlflow"],
+            mlflow_config=mlflow_config or {},
+            verbose=verbose,
+        )
+        summaries.append(
+            {
+                "name": job["name"],
+                "type": "validation",
+                "status": "completed",
+                "dataset": str(job["dataset_path"]),
+                "output": str(job["output_dir"]),
+                "oversampler": job["oversampler_name"],
+                "metric": job["metric"],
+                "hidden_ratio": job["hidden_ratio"],
+                "random_state": job["random_state"],
+                "n_repeats": job["n_repeats"],
+                "error_rate": results.get("error_rate"),
+            }
+        )
+
+    summary = {
+        "manifest": str(manifest_path),
+        "manifest_version": MANIFEST_VERSION,
+        "n_experiments": len(summaries),
+        "experiments": summaries,
+    }
+    summary_path = output_root / "manifest_summary.json"
+    write_json(summary_path, summary)
+    write_export_metadata(
+        summary_path,
+        export_kind="manifest_summary",
+        data=summary,
+        extra={"source": {"manifest": str(manifest_path)}},
+    )
+    console.print(f"[green]Manifest results stored in {output_root}[/green]")
+    return summary
+
+
 def integrate_with_mlflow(results: dict[str, Any], settings: dict[str, Any]) -> None:
     """Log results to MLflow if available.
 
@@ -1054,6 +1357,50 @@ def validate(
     display_results(results)
 
 
+@cli.command(name="run")
+@click.argument("manifest", type=click.Path(path_type=Path, exists=True))
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Override the manifest output directory.",
+)
+@click.option(
+    "--resume/--no-resume",
+    default=None,
+    help="Override per-experiment resume settings.",
+)
+@click.pass_context
+def run_manifest(
+    ctx: click.Context,
+    manifest: Path,
+    output: Path | None,
+    resume: bool | None,
+) -> None:
+    """Run validation experiments from a YAML manifest.
+
+    Args:
+        ctx: Click context.
+        manifest: Manifest path.
+        output: Optional output directory override.
+        resume: Optional resume override.
+    """
+    config: CLIConfig = ctx.obj["config"]
+    summary = run_experiment_manifest(
+        manifest_path=manifest,
+        output_override=output,
+        resume_override=resume,
+        mlflow_config=config.data.get("integrations", {}).get("mlflow", {}),
+        verbose=ctx.obj.get("verbose", False),
+    )
+    console.print(
+        Panel.fit(
+            f"Manifest completed: {summary['n_experiments']} experiment(s)",
+            style="bold green",
+        )
+    )
+
+
 @cli.command()
 @click.argument("dataset", type=click.Path(path_type=Path, exists=True))
 @click.option("--target", required=True, help="Target column name.")
@@ -1170,10 +1517,10 @@ def fidelity(
 
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            strict_json_dumps(report.to_dict()), encoding="utf-8"
+        output.write_text(strict_json_dumps(report.to_dict()), encoding="utf-8")
+        write_export_metadata(
+            output, export_kind="fidelity_report", data=report.to_dict()
         )
-        write_export_metadata(output, export_kind="fidelity_report", data=report.to_dict())
         console.print(f"[green]Report written to {output}[/green]")
 
 

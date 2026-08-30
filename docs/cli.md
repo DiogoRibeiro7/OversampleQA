@@ -53,6 +53,45 @@ oversampleqa profiles
 oversampleqa validate data.csv --profile quick
 ```
 
+### Run a checked-in manifest
+
+Use a manifest when a validation run should be repeatable by another person or
+CI job:
+
+``` yaml
+version: 1
+output: audit
+defaults:
+  target: target
+  minority_label: 1
+  metric: hassanat
+  hidden_ratio: 0.1
+  random_state: 42
+  n_repeats: 10
+  export: [json, markdown]
+  resume: true
+datasets:
+  production_sample:
+    path: data.csv
+experiments:
+  - name: smote-baseline
+    dataset: production_sample
+    oversampler: SMOTE
+    calibrate: true
+  - name: adasyn-check
+    dataset: production_sample
+    oversampler: ADASYN
+```
+
+``` bash
+oversampleqa run oversampleqa-experiment.yaml
+```
+
+Each experiment writes normal validation exports under its own output
+directory. The command also writes `resolved_manifest.yaml`,
+`manifest_summary.json`, and `manifest_summary.json.metadata.json` at the
+manifest output root.
+
 ### Generate a config template
 
 ``` bash
@@ -106,6 +145,11 @@ These apply to any subcommand and come before it:
 - `--profile/-p`: configuration profile to apply.
 - `--verbose/-v`: enable verbose output.
 - `--version`: print the version and exit.
+
+### Common options for `run`
+
+- `--output`: override the manifest output directory.
+- `--resume/--no-resume`: override per-experiment resume settings.
 
 ### Common options for `validate`
 
