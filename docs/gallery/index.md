@@ -1,6 +1,9 @@
 # Examples Gallery
 
 This gallery points to runnable scripts that are shipped with the repository.
+Use them as copyable starting points: validation examples fix seeds and repeat
+hold-out splits, fidelity examples separate realism from memorisation, and
+benchmark examples write report metadata sidecars for later audit.
 
 - [Minimal validation](https://github.com/diogoribeiro7/OversampleQA/blob/main/examples/basic_validation.py)
 - [Benchmarking oversamplers](https://github.com/diogoribeiro7/OversampleQA/blob/main/examples/benchmark_example.py)

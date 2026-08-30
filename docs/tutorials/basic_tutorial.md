@@ -60,26 +60,22 @@ Now let's validate SMOTE oversampling on this dataset.
 <div class="cell code">
 
 ``` python
-# Validate SMOTE oversampling
-error_rate = validate_oversampling(
+# Validate SMOTE oversampling across repeated hold-out splits
+details = validate_oversampling(
     X=X,
     y=y,
     minority_label=1,
     oversampler=SMOTE(random_state=42),
-    hidden_ratio=0.1
+    hidden_ratio=0.1,
+    metric="hassanat",
+    random_state=42,
+    n_repeats=10,
+    return_details=True,
 )
 
-print(f"SMOTE validation error rate: {error_rate:.3f}")
-
-# Interpret the result
-if error_rate < 0.1:
-    interpretation = "🟢 Excellent"
-elif error_rate < 0.3:
-    interpretation = "🟡 Moderate"
-else:
-    interpretation = "🔴 High Risk"
-
-print(f"Interpretation: {interpretation}")
+print(f"SMOTE mean error rate: {details.mean:.3f}")
+print(f"Repeat standard deviation: {details.std:.3f}")
+print(f"Repeat interval: {details.interval}")
 ```
 
 </div>
@@ -104,13 +100,17 @@ methods = {
 results = {}
 
 for name, oversampler in methods.items():
-    error_rate = validate_oversampling(
+    details = validate_oversampling(
         X, y, minority_label=1,
         oversampler=oversampler,
-        hidden_ratio=0.1
+        hidden_ratio=0.1,
+        metric="hassanat",
+        random_state=42,
+        n_repeats=10,
+        return_details=True,
     )
-    results[name] = error_rate
-    print(f"{name}: {error_rate:.3f}")
+    results[name] = details.mean
+    print(f"{name}: mean={details.mean:.3f}, std={details.std:.3f}")
 
 # Find the best method
 best_method = min(results, key=results.get)
@@ -152,7 +152,7 @@ for bar, value in zip(bars, error_rates):
 plt.tight_layout()
 plt.show()
 
-print("Lower error rates indicate more realistic synthetic data generation.")
+print("Lower error rates indicate fewer majority-like synthetic samples within this dataset and protocol.")
 ```
 
 </div>
