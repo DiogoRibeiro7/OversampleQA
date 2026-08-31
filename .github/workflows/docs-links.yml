@@ -11,7 +11,13 @@ name: Documentation links
 # the merge path, where `mkdocs build --strict` fails on them deterministically.
 #
 # So this runs on a schedule, reports what it finds, and never blocks a merge.
-# A failure here means a link rotted -- worth fixing, not worth stopping anyone.
+#
+# The script itself separates a link that is gone (404 or 410, someone must
+# edit a document) from a host that could not answer (5xx, timeouts, a robot
+# refusal). Only the first fails it. Without that split the report cries wolf
+# the same way a red build does, and gets skipped just as readily: on the day
+# this workflow was created, doi.org returned five timeouts and a 502 for six
+# perfectly valid DOIs, and had recovered a couple of hours later.
 on:
   schedule:
     # 05:00 UTC on Mondays, an hour after the performance profile.
