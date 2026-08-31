@@ -10,6 +10,15 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.13 is supported, tested and advertised. `python = ">=3.10"` has no
+  upper bound, so `pip install oversampleqa` already succeeded on 3.13 -- but
+  the classifiers stopped at 3.12 and nothing above 3.12 was ever run, so a
+  3.13 user was told the package did not support them and a 3.13-only break
+  would have reached PyPI unnoticed. The full matrix on `main` now includes it,
+  and a test holds the classifiers equal to the versions CI runs.
+
 ### Fixed
 
 - `oversampleqa doctor` rejects an unsupported Python. Its check read
