@@ -10,32 +10,110 @@ section are maintained manually.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-30
+
+The sklearn-grade foundation milestone: stable public contracts, checks that
+run rather than merely exist, and reproducibility identifiers on every row that
+can leave the process.
+
+Most of this work landed before the changelog recorded it. Twenty-six commits
+reached `main` after 0.6.1 with three of them documented here, so the entries
+below were reconstructed from the pull requests. Nothing enforces changelog
+coverage; the release-metadata tests check that a section exists for the
+version, not that it describes the release.
+
 ### Added
 
-- `.zenodo.json` declares `version`, and a test holds it equal to the version
-  in `pyproject.toml`. It was omitted on the grounds that Zenodo reads the
-  version from the git tag and another copy is another thing to forget — but
-  that is the objection the release-metadata tests already answer for the
-  other five copies, and the omission left the deposit metadata unable to
+- **Experiment manifests.** `oversampleqa run <manifest.yaml>` runs a set of
+  validation experiments from a checked-in YAML file, resolving datasets,
+  defaults and per-experiment overrides, and writing a resolved manifest and a
+  summary beside the results.
+- **Export metadata sidecars.** Every Markdown, HTML, JSON and CSV artifact is
+  written next to an `<artifact>.metadata.json` carrying package and runtime
+  versions, the dependency lock hash where available, row and column shape, and
+  dataset provenance. Artifact shapes are unchanged; the metadata sits beside
+  them.
+- **Result reproducibility identifiers.** Simple benchmark rows carry the split
+  seed, sampler seed, minority label, reference mode and package version;
+  statistical summary and fold rows carry hidden ratio, reference mode,
+  minority label, engine seed, fold and repeat settings and package version;
+  `ValidationReport.to_frame` exposes the same core identifiers as direct
+  columns alongside the existing `meta_*` ones.
+- **Run metadata in reports.** Markdown and HTML benchmark reports open with a
+  rendered metadata block, so a report read on its own says what produced it.
+- **Public API signature snapshot.** `tests/api_signatures.json` pins the call
+  contract of every exported name, so a changed default or a renamed parameter
+  fails in review rather than in a user's code.
+- **Warning contract snapshot.** `tests/warning_contract.json` records the
+  category every `warnings.warn` site raises. Changing `warn_reference_bias`
+  from `FutureWarning` to `UserWarning` moves no signature and removes no
+  export, so nothing else would have caught it.
+- **sklearn and imbalanced-learn integration tests.** `cross_validate` with a
+  scorer, `GridSearchCV` over nested sampler parameters, the validator as a
+  pipeline step, and SMOTE, BorderlineSMOTE and RandomOverSampler.
+- **Installed-wheel smoke test in CI.** The wheel is built, installed into a
+  clean virtualenv, and exercised through the documented public API and both
+  console scripts. Source-tree tests pass happily on a wheel missing package
+  data or a runtime dependency.
+- **Documentation link gate.** `mkdocs build --strict` for internal links and
+  an allowlist of external hosts checked in CI.
+- **Benchmark scaffold and a committed baseline.** `scripts/benchmark_core_paths.py`
+  plus `perf_baseline.json`, measured on a CI runner so the weekly comparison is
+  like for like.
+- **Core trust documentation.** Pages for API stability, choosing metrics,
+  limitations, reproducibility and production audit workflows.
+- **`.zenodo.json` declares `version`**, and a test holds it equal to the
+  version in `pyproject.toml`. The omission left the deposit metadata unable to
   state its own version outside the GitHub-integration path.
-- The Zenodo record links to the documentation site (`isDocumentedBy`) and the
-  PyPI project (`isIdenticalTo`), and carries a `notes` block pointing at the
-  changelog and explaining the concept-versus-version DOI choice. Anyone
-  landing on the record can now reach the installable package and the docs.
+- **Zenodo record links** to the documentation site (`isDocumentedBy`) and the
+  PyPI project (`isIdenticalTo`), with a `notes` block pointing at the changelog
+  and explaining the concept-versus-version DOI choice.
 
 ### Changed
 
-- Author affiliation is recorded as Faculty of Media Arts and Design,
+- **Pull requests run one test job; `main` runs the full matrix.** The four
+  test jobs were the whole cost of CI — the suite takes ~117s on Linux and
+  ~148s on Windows against ~30s to install. A `ci-ok` job aggregates the
+  others and is the single required status check, so branch protection is no
+  longer a hidden copy of the matrix.
+- **CI caches the Poetry environment**, not pip's. Poetry does not read pip's
+  cache directory, so the previous keys did nothing measurable: 29s cached
+  against 30s uncached.
+- **NumPy annotations hardened** to explicit `NDArray[...]` aliases and
+  `np.dtype[Any]`, fixing a latent quality-gate failure that surfaced whenever
+  a lock refresh pulled newer NumPy typing rules.
+- **Author affiliation** is recorded as Faculty of Media Arts and Design,
   Technical University of Porto in `CITATION.cff`, `.zenodo.json` and
   `AUTHORS.md`.
-- `CITATION.cff` carries the full descriptive title. It held the bare name
-  while both BibTeX blocks and the Zenodo record used the long form, so
-  GitHub's *Cite this repository* button produced a different title from the
-  one the README told people to paste.
-- `CITATION.cff` keywords match `.zenodo.json`. The two had drifted: ADASYN,
-  distance metrics and scikit-learn were on the Zenodo record but absent from
-  the metadata GitHub serves. Title and keywords are now compared by test,
-  which `docs/citation.md` had asked for in prose without enforcing.
+- **`CITATION.cff` carries the full descriptive title and matching keywords.**
+  It held the bare name while both BibTeX blocks and the Zenodo record used the
+  long form, so GitHub's *Cite this repository* button produced a different
+  title from the one the README told people to paste. Both are now compared by
+  test.
+
+### Fixed
+
+- **Strict JSON exports.** Validation checkpoints, validation and fidelity JSON,
+  report JSON and benchmark JSON all route through a strict serializer, so bare
+  `NaN` and `Infinity` tokens cannot reach a machine-readable export.
+- **The pairwise statistics columns wrote invalid JSON.**
+  `pairwise_p_values` and `pairwise_effect_sizes` called `json.dumps` directly.
+  Skipped folds are kept as `nan` by design, so one skipped fold made both
+  columns unparseable by a strict reader. A test now fails on any `json.dumps`
+  in the package outside the helper that defines it.
+- **Manifest runs validate before doing any work.** A typo'd dataset name was
+  silently treated as a path; missing dataset files were found only when their
+  experiment was reached, after earlier ones had run; two experiments whose
+  names slugified alike shared an output directory and the second overwrote the
+  first; a bad scalar raised a bare `ValueError` naming neither experiment nor
+  field; and a failure part-way through discarded the summary for everything
+  that had already completed.
+- **The weekly performance workflow never checked for regressions.** Its
+  comparison step was conditional on a baseline file that did not exist, so it
+  was skipped on every run while the workflow reported success.
+- **`test_stacklevel_points_at_the_caller` failed on Windows** over a
+  drive-letter case difference (`c:` against `C:`), which said nothing about
+  the stacklevel it asserts.
 
 ## [0.6.1] - 2026-08-29
 

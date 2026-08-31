@@ -173,7 +173,7 @@ lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button
   author  = {Ribeiro, Diogo},
   title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
              and benchmark oversampling methods}},
-  version = {0.6.1},
+  version = {0.7.0},
   year    = {2026},
   doi     = {10.5281/zenodo.21940361},
   url     = {https://doi.org/10.5281/zenodo.21940361}
