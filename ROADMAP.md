@@ -13,11 +13,12 @@ Last revised August 29, 2026, after v0.6.1.
   numerical behaviour, reproducible examples, clear limits, and boring release
   mechanics.
 
-## Current State (post-v0.6.1)
+## Current State (post-v0.7.0)
 
-- 664 tests in the main suite, plus 13 in the reference plugin. CI runs the main
-  suite on Linux across Python 3.10-3.12 and on Windows for Python 3.12, then
-  installs and tests the reference plugin separately.
+- 805 tests in the main suite, plus the reference plugin's own. CI runs the main
+  suite on Linux across Python 3.10-3.13 and on Windows for Python 3.12, then
+  installs and tests the reference plugin separately. A pull request runs one
+  job; the full matrix runs on `main`.
 - `ruff check src tests` and `mypy src` are enforced by CI, not merely claimed.
   The numerical core is fully strict; the CLI, plotting and benchmark modules
   carry scoped, documented relaxations at their untyped third-party boundaries.
@@ -226,6 +227,16 @@ mean. The measurements below are from the codebase, not estimates.
   binary data.
 - Removed `recommended_samples`, which reported 1 on every row of every run.
 
+### v0.6.1 — MkDocs documentation
+
+- Documentation migrated from Sphinx/RST to MkDocs/Markdown.
+- API reference pages now use mkdocstrings, keeping the docs close to the
+  installed Python package surface.
+- Repository, README and support links point readers at the published GitHub
+  Pages documentation.
+- The release DOI is recorded in `CITATION.cff`, README and
+  `docs/citation.md`.
+
 ### v0.7.0 — sklearn-grade foundation
 
 Released 2026-08-31. Made the stable base stronger before adding large new
@@ -267,15 +278,59 @@ what the project already guarantees.
   `limitations.md`, `reproducibility.md` and `production_audit.md` are written
   and in the site navigation.
 
-### v0.6.1 — MkDocs documentation
+### v0.7.0 — export and reporting trust
 
-- Documentation migrated from Sphinx/RST to MkDocs/Markdown.
-- API reference pages now use mkdocstrings, keeping the docs close to the
-  installed Python package surface.
-- Repository, README and support links point readers at the published GitHub
-  Pages documentation.
-- The release DOI is recorded in `CITATION.cff`, README and
-  `docs/citation.md`.
+Planned as v0.8.0 and delivered in 0.7.0, which is where the work actually
+went out. Left under *Open Work* against a version number that had already
+passed, it described as pending three items that had shipped.
+
+Improved how results leave the package, without changing statistical meaning
+again. Two of the original items shipped earlier still, in 0.6.0: the
+fold-level export (`fold_results()`) and renderer consolidation
+(`oversampleqa._render`, which exists because the `to_csv(sep="|")` bug had
+already been copied into a second export path).
+
+- **Unified result schema.** *Done, additively.* `oversampleqa._schema`
+  declares the identifier columns every result surface carries, and a test
+  holds all four to it: `run_benchmark`, `fold_results`, the statistical
+  summary and `ValidationReport.to_frame`. The disagreement was narrower than
+  it looked -- `dataset` against `dataset_name`, `oversampler` against
+  `oversampler_name` -- but it meant `frame["dataset"]` worked or raised
+  depending on which surface produced the frame, so two of them could not be
+  concatenated without knowing their provenance.
+
+  The canonical names were added; nothing was renamed or reordered, so existing
+  readers are untouched. `ValidationReport.to_frame` gained `dataset` (empty
+  unless a caller names one, since that surface validates arrays rather than a
+  file) and promoted `dataset_hash` out of the `meta_` block, a row being of
+  little use if nobody can trace it back to its data.
+
+  Seed and repeat/fold index were already explicit wherever they apply: `run`
+  and `split_seed` on the simple benchmark, `repeat`/`fold`/`split_seed` on the
+  fold frame. The statistical summary is an aggregate, so a fold index would be
+  meaningless there -- `fold_results` is the surface that carries one.
+- **Strict JSON outputs.** *Done.* Every JSON-producing path goes through
+  `strict_json_dumps`. The two exceptions were the `pairwise_p_values` and
+  `pairwise_effect_sizes` columns, which called `json.dumps` directly and
+  emitted a bare `NaN` token whenever a fold was skipped -- reachable in normal
+  use, since skipped folds are kept as `nan` by design. Fixing two call sites
+  would not have stopped a third appearing, so a test now fails on any
+  `json.dumps` in the package outside the helper that defines it. The failure
+  is otherwise invisible: the package's own `json.loads` accepts the bare token
+  quite happily, and only a stricter consumer downstream would notice.
+- **Report metadata block.** *Done.* `write_export_metadata` writes a sidecar
+  beside every Markdown, HTML, JSON and CSV artifact the package produces --
+  audited call site by call site, including that `export_benchmark_results`
+  writes one after the format branch rather than inside it, so all four formats
+  are covered rather than whichever branch was remembered.
+
+### v0.7.0 — documentation debt
+
+A catch-up bucket, now closed. The benchmarking-docs correction, the
+concepts-page calibration claim, the examples refresh and the decision guide
+all shipped by 0.7.0 -- the last two in that release. It stayed under *Open
+Work* labelled v0.8.0 with nothing left in it. Future documentation work
+tracks specific user-facing features instead.
 
 ## Open Work
 
@@ -321,54 +376,6 @@ can install and cite without ceremony.
   comparing SMOTE variants, checking a production dataset before oversampling,
   generating an audit bundle, and interpreting when a sampler should not be
   used.
-
-### v0.8.0 — export and reporting trust
-
-Improve how results leave the package, without changing statistical meaning
-again. Two of the original items shipped in 0.6.0: the fold-level export
-(`fold_results()`) and renderer consolidation (`oversampleqa._render`, which
-exists because the `to_csv(sep="|")` bug had already been copied into a second
-export path).
-
-- **Unified result schema.** *Done, additively.* `oversampleqa._schema`
-  declares the identifier columns every result surface carries, and a test
-  holds all four to it: `run_benchmark`, `fold_results`, the statistical
-  summary and `ValidationReport.to_frame`. The disagreement was narrower than
-  it looked -- `dataset` against `dataset_name`, `oversampler` against
-  `oversampler_name` -- but it meant `frame["dataset"]` worked or raised
-  depending on which surface produced the frame, so two of them could not be
-  concatenated without knowing their provenance.
-
-  The canonical names were added; nothing was renamed or reordered, so existing
-  readers are untouched. `ValidationReport.to_frame` gained `dataset` (empty
-  unless a caller names one, since that surface validates arrays rather than a
-  file) and promoted `dataset_hash` out of the `meta_` block, a row being of
-  little use if nobody can trace it back to its data.
-
-  Seed and repeat/fold index were already explicit wherever they apply: `run`
-  and `split_seed` on the simple benchmark, `repeat`/`fold`/`split_seed` on the
-  fold frame. The statistical summary is an aggregate, so a fold index would be
-  meaningless there -- `fold_results` is the surface that carries one.
-- **Strict JSON outputs.** *Done.* Every JSON-producing path goes through
-  `strict_json_dumps`. The two exceptions were the `pairwise_p_values` and
-  `pairwise_effect_sizes` columns, which called `json.dumps` directly and
-  emitted a bare `NaN` token whenever a fold was skipped -- reachable in normal
-  use, since skipped folds are kept as `nan` by design. Fixing two call sites
-  would not have stopped a third appearing, so a test now fails on any
-  `json.dumps` in the package outside the helper that defines it. The failure
-  is otherwise invisible: the package's own `json.loads` accepts the bare token
-  quite happily, and only a stricter consumer downstream would notice.
-- **Report metadata block.** *Done.* `write_export_metadata` writes a sidecar
-  beside every Markdown, HTML, JSON and CSV artifact the package produces --
-  audited call site by call site, including that `export_benchmark_results`
-  writes one after the format branch rather than inside it, so all four formats
-  are covered rather than whichever branch was remembered.
-
-### v0.8.0 — documentation debt
-
-The benchmarking-docs correction, the concepts-page calibration claim, the
-examples refresh and the decision guide are done. Future documentation work
-should now track specific user-facing features rather than this catch-up bucket.
 
 ### v0.9.0 — user-facing features
 

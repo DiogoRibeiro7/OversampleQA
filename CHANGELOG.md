@@ -10,6 +10,27 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Behaviour changes
+
+Four distance metrics now refuse input they used to accept. In every case the
+number they returned was wrong, but code that ran will now raise, so this is
+worth reading before upgrading.
+
+| call | before | now |
+|---|---|---|
+| `braycurtis` on negative input | a number | `ValueError` |
+| `jaccard` on non-binary input | a number | `ValueError` |
+| `mahalanobis` with a non-PSD `cov_inv` | `nan` | `ValueError` |
+| `minkowski(p=inf)` | `1.0`, whatever the data | the Chebyshev distance |
+
+The first is the one most likely to reach you: **standardised features are
+negative**, so `braycurtis` after a `StandardScaler` was silently returning
+distances of zero between distinct points. The fix is to use a metric defined
+on real-valued input, or to scale into a non-negative range instead.
+
+`jaccard` is the same shape: it cast to `bool`, so every non-zero counted as
+identical. Binarise the features first, choosing the threshold deliberately.
+
 ### Added
 
 - Plugin metrics can declare a `domain` attribute, and entry-point discovery
@@ -20,6 +41,22 @@ section are maintained manually.
   plugin version of either could not be discovered at all -- and entry points
   are the documented way for a third party to ship one. A misspelled domain is
   refused rather than silently treated as `real`.
+
+- Python 3.13 is supported, tested and advertised. `python = ">=3.10"` has no
+  upper bound, so `pip install oversampleqa` already succeeded on 3.13 -- but
+  the classifiers stopped at 3.12 and nothing above 3.12 was ever run, so a
+  3.13 user was told the package did not support them and a 3.13-only break
+  would have reached PyPI unnoticed. The full matrix on `main` now includes it,
+  and a test holds the classifiers equal to the versions CI runs.
+
+### Changed
+
+- `oversampleqa doctor` reports versions rather than only pass/fail, covering
+  OversampleQA, Python, the platform, numpy, pandas, scikit-learn,
+  imbalanced-learn, scipy and matplotlib. `pandas [OK]` reproduces nothing,
+  and a version difference in numpy or scikit-learn changes results rather
+  than merely whether the code runs. The facts are also available
+  programmatically from `oversampleqa.cli_enhanced.diagnostics()`.
 
 ### Fixed
 
@@ -75,30 +112,10 @@ section are maintained manually.
   2800 comparisons across random vectors and `p` in [1, 50] agree with both the
   previous implementation and scipy to 5.3e-16.
 
-### Added
-
-- Python 3.13 is supported, tested and advertised. `python = ">=3.10"` has no
-  upper bound, so `pip install oversampleqa` already succeeded on 3.13 -- but
-  the classifiers stopped at 3.12 and nothing above 3.12 was ever run, so a
-  3.13 user was told the package did not support them and a 3.13-only break
-  would have reached PyPI unnoticed. The full matrix on `main` now includes it,
-  and a test holds the classifiers equal to the versions CI runs.
-
-### Fixed
-
 - `oversampleqa doctor` rejects an unsupported Python. Its check read
   `sys.version.split()[0] >= "3.10"`, a string comparison in which `"3.9"`
   sorts after `"3.10"` -- so 3.7, 3.8 and 3.9 all passed a check that exists
   to reject them, and it could not fail for any Python 3.
-
-### Changed
-
-- `oversampleqa doctor` reports versions rather than only pass/fail, covering
-  OversampleQA, Python, the platform, numpy, pandas, scikit-learn,
-  imbalanced-learn, scipy and matplotlib. `pandas [OK]` reproduces nothing,
-  and a version difference in numpy or scikit-learn changes results rather
-  than merely whether the code runs. The facts are also available
-  programmatically from `oversampleqa.cli_enhanced.diagnostics()`.
 
 ## [0.7.0] - 2026-08-31
 
