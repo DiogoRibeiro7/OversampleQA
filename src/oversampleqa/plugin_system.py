@@ -16,6 +16,9 @@ from .plugin_contract import MetricDomain
 from .types import DistanceMetricProtocol, FloatArray, ValidatorProtocol
 
 #: Entry-point group a third-party package advertises custom metrics under.
+#: Domains a plugin may declare; mirrors MetricDomain.
+VALID_METRIC_DOMAINS = frozenset({"real", "non_negative", "boolean", "sample"})
+
 METRIC_ENTRY_POINT_GROUP = "oversampleqa.metrics"
 
 #: Entry-point group a third-party package advertises custom validators under.
@@ -253,7 +256,18 @@ class PluginManager:
         ):
             for entry_point in metadata.entry_points(group=group):
                 try:
-                    register(entry_point.name, entry_point.load())
+                    loaded = entry_point.load()
+                    kwargs: dict[str, Any] = {}
+                    if group == metric_group:
+                        # Without this every plugin metric was axiom-checked on
+                        # real-valued input, so a correct metric defined only on
+                        # non-negative or binary input -- hellinger and jaccard
+                        # are two the package itself ships -- failed
+                        # registration with "does not satisfy the distance
+                        # axioms". It satisfies them; it was being checked
+                        # somewhere it is not defined.
+                        kwargs["domain"] = _declared_domain(loaded, entry_point.name)
+                    register(entry_point.name, loaded, **kwargs)
                 except Exception as exc:
                     detail = (
                         f"plugin {entry_point.name!r} from group {group!r} "
@@ -324,6 +338,36 @@ class PluginManager:
 
 
 plugin_manager = PluginManager()
+
+
+def _declared_domain(metric: Any, name: str) -> MetricDomain:
+    """The domain a plugin metric declares, defaulting to ``real``.
+
+    A plugin says so by setting a ``domain`` attribute on the object it
+    exports, which is the only channel an entry point offers -- it carries a
+    callable and nothing else.
+
+    Args:
+        metric: The loaded plugin object.
+        name: Entry-point name, for the error message.
+
+    Returns:
+        The declared domain, or ``"real"`` when none is given.
+
+    Raises:
+        PluginError: If the declared domain is not a recognised one.
+    """
+    from .exceptions import PluginError
+
+    declared = getattr(metric, "domain", "real")
+    if declared not in VALID_METRIC_DOMAINS:
+        raise PluginError(
+            f"metric {name!r} declares domain {declared!r}, which is not one "
+            f"of {', '.join(sorted(VALID_METRIC_DOMAINS))}. The domain decides "
+            "what input the axiom check uses, so a wrong one checks the metric "
+            "somewhere it is not defined."
+        )
+    return cast("MetricDomain", declared)
 
 
 def register_metric(name: str) -> Callable[[Any], Any]:

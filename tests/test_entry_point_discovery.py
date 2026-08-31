@@ -170,3 +170,69 @@ def test_unregister_validator_round_trip():
     manager.unregister_validator("tmp")
     with pytest.raises(PluginError, match="no validator plugin"):
         manager.unregister_validator("tmp")
+
+
+# --- a plugin whose metric is not defined on all of R^n ---
+
+
+class NonNegativeMetric:
+    """Correct, but only on non-negative input -- like the built-in hellinger.
+
+    Declares its domain the only way an entry point allows: an attribute on the
+    object it exports. The entry point carries a callable and nothing else.
+    """
+
+    domain = "non_negative"
+
+    def __call__(self, x1, x2, **kwargs):
+        a, b = np.asarray(x1, dtype=float), np.asarray(x2, dtype=float)
+        if np.any(a < 0) or np.any(b < 0):
+            raise ValueError("requires non-negative inputs")
+        return float(np.abs(np.sqrt(a) - np.sqrt(b)).sum())
+
+
+class WrongDomainMetric(NonNegativeMetric):
+    domain = "non-negative"  # hyphen: a plausible typo
+
+
+def test_a_restricted_domain_metric_can_be_discovered(patch_entry_points):
+    """It used to be rejected as violating the axioms it satisfies.
+
+    Discovery registered every metric without a domain, so the axiom check ran
+    on real-valued input. A metric defined only on non-negative input raised
+    there, and the failure was reported as "does not satisfy the distance
+    axioms" -- which was true of the check, not of the metric.
+    """
+    patch_entry_points(metrics=[_FakeEntryPoint("nonneg", NonNegativeMetric)])
+    manager = PluginManager()
+
+    registered = manager.discover_entry_points(strict=True)
+
+    assert "nonneg" in registered
+
+
+def test_an_undeclared_domain_still_defaults_to_real(patch_entry_points):
+    """The common case must not need an attribute nobody knew to set."""
+    patch_entry_points(metrics=[_FakeEntryPoint("good", GoodMetric)])
+    manager = PluginManager()
+
+    assert "good" in manager.discover_entry_points(strict=True)
+
+
+def test_a_misspelled_domain_is_refused(patch_entry_points):
+    """Silently treating it as `real` would check the metric where it is not
+    defined, which is the failure this whole mechanism exists to avoid."""
+    patch_entry_points(metrics=[_FakeEntryPoint("typo", WrongDomainMetric)])
+    manager = PluginManager()
+
+    with pytest.raises(PluginError, match="declares domain"):
+        manager.discover_entry_points(strict=True)
+
+
+def test_a_genuinely_broken_metric_is_still_refused(patch_entry_points):
+    """Declaring a domain must not become a way to skip the axiom check."""
+    patch_entry_points(metrics=[_FakeEntryPoint("bad", BadMetric)])
+    manager = PluginManager()
+
+    with pytest.raises(PluginError, match="axioms"):
+        manager.discover_entry_points(strict=True)
