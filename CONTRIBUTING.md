@@ -69,6 +69,17 @@ The script warns when the recorded environment differs from the current one, so
 an incomparable comparison is visible rather than silently misleading. Expect
 that warning to appear as GitHub updates its runner images.
 
+## Coverage
+
+Codecov reports coverage on pull requests but never fails them. `ci-ok` is the
+only required status check.
+
+That is deliberate. Coverage is measured over `src/` only, so a pull request
+touching just tests, CI configuration or packaging metadata has no measurable
+patch coverage and used to fail by default -- a red build its author could do
+nothing about. Whether new source lines are adequately tested is a judgement
+for review, which is where the number is useful.
+
 ## Changelog
 
 A pull request that changes anything under `src/` must also add an entry under

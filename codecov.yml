@@ -1,0 +1,28 @@
+# Codecov reports rather than blocks.
+#
+# `ci-ok` is the required status check; this is not, and should not become one
+# by accident. Two of four recent pull requests failed `codecov/patch` for
+# reasons their authors could not act on: coverage is measured over `src/`
+# only, so a change touching just tests, CI configuration or packaging
+# metadata has no measurable patch coverage and defaults to a failure.
+#
+# A check that goes red for reasons unrelated to the change teaches people
+# that red means nothing, which costs more than the signal is worth. The same
+# reasoning the performance and documentation-link workflows already state.
+coverage:
+  status:
+    project:
+      default:
+        # Report the number; do not fail a build over drift in it.
+        informational: true
+    patch:
+      default:
+        # New source lines should be tested, and the review is where that is
+        # judged. Informational here means the number is reported on the pull
+        # request without turning it red.
+        informational: true
+
+comment:
+  # One comment, updated in place, rather than a new one per push.
+  behavior: default
+  require_changes: true
