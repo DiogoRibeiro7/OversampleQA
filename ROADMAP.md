@@ -225,6 +225,44 @@ mean. The measurements below are from the codebase, not estimates.
   binary data.
 - Removed `recommended_samples`, which reported 1 on every row of every run.
 
+### v0.7.0 — sklearn-grade foundation
+
+Released 2026-08-31. Made the stable base stronger before adding large new
+workflows.
+
+The section had drifted badly out of date while the work was in progress,
+listing as outstanding several things that had shipped some time ago -- its own
+small failure of trust, since the roadmap is what a reader consults to find out
+what the project already guarantees.
+
+- **Compatibility tests for public imports and signatures.** *Done.*
+  `tests/test_api_surface.py` snapshots every exported name and its kind, and
+  `tests/api_signatures.json` pins 76 public call signatures including default
+  values. Warning categories were the missing third of this item and are now
+  snapshotted separately in `tests/test_warning_contract.py`: a public function
+  changing from `FutureWarning` to `UserWarning` moves no signature and removes
+  no export, so nothing else would have caught it.
+- **Wheel and installed-package smoke tests.** *Done.* The `package-smoke` CI
+  job builds the wheel, and `scripts/smoke_installed_package.py` installs it
+  into a fresh virtualenv, imports the documented public API, runs a small
+  validation and invokes both console scripts.
+- **Sklearn/imbalanced-learn integration tests.** *Done.*
+  `tests/test_sklearn_integration.py` covers `cross_validate` with a scorer,
+  `GridSearchCV` over nested sampler parameters, the validator as a pipeline
+  step, and SMOTE, BorderlineSMOTE and RandomOverSampler.
+- **Docs link checking.** *Done.* `mkdocs build --strict` validates internal
+  links and `scripts/check_docs_links.py` checks an allowlist of external hosts;
+  both run in the `docs` job.
+- **Benchmark scaffold.** *Done.* `scripts/benchmark_core_paths.py` and
+  `scripts/profile_performance.py` run weekly, and `perf_baseline.json` is
+  committed so the regression check actually compares. Until it was, that check
+  was skipped on every run while the workflow reported success, so the baseline
+  is measured on an `ubuntu-latest` runner rather than a developer machine --
+  see `CONTRIBUTING.md` for why the distinction matters when refreshing it.
+- **Core trust docs.** *Done.* `api_stability.md`, `decision_guide.md`,
+  `limitations.md`, `reproducibility.md` and `production_audit.md` are written
+  and in the site navigation.
+
 ### v0.6.1 — MkDocs documentation
 
 - Documentation migrated from Sphinx/RST to MkDocs/Markdown.
@@ -279,44 +317,6 @@ can install and cite without ceremony.
   comparing SMOTE variants, checking a production dataset before oversampling,
   generating an audit bundle, and interpreting when a sampler should not be
   used.
-
-### v0.7.0 — sklearn-grade foundation
-
-Make the stable base stronger before adding large new workflows.
-
-Every item below has landed on `main`; the section stays here rather than
-moving to *Delivered* because 0.7.0 has not been released. It had drifted badly out of
-date, listing as outstanding several things that shipped some time ago -- which
-is its own small failure of trust, since the roadmap is what a reader consults
-to find out what the project already guarantees.
-
-- **Compatibility tests for public imports and signatures.** *Done.*
-  `tests/test_api_surface.py` snapshots every exported name and its kind, and
-  `tests/api_signatures.json` pins 76 public call signatures including default
-  values. Warning categories were the missing third of this item and are now
-  snapshotted separately in `tests/test_warning_contract.py`: a public function
-  changing from `FutureWarning` to `UserWarning` moves no signature and removes
-  no export, so nothing else would have caught it.
-- **Wheel and installed-package smoke tests.** *Done.* The `package-smoke` CI
-  job builds the wheel, and `scripts/smoke_installed_package.py` installs it
-  into a fresh virtualenv, imports the documented public API, runs a small
-  validation and invokes both console scripts.
-- **Sklearn/imbalanced-learn integration tests.** *Done.*
-  `tests/test_sklearn_integration.py` covers `cross_validate` with a scorer,
-  `GridSearchCV` over nested sampler parameters, the validator as a pipeline
-  step, and SMOTE, BorderlineSMOTE and RandomOverSampler.
-- **Docs link checking.** *Done.* `mkdocs build --strict` validates internal
-  links and `scripts/check_docs_links.py` checks an allowlist of external hosts;
-  both run in the `docs` job.
-- **Benchmark scaffold.** *Done.* `scripts/benchmark_core_paths.py` and
-  `scripts/profile_performance.py` run weekly, and `perf_baseline.json` is
-  committed so the regression check actually compares. Until it was, that check
-  was skipped on every run while the workflow reported success, so the baseline
-  is measured on an `ubuntu-latest` runner rather than a developer machine --
-  see `CONTRIBUTING.md` for why the distinction matters when refreshing it.
-- **Core trust docs.** *Done.* `api_stability.md`, `decision_guide.md`,
-  `limitations.md`, `reproducibility.md` and `production_audit.md` are written
-  and in the site navigation.
 
 ### v0.8.0 — export and reporting trust
 

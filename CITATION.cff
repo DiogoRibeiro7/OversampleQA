@@ -39,6 +39,9 @@ identifiers:
     value: 10.5281/zenodo.21940361
     description: Concept DOI for all versions of OversampleQA.
   - type: doi
+    value: 10.5281/zenodo.22197058
+    description: DOI for version 0.7.0.
+  - type: doi
     value: 10.5281/zenodo.22159067
     description: DOI for version 0.6.1.
   - type: doi
