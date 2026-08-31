@@ -10,7 +10,7 @@
   "NullCalibration": "(observed, null_rates, ceiling_rates, z_score, percentile, scaled, metric, n_draws)",
   "OptimizedDistanceMatrix": "(cache_size=128, memory_limit_gb=4.0, metric_registry=None, show_progress=False, progress_threshold=10000, cache=None, safety_factor=0.8)",
   "OversamplingValidator": "(oversampler, *, minority_label=None, hidden_ratio=0.1, reference='hidden_minority', metric='hassanat', metric_params=None, n_repeats=1, random_state=42)",
-  "RunMetadata": "(oversampler='', oversampler_params=<factory>, metric='hassanat', hidden_ratio=0.1, reference='hidden_minority', random_state=None, n_repeats=1, dataset_hash='', n_samples=0, n_features=0, minority_label=None, oversampleqa_version='', numpy_version='', sklearn_version='', imblearn_version='', timestamp='')",
+  "RunMetadata": "(oversampler='', oversampler_params=<factory>, metric='hassanat', hidden_ratio=0.1, reference='hidden_minority', random_state=None, n_repeats=1, dataset='', dataset_hash='', n_samples=0, n_features=0, minority_label=None, oversampleqa_version='', numpy_version='', sklearn_version='', imblearn_version='', timestamp='')",
   "StatisticalBenchmark": "(n_folds=5, n_repeats=5, confidence_level=0.95, correction_method='holm', random_state=42)",
   "TwoSampleTestResult": "(name, statistic, p_value, n_synthetic, n_real, n_permutations, asymptotic_p_value=None, null_statistics=())",
   "TypedValidator": "(mode=<ValidationMode.STANDARD: 'standard'>)",

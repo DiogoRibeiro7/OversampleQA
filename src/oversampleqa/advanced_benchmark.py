@@ -79,6 +79,11 @@ _FOLD_HIDDEN_RATIO = 0.1
 
 #: Column order of the fold-level frame from :meth:`StatisticalBenchmark.fold_results`.
 _FOLD_COLUMNS = (
+    # `dataset` and `oversampler` are the names shared with every other result
+    # surface; `dataset_name` and `oversampler_name` are this frame's originals
+    # and are kept so existing readers keep working. Same values, two spellings.
+    "dataset",
+    "oversampler",
     "dataset_name",
     "oversampler_name",
     "metric",
@@ -309,10 +314,16 @@ class StatisticalBenchmark:
             not of columns when no run has happened yet, so column access works
             either way.
         """
-        return pd.DataFrame(
-            [asdict(record) for record in self._fold_records_all],
-            columns=list(_FOLD_COLUMNS),
-        )
+        frame = pd.DataFrame([asdict(record) for record in self._fold_records_all])
+        # Built from the records first, then aliased: FoldRecord stays the one
+        # place a fold's identity is defined, rather than carrying each name
+        # twice and letting the two drift.
+        if frame.empty:
+            frame = pd.DataFrame(columns=list(_FOLD_COLUMNS))
+        else:
+            frame["dataset"] = frame["dataset_name"]
+            frame["oversampler"] = frame["oversampler_name"]
+        return frame.reindex(columns=list(_FOLD_COLUMNS))
 
     def _fold_records(
         self,
@@ -709,6 +720,10 @@ class StatisticalBenchmark:
             Dict suitable for DataFrame construction or serialization.
         """
         return {
+            # Canonical names first; the `_name` spellings below are this
+            # frame's originals and are kept for existing readers.
+            "dataset": result.dataset_name,
+            "oversampler": result.oversampler_name,
             "dataset_name": result.dataset_name,
             "oversampler_name": result.oversampler_name,
             "metric": result.metric,
