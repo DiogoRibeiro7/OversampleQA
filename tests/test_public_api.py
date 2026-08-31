@@ -85,7 +85,15 @@ def test_builtin_registry_satisfies_the_axioms(name):
     A check that only applies to third-party plugins would not have caught the
     defect it was written for.
     """
-    kwargs = {"cov_inv": np.eye(4)} if name == "mahalanobis" else {}
+    # A genuine covariance, not np.eye(4). Mahalanobis with an identity
+    # inverse *is* Euclidean -- the implementation refuses to default to it for
+    # exactly that reason -- so checking it that way verified Euclidean twice
+    # and never exercised the one metric that takes a parameter.
+    if name == "mahalanobis":
+        sample = np.random.default_rng(0).normal(size=(200, 4))
+        kwargs = {"cov_inv": np.linalg.pinv(np.cov(sample, rowvar=False))}
+    else:
+        kwargs = {}
     report = check_metric_axioms(
         _METRICS[name], name, domain=METRIC_DOMAINS[name], **kwargs
     )

@@ -10,6 +10,22 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- `mahalanobis_distance` raises instead of returning `nan` when `cov_inv` is
+  not positive semi-definite. The squared distance then comes out negative and
+  `np.sqrt` reported it as `nan`, accompanied only by a bare "invalid value
+  encountered in sqrt" naming a line inside this package rather than the matrix
+  the caller passed. Tiny negatives from a near-singular inverse are rounding
+  noise and are still clamped to zero, so ill-conditioned covariances from real
+  correlated data keep working.
+
+  The axiom check for `mahalanobis` also used `np.eye(4)`. Mahalanobis with an
+  identity inverse *is* Euclidean -- the implementation refuses to default to
+  it for exactly that reason -- so the one metric taking a parameter was only
+  ever verified in the configuration where it degenerates into another metric.
+  It now uses a covariance estimated from data.
+
 ### Added
 
 - Python 3.13 is supported, tested and advertised. `python = ">=3.10"` has no
