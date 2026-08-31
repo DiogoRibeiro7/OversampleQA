@@ -69,6 +69,24 @@ The script warns when the recorded environment differs from the current one, so
 an incomparable comparison is visible rather than silently misleading. Expect
 that warning to appear as GitHub updates its runner images.
 
+## Changelog
+
+A pull request that changes anything under `src/` must also add an entry under
+`## [Unreleased]` in `CHANGELOG.md`. CI enforces this.
+
+Documentation, CI and test-only pull requests are exempt automatically, because
+the rule keys on `src/` rather than on judgement. If a source change genuinely
+has no user-visible effect -- a pure refactor, say -- apply the `no-changelog`
+label, which records the decision on the pull request instead of leaving it
+implicit.
+
+The rule exists because nine of the ten commits touching `src/` between 0.6.1
+and 0.7.0 shipped without an entry, every feature in that milestone among them.
+The release notes had to be reconstructed from pull request descriptions before
+0.7.0 could be cut honestly. The release-metadata tests did not catch it: they
+assert a changelog section *exists* for the version, not that it describes the
+release.
+
 ## Questions?
 
 Open an issue or start a discussion on GitHub.
