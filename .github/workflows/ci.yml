@@ -198,6 +198,64 @@ jobs:
       with:
         path: site
 
+  changelog:
+    # A pull request that changes `src/` must also change CHANGELOG.md.
+    #
+    # Between 0.6.1 and 0.7.0, nine of the ten commits touching `src/` shipped
+    # without a changelog entry -- every feature in the milestone among them.
+    # The release notes had to be reconstructed from pull request descriptions
+    # before 0.7.0 could be cut honestly; cutting it without noticing would
+    # have shipped notes describing three commits out of twenty-six.
+    #
+    # `test_changelog_has_a_section_for_the_current_version` did not catch it:
+    # it asserts a section *exists* for the version, not that the section
+    # describes the release. Nothing else looked.
+    #
+    # Only `src/` changes need an entry. Documentation, CI and test-only pull
+    # requests are exempt by construction rather than by judgement, which also
+    # exempts Dependabot without a special case. When a source change genuinely
+    # does not warrant an entry -- a pure refactor with no user-visible effect
+    # -- add the `no-changelog` label, so the decision is recorded on the pull
+    # request rather than made silently.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        # Both endpoints of the comparison must be present; the default
+        # shallow clone has neither.
+        fetch-depth: 0
+    - name: Require a changelog entry for source changes
+      # Skipped rather than absent on push, so `ci-ok` sees this job succeed
+      # instead of seeing it skipped and treating that as a failure.
+      if: github.event_name == 'pull_request'
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+      run: |
+        if echo "$LABELS" | grep -q '"no-changelog"'; then
+          echo "The no-changelog label is set; skipping."
+          exit 0
+        fi
+
+        changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+        echo "Changed files:"
+        echo "$changed" | sed 's/^/  /'
+
+        if ! echo "$changed" | grep -q '^src/'; then
+          echo "No src/ changes; a changelog entry is not required."
+          exit 0
+        fi
+        if echo "$changed" | grep -qx 'CHANGELOG.md'; then
+          echo "src/ changed and CHANGELOG.md was updated."
+          exit 0
+        fi
+
+        echo "::error::This pull request changes src/ but not CHANGELOG.md."
+        echo "Add an entry under '## [Unreleased]', or apply the no-changelog"
+        echo "label if the change has no user-visible effect."
+        exit 1
+
   ci-ok:
     # The single required status check for main.
     #
@@ -213,7 +271,7 @@ jobs:
     # required check before, so a lint or type error could be merged while
     # README.md and ROADMAP.md both claimed ruff and mypy pass clean.
     if: always()
-    needs: [quality, test, package-smoke, docs]
+    needs: [quality, test, package-smoke, docs, changelog]
     runs-on: ubuntu-latest
     steps:
       - name: Verify every upstream job succeeded
