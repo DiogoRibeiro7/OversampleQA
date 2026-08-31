@@ -10,6 +10,22 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Fixed
+
+- `oversampleqa doctor` rejects an unsupported Python. Its check read
+  `sys.version.split()[0] >= "3.10"`, a string comparison in which `"3.9"`
+  sorts after `"3.10"` -- so 3.7, 3.8 and 3.9 all passed a check that exists
+  to reject them, and it could not fail for any Python 3.
+
+### Changed
+
+- `oversampleqa doctor` reports versions rather than only pass/fail, covering
+  OversampleQA, Python, the platform, numpy, pandas, scikit-learn,
+  imbalanced-learn, scipy and matplotlib. `pandas [OK]` reproduces nothing,
+  and a version difference in numpy or scikit-learn changes results rather
+  than merely whether the code runs. The facts are also available
+  programmatically from `oversampleqa.cli_enhanced.diagnostics()`.
+
 ## [0.7.0] - 2026-08-31
 
 The sklearn-grade foundation milestone: stable public contracts, checks that

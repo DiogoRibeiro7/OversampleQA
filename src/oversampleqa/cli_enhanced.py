@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import platform
 import re
 import sys
 import textwrap
@@ -12,6 +13,7 @@ import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from difflib import get_close_matches
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +35,7 @@ from rich.progress import (
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from . import __version__ as _PACKAGE_VERSION
 from ._export_metadata import write_export_metadata
 from ._json import strict_json_dumps, write_json
 from .advanced_benchmark import (
@@ -1922,36 +1925,104 @@ def setup(ctx: click.Context) -> None:
     )
 
 
+#: Distributions worth naming in a bug report, as (import name, PyPI name).
+#: Version differences in these change results, not just whether code runs.
+DIAGNOSTIC_PACKAGES: tuple[tuple[str, str], ...] = (
+    ("numpy", "numpy"),
+    ("pandas", "pandas"),
+    ("sklearn", "scikit-learn"),
+    ("imblearn", "imbalanced-learn"),
+    ("scipy", "scipy"),
+    ("matplotlib", "matplotlib"),
+)
+
+
+def _dependency_version(module: str, distribution: str) -> str | None:
+    """Return an installed distribution's version, or None if absent."""
+    try:
+        __import__(module)
+    except Exception:
+        return None
+    try:
+        return metadata.version(distribution)
+    except metadata.PackageNotFoundError:
+        # Importable but not installed as a distribution -- vendored, or on
+        # PYTHONPATH from a source tree. Present, version unknown.
+        return "unknown"
+
+
+def diagnostics() -> dict[str, Any]:
+    """Collect the environment facts a bug report needs.
+
+    Separated from the rendering so it can be tested without parsing a table,
+    and so anything else that needs the same facts does not reimplement them.
+    """
+    return {
+        "oversampleqa": _PACKAGE_VERSION,
+        "python": platform.python_version(),
+        "python_supported": sys.version_info >= (3, 10),
+        "platform": platform.platform(),
+        "packages": {
+            distribution: _dependency_version(module, distribution)
+            for module, distribution in DIAGNOSTIC_PACKAGES
+        },
+    }
+
+
 @cli.command()
 def doctor() -> None:
-    """Diagnose installation and configuration issues.
+    """Report the environment, for diagnosis and for bug reports.
 
-    Runs a minimal dependency check and reports status to the console.
+    Prints versions rather than only pass/fail, because "pandas [OK]" does not
+    reproduce anything -- and a version difference in numpy or scikit-learn
+    changes results rather than merely whether the code runs.
     """
 
     console.print(Panel.fit("System diagnostics", style="bold yellow"))
 
-    checks = [
-        ("Python Version", sys.version.split()[0] >= "3.10"),
-        ("pandas", _optional_import("pandas")),
-        ("imbalanced-learn", _optional_import("imblearn")),
-        ("rich", _optional_import("rich")),
-    ]
-
+    facts = diagnostics()
     table = Table(title="Diagnostic Summary")
-    table.add_column("Check", style="cyan")
+    table.add_column("Component", style="cyan")
+    table.add_column("Version", style="white")
     table.add_column("Status", style="green")
 
-    for name, success in checks:
-        table.add_row(name, "[OK]" if success else "[X]")
+    table.add_row("OversampleQA", facts["oversampleqa"], "[OK]")
+    # `sys.version_info >= (3, 10)`, not a string comparison: the previous
+    # check read `sys.version.split()[0] >= "3.10"`, and "3.9" sorts after
+    # "3.10", so every unsupported Python -- 3.7, 3.8, 3.9 -- passed it. The
+    # check could not fail for any Python 3.
+    table.add_row(
+        "Python",
+        facts["python"],
+        "[OK]" if facts["python_supported"] else "[X] needs 3.10+",
+    )
+    table.add_row("Platform", facts["platform"], "[OK]")
+    for distribution, version in facts["packages"].items():
+        table.add_row(
+            distribution,
+            version or "-",
+            "[OK]" if version else "[X] not installed",
+        )
 
     console.print(table)
-    if not all(success for _, success in checks):
-        console.print(
-            "[red]Some checks failed. Please reinstall missing dependencies.[/red]"
-        )
+
+    missing = [name for name, version in facts["packages"].items() if version is None]
+    if missing or not facts["python_supported"]:
+        if not facts["python_supported"]:
+            console.print(
+                f"[red]Python {facts['python']} is not supported; 3.10+ is "
+                "required.[/red]"
+            )
+        if missing:
+            console.print(
+                "[red]Missing: " + ", ".join(missing) + ". Reinstall to fix.[/red]"
+            )
     else:
         console.print("[green]All required components are present![/green]")
+    console.print(
+        "[dim]Paste this table into a bug report; it is what makes a result "
+        "reproducible.[/dim]"
+    )
 
 
 def _optional_import(module: str) -> bool:
