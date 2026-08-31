@@ -14,7 +14,7 @@ separates them.
 
 import matplotlib.pyplot as plt
 import numpy as np
-from imblearn.over_sampling import RandomOverSampler, SMOTE
+from imblearn.over_sampling import SMOTE, RandomOverSampler
 from sklearn.datasets import make_classification
 
 from oversampleqa.fidelity import fidelity_report
@@ -71,7 +71,9 @@ values = {
 fig, ax = plt.subplots(figsize=(8, 4.5))
 positions = np.arange(len(metrics))
 width = 0.36
-for offset, (name, series) in zip((-width / 2, width / 2), values.items()):
+for offset, (name, series) in zip(
+        (-width / 2, width / 2), values.items(), strict=True
+    ):
     bars = ax.bar(positions + offset, series, width, label=name)
     ax.bar_label(bars, fmt="%.3f", fontsize=8, padding=2)
 

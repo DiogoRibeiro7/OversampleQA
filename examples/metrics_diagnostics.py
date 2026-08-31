@@ -6,8 +6,8 @@ Go beyond the error rate: local density divergence and noise sensitivity
 diagnostics for synthetic samples.
 """
 
-from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE
+from sklearn.datasets import make_classification
 
 from oversampleqa.metrics import (
     local_density_divergence,

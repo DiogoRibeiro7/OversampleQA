@@ -6,12 +6,12 @@ This example demonstrates the basic usage of OversampleQA
 to validate SMOTE oversampling on a synthetic dataset.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.datasets import make_classification
+import numpy as np
 from imblearn.over_sampling import SMOTE
+from sklearn.datasets import make_classification
 
-from oversampleqa import validate_oversampling, plot_sample_distribution
+from oversampleqa import validate_oversampling
 
 print(__doc__)
 

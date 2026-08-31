@@ -57,7 +57,13 @@ with a message saying what to do:
 - **Signatures.** A metric must accept two positional arguments; a validator
   must have a callable `validate`.
 - **Metric axioms.** `d(x, x) == 0`, `d(x, y) > 0` for distinct points,
-  symmetry, non-negativity and finiteness, on random input.
+  symmetry, non-negativity and finiteness, on random input in the metric's
+  declared domain.
+- **Domain.** A `domain` attribute on the exported object says what input the
+  metric is defined on: `real` (the default), `non_negative`, `boolean` or
+  `sample`. An entry point carries a callable and nothing else, so an attribute
+  is the only channel. It decides what input the axiom check uses, and a wrong
+  one gets a correct metric rejected for violating axioms it satisfies.
 
 The axiom check is worth dwelling on, because it is not hypothetical. The
 project's own built-in Hassanat metric shipped for its entire history scoring

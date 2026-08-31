@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from oversampleqa_example_plugin.metric import LorentzianDistance
 from oversampleqa_example_plugin.validator import MedianRatioValidator
 
@@ -130,3 +129,19 @@ def test_validator_registers_through_the_host():
     manager = PluginManager()
     manager.register_validator("median_ratio", MedianRatioValidator)
     assert manager.get_validator("median_ratio") is MedianRatioValidator
+
+
+def test_the_metric_declares_the_domain_discovery_reads():
+    """The attribute is the only channel an entry point offers.
+
+    It carries a callable and nothing else, so a metric not defined on all of
+    R^n has no other way to say so -- and would be axiom-checked on input it
+    raises for, then reported as violating axioms it satisfies.
+
+    `test_passes_the_host_axiom_check` above already proves the declaration is
+    true for this metric; this proves the host reads it.
+    """
+    from oversampleqa.plugin_system import _declared_domain
+
+    assert LorentzianDistance.domain == "real"
+    assert _declared_domain(LorentzianDistance(), "lorentzian") == "real"
