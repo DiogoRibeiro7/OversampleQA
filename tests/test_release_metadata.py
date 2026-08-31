@@ -357,3 +357,49 @@ def test_unarchived_releases_are_genuinely_absent(citation):
 def test_every_unarchived_release_states_a_reason():
     for version, reason in UNARCHIVED_RELEASES.items():
         assert reason.strip(), f"{version} is exempted without a reason"
+
+
+# --- supported Python versions ---
+
+
+def _classifier_pythons(pyproject: str) -> set[str]:
+    """Python versions advertised on PyPI."""
+    return set(re.findall(r'"Programming Language :: Python :: (\d+\.\d+)"', pyproject))
+
+
+def _matrix_pythons() -> set[str]:
+    """Python versions the full CI matrix actually runs.
+
+    Read from the push branch of the conditional matrix -- the pull-request
+    branch deliberately runs one job, so it is not the claim being checked.
+    """
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    arrays = re.findall(r"'(\[\{.*?\}\])'", workflow)
+    assert arrays, "no matrix arrays found in ci.yml"
+    full = json.loads(max(arrays, key=len))
+    return {str(entry["python-version"]) for entry in full}
+
+
+def test_classifiers_match_the_versions_ci_runs(pyproject):
+    """The claim on PyPI and the versions actually tested must agree.
+
+    `python = ">=3.10"` has no upper bound, so pip installs on anything newer.
+    The classifiers stopped at 3.12 while 3.13 was already installable and
+    working, which tells a 3.13 user the package does not support them and
+    lets a 3.13-only break reach PyPI untested.
+    """
+    assert _classifier_pythons(pyproject) == _matrix_pythons()
+
+
+def test_the_declared_floor_is_the_lowest_version_tested(pyproject):
+    """`requires-python` must not promise a version nothing runs."""
+    found = re.search(r'^python = ">=(\d+\.\d+)"', pyproject, re.M)
+    assert found, "no python constraint in pyproject"
+    floor = tuple(int(part) for part in found.group(1).split("."))
+    lowest = min(
+        tuple(int(part) for part in version.split(".")) for version in _matrix_pythons()
+    )
+    assert floor == lowest, (
+        f"pyproject requires >={found.group(1)} but the lowest tested is "
+        f"{'.'.join(str(p) for p in lowest)}"
+    )
