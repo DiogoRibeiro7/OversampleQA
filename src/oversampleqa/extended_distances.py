@@ -192,16 +192,41 @@ def hamming_distance(x1: NDArray[np.generic], x2: NDArray[np.generic]) -> float:
     return float(np.sum(x1 != x2))
 
 
+def _is_binary(values: NDArray[np.generic]) -> bool:
+    """Whether an array holds only booleans or 0/1.
+
+    Jaccard is defined on sets, and the implementations reach that by casting
+    to bool. Any non-zero becomes True, so two vectors sharing a zero pattern
+    compare as identical however different their values are.
+    """
+    if values.dtype == bool:
+        return True
+    return bool(np.all((values == 0) | (values == 1)))
+
+
 def jaccard_distance(x1: NDArray[np.generic], x2: NDArray[np.generic]) -> float:
     """Compute Jaccard distance between two binary vectors.
 
     Jaccard distance = 1 - Jaccard similarity
     where Jaccard similarity = :math:`|intersection| / |union|`
     """
-    x1_bool = np.asarray(x1, dtype=bool)
-    x2_bool = np.asarray(x2, dtype=bool)
+    x1_raw = np.asarray(x1)
+    x2_raw = np.asarray(x2)
+    x1_bool = x1_raw.astype(bool)
+    x2_bool = x2_raw.astype(bool)
     if x1_bool.shape != x2_bool.shape:
         raise ValueError("Input vectors must have the same shape")
+    if not _is_binary(x1_raw) or not _is_binary(x2_raw):
+        # Without this, casting to bool made every non-zero identical:
+        # d([1.0, 3.0], [7.0, 0.2]) was 0.0, two distinct points at distance
+        # zero. `boolean` is the domain this metric declares in METRIC_DOMAINS.
+        raise ValueError(
+            "Jaccard distance requires binary inputs: values must be 0 or 1, "
+            "or a boolean array. Casting other values to bool treats every "
+            "non-zero as identical, so distinct points come out at distance "
+            "zero. Binarise the features first, choosing the threshold "
+            "deliberately."
+        )
 
     intersection = np.sum(x1_bool & x2_bool)
     union = np.sum(x1_bool | x2_bool)
@@ -225,10 +250,19 @@ def braycurtis_distance(
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
 
+    if np.any(x1 < 0) or np.any(x2 < 0):
+        raise ValueError("Bray-Curtis distance requires non-negative inputs")
+
     numerator = np.sum(np.abs(x1 - x2))
     denominator = np.sum(np.abs(x1 + x2))
 
     if denominator == 0:
+        # Sound only because the inputs are non-negative: the sum of absolute
+        # values is then zero exactly when both vectors are all-zero, and the
+        # distance between them really is zero. Allow a negative through and
+        # the terms cancel instead -- d([-1, 0], [1, 0]) came out as 0.0, two
+        # distinct points at distance zero, which is the identity-of-
+        # indiscernibles violation check_metric_axioms exists to catch.
         return 0.0
 
     ratio: float = numerator / denominator

@@ -60,9 +60,15 @@ def test_distance_formula_consistency():
     assert np.isclose(minkowski_distance(x, y, p=3), mink_exp)
     can_exp = np.sum(np.abs(x - y) / (np.abs(x) + np.abs(y)))
     assert np.isclose(canberra_distance(x, y), can_exp)
-    bc_num = np.sum(np.abs(x - y))
-    bc_den = np.sum(np.abs(x + y))
-    assert np.isclose(braycurtis_distance(x, y), bc_num / bc_den)
+    # Bray-Curtis is declared `non_negative` and now enforces it, so it gets
+    # input from its own domain rather than the shared vector, whose -1.0 is
+    # outside it. Checking a metric on input it is not defined for is how the
+    # identity violation it used to return went unnoticed.
+    x_nn = np.array([1.0, 2.0, 3.0])
+    y_nn = np.array([4.0, 0.5, 1.0])
+    bc_num = np.sum(np.abs(x_nn - y_nn))
+    bc_den = np.sum(np.abs(x_nn + y_nn))
+    assert np.isclose(braycurtis_distance(x_nn, y_nn), bc_num / bc_den)
     corr_exp = 1.0 - np.corrcoef(x, y)[0, 1]
     assert np.isclose(correlation_distance(x, y), corr_exp)
     wass_exp = np.mean(np.abs(np.sort(x) - np.sort(y)))
@@ -131,7 +137,14 @@ def test_metrics_agree_with_scipy():
     )
 
     # Bray-Curtis: SciPy divides by sum|x_i + y_i|, matching this package.
-    assert np.isclose(braycurtis_distance(x, y), scipy_distance.braycurtis(x, y))
+    # Non-negative input, which is the domain this metric declares; SciPy does
+    # not enforce it, but the agreement being checked only means anything where
+    # the metric is defined.
+    bc_x = np.array([1.0, 2.0, 3.0])
+    bc_y = np.array([4.0, 0.5, 1.0])
+    assert np.isclose(
+        braycurtis_distance(bc_x, bc_y), scipy_distance.braycurtis(bc_x, bc_y)
+    )
 
     # Hamming: SciPy returns the *fraction* of differing components; this
     # package returns the raw count. Scale to compare.

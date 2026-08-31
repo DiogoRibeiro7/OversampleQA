@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy.typing import NDArray
 
+from .extended_distances import _is_binary
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -460,6 +462,16 @@ class OptimizedDistanceMatrix:
         Returns:
             Distance matrix.
         """
+        # Guarded here as well as in the scalar function: separate code paths.
+        if not _is_binary(X1) or not _is_binary(X2):
+            raise ValueError(
+                "Jaccard distance requires binary inputs: values must be 0 or "
+                "1, or a boolean array. Casting other values to bool treats "
+                "every non-zero as identical, so distinct points come out at "
+                "distance zero. Binarise the features first, choosing the "
+                "threshold deliberately."
+            )
+
         b1 = X1.astype(bool)[:, None, :]
         b2 = X2.astype(bool)[None, :, :]
         intersection = np.logical_and(b1, b2).sum(axis=-1)
@@ -625,9 +637,15 @@ class OptimizedDistanceMatrix:
         Returns:
             Distance matrix.
         """
+        # Checked here as well as in the scalar implementation: these are two
+        # separate code paths, and a guard in one is not a guard in the other.
+        if np.any(X1 < 0) or np.any(X2 < 0):
+            raise ValueError("Bray-Curtis distance requires non-negative inputs")
+
         num = np.abs(X1[:, None, :] - X2[None, :, :]).sum(axis=2)
         denom = np.abs(X1[:, None, :] + X2[None, :, :]).sum(axis=2)
         with np.errstate(divide="ignore", invalid="ignore"):
+            # denom == 0 means both rows are all-zero, given non-negativity.
             res = np.where(denom == 0, 0.0, num / denom)
         return res
 
