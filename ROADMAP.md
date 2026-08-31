@@ -486,9 +486,13 @@ should now track specific user-facing features rather than this catch-up bucket.
   Any dependency used at import time belongs in the runtime group; docs-only and
   benchmark-only tools should stay out of the core install unless the import
   path requires them.
-- **Issue templates and contribution notes.** Add prompts for benchmark
-  reproducibility: seeds, dataset provenance, OversampleQA version, metric,
-  hidden ratio, sampler configuration and whether calibration/fidelity was run.
+- **Issue templates and contribution notes.** *Done.* The bug and question
+  templates ask for the run parameters an error rate cannot be reproduced
+  without -- sampler settings, metric, hidden ratio, seeds, repeats, reference
+  mode, calibration and fidelity -- plus dataset shape and provenance. They
+  point at `oversampleqa doctor` and the `<artifact>.metadata.json` sidecar
+  first, since both already carry all of it and pasting beats filling in a
+  list.
 
 ### v1.0.0
 

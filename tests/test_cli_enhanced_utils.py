@@ -1,4 +1,5 @@
 import json
+import platform
 from pathlib import Path
 
 import pandas as pd
@@ -614,3 +615,83 @@ experiments:
     assert statuses == [("one", "completed"), ("two", "failed")]
     assert "oversampler blew up" in payload["experiments"][1]["reason"]
     assert seen["n"] == 2, "the run stops at the failure rather than continuing"
+
+
+# --- doctor ---
+
+
+def test_doctor_reports_versions_not_just_presence():
+    """"pandas [OK]" reproduces nothing.
+
+    A version difference in numpy or scikit-learn changes results, not merely
+    whether the code runs, so a bug report needs the numbers.
+    """
+    facts = cli_enhanced.diagnostics()
+
+    assert facts["oversampleqa"] and facts["oversampleqa"][0].isdigit()
+    assert facts["python"] == platform.python_version()
+    assert facts["platform"]
+    assert set(facts["packages"]) == {
+        distribution for _, distribution in cli_enhanced.DIAGNOSTIC_PACKAGES
+    }
+    for distribution, version in facts["packages"].items():
+        assert version, f"{distribution} is a runtime dependency and must resolve"
+
+
+def test_python_support_check_compares_numbers_not_strings(monkeypatch):
+    """The old check read `sys.version.split()[0] >= "3.10"`.
+
+    That is a string comparison, and "3.9" sorts after "3.10", so 3.7, 3.8 and
+    3.9 all passed a check that exists to reject them -- it could not fail for
+    any Python 3.
+    """
+    for version, supported in (
+        ((3, 9, 18), False),
+        ((3, 8, 10), False),
+        ((3, 10, 0), True),
+        ((3, 13, 5), True),
+    ):
+        monkeypatch.setattr(cli_enhanced.sys, "version_info", version)
+        assert cli_enhanced.diagnostics()["python_supported"] is supported, version
+
+
+def test_doctor_names_a_missing_dependency(monkeypatch):
+    def fake(module, distribution):
+        return None if distribution == "scipy" else "1.2.3"
+
+    monkeypatch.setattr(cli_enhanced, "_dependency_version", fake)
+    result = CliRunner().invoke(cli, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "scipy" in result.output
+    assert "not installed" in result.output
+
+
+def test_doctor_flags_an_unsupported_python(monkeypatch):
+    monkeypatch.setattr(cli_enhanced.sys, "version_info", (3, 9, 18))
+    result = CliRunner().invoke(cli, ["doctor"])
+
+    assert "needs 3.10+" in result.output or "not supported" in result.output
+
+
+def test_dependency_version_reports_a_missing_module_as_absent():
+    """The real function, not a stand-in: its error paths are the point."""
+    assert cli_enhanced._dependency_version("no_such_module_xyz", "no-such-dist") is None
+
+
+def test_dependency_version_handles_an_importable_module_with_no_distribution():
+    """Importable but not installed as a distribution.
+
+    A vendored module, or one on PYTHONPATH from a source tree. It is present,
+    so reporting it missing would be wrong, but there is no version to give.
+    """
+    assert cli_enhanced._dependency_version("json", "not-a-real-distribution") == "unknown"
+
+
+def test_doctor_reports_a_healthy_environment():
+    """The happy path, which the failure-path tests did not reach."""
+    result = CliRunner().invoke(cli, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "All required components are present" in result.output
+    assert "OversampleQA" in result.output

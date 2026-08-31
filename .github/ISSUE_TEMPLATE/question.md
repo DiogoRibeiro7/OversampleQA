@@ -9,6 +9,14 @@ assignees: ''
 **Your Question**
 What would you like to know about OversampleQA?
 
+**If your question is about a result you got**
+
+Paste `oversampleqa doctor` output and the run parameters -- oversampler,
+metric, `hidden_ratio`, seeds, repeats, reference mode -- or the
+`<artifact>.metadata.json` sidecar, which holds all of them. An error rate
+means different things under different settings, so without them the honest
+answer is usually "it depends".
+
 **Context**
 Please provide context about what you're trying to achieve:
 - What type of dataset are you working with?
