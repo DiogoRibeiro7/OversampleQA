@@ -38,6 +38,11 @@ DOC_ROOTS = (
     Path("docs"),
 )
 HTTP_OK = range(200, 400)
+#: Statuses that mean the target is genuinely gone and somebody must edit a
+#: document. Everything else that is not OK -- 5xx, 429, connection failures,
+#: timeouts, and the 401/403 a host returns when it dislikes a robot -- says
+#: the host could not answer, which is not evidence the link is wrong.
+HTTP_GONE = frozenset({404, 410})
 MARKDOWN_URL = re.compile(r"(?<!git\+)https?://[^\s<>)\"']+")
 
 
@@ -82,21 +87,41 @@ def request_url(url: str, timeout: float) -> int:
         return response.status
 
 
-def check_url(url: str, retries: int, timeout: float) -> str | None:
-    """Return an error string when a URL cannot be reached successfully."""
-    last_error = ""
+def check_url(url: str, retries: int, timeout: float) -> tuple[str, str] | None:
+    """Check one URL.
+
+    Returns ``None`` when the URL is fine, otherwise ``(kind, detail)`` where
+    kind is ``"gone"`` or ``"unavailable"``.
+
+    The distinction is the point. A 404 means a document points somewhere that
+    no longer exists and someone has to fix it. A timeout or a 502 means the
+    host was having a bad day, which nobody here can act on -- and reporting
+    the two identically is how a report earns its way into being ignored. On
+    2026-08-31 doi.org returned five timeouts and a 502 for six perfectly valid
+    DOIs; under the old behaviour that read exactly like six dead links.
+    """
+    last: tuple[str, str] = ("unavailable", "no attempt made")
     for attempt in range(retries + 1):
         try:
             status = request_url(url, timeout)
-        except (HTTPError, URLError, TimeoutError) as exc:
-            last_error = str(exc)
+        except HTTPError as exc:
+            kind = "gone" if exc.code in HTTP_GONE else "unavailable"
+            last = (kind, str(exc))
+            if kind == "gone":
+                # A 404 will not become a 200 on retry.
+                return last
+        except (URLError, TimeoutError) as exc:
+            last = ("unavailable", str(exc))
         else:
             if status in HTTP_OK:
                 return None
-            last_error = f"HTTP {status}"
+            kind = "gone" if status in HTTP_GONE else "unavailable"
+            last = (kind, f"HTTP {status}")
+            if kind == "gone":
+                return last
         if attempt < retries:
             time.sleep(0.5 * (attempt + 1))
-    return last_error
+    return last
 
 
 def main() -> int:
@@ -107,25 +132,41 @@ def main() -> int:
     parser.add_argument("--retries", type=int, default=1)
     args = parser.parse_args()
 
-    failures: list[str] = []
+    gone: list[str] = []
+    unavailable: list[str] = []
     checked: dict[str, set[Path]] = {}
     for path in documentation_files():
         for url in iter_checked_urls(path):
             checked.setdefault(url, set()).add(path)
 
     for url in sorted(checked):
-        error = check_url(url, retries=args.retries, timeout=args.timeout)
-        if error:
-            locations = ", ".join(str(path) for path in sorted(checked[url]))
-            failures.append(f"{url} ({locations}): {error}")
+        result = check_url(url, retries=args.retries, timeout=args.timeout)
+        if result is None:
+            continue
+        kind, detail = result
+        locations = ", ".join(str(path) for path in sorted(checked[url]))
+        (gone if kind == "gone" else unavailable).append(
+            f"{url} ({locations}): {detail}"
+        )
 
-    if failures:
-        print("External documentation link check failed:", file=sys.stderr)
-        for failure in failures:
-            print(f"- {failure}", file=sys.stderr)
+    if unavailable:
+        # Reported, not fatal. Nothing in this repository can fix someone
+        # else's outage, and failing on it trains readers to skip the output.
+        print("Hosts that could not be reached (not treated as failures):")
+        for entry in unavailable:
+            print(f"- {entry}")
+
+    if gone:
+        print("Documentation links that are gone:", file=sys.stderr)
+        for entry in gone:
+            print(f"- {entry}", file=sys.stderr)
         return 1
 
-    print(f"Checked {len(checked)} stable external documentation links.")
+    print(
+        f"Checked {len(checked)} stable external documentation links; "
+        f"{len(checked) - len(unavailable)} reachable, {len(unavailable)} "
+        "unreachable."
+    )
     return 0
 
 
