@@ -40,7 +40,7 @@ Always resolves to the newest archived version. Zenodo labels it *Cite
 all versions* on the record page. This is what the README badge and
 `CITATION.cff` point at, because it never goes stale.
 
-Version DOI — `10.5281/zenodo.22197058` for 0.7.0  
+Version DOI — `10.5281/zenodo.22215998` for 0.8.0  
 Points at one specific release. Use it in a paper, where the reader
 needs the exact code that produced the results. The version DOI is
 minted by Zenodo after the GitHub release is published, then copied into

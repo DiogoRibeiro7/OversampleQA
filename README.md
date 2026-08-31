@@ -181,7 +181,7 @@ lives in `CITATION.cff`, which GitHub renders as a "Cite this repository" button
 ```
 
 The DOI above is the concept DOI: it always resolves to the newest archived
-version. To cite this exact release instead, use `10.5281/zenodo.22197058`.
+version. To cite this exact release instead, use `10.5281/zenodo.22215998`.
 Every archived version's DOI is listed in `CITATION.cff`; see
 [Citing OversampleQA](docs/citation.md) for the release and DOI sequence, and
 for why 0.5.1 has no record of its own.
