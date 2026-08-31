@@ -19,12 +19,18 @@ def minkowski_distance(
     x1, x2 : np.ndarray
         Input vectors of same shape
     p : float, default=3.0
-        Order of the norm (p >= 1)
+        Order of the norm (``p >= 1``). ``np.inf`` is accepted and gives the
+        Chebyshev distance, which is the limit as p grows.
 
     Returns
     -------
     float
         Minkowski distance
+
+    Raises
+    ------
+    ValueError
+        If the shapes differ, or ``p < 1``.
     """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
@@ -34,7 +40,24 @@ def minkowski_distance(
         raise ValueError("p must be >= 1")
 
     diff = np.abs(x1 - x2)
-    return float(np.sum(diff**p) ** (1 / p))
+    largest = float(diff.max()) if diff.size else 0.0
+    if largest == 0.0:
+        return 0.0
+
+    if np.isinf(p):
+        # The p -> infinity limit is the Chebyshev distance. The general
+        # formula cannot produce it: every |d| > 1 raised to inf is inf, the
+        # sum is inf, and inf ** (1 / inf) is inf ** 0, which is 1.0. So
+        # `p=inf` returned 1.0 for any input at all, regardless of the data.
+        return largest
+
+    # The largest term is factored out before exponentiating. Computed
+    # directly, `diff ** p` overflows at moderate p -- p=1000 gives inf, as it
+    # does in scipy -- when the answer is simply the largest term. Scaling
+    # every term into [0, 1] first makes the sum well behaved, and the result
+    # is identical for the p values that never overflowed.
+    scaled = diff / largest
+    return float(largest * np.sum(scaled**p) ** (1 / p))
 
 
 def chebyshev_distance(

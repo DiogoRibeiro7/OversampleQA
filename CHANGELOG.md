@@ -25,6 +25,17 @@ section are maintained manually.
   it for exactly that reason -- so the one metric taking a parameter was only
   ever verified in the configuration where it degenerates into another metric.
   It now uses a covariance estimated from data.
+- `minkowski_distance` returns the Chebyshev distance at `p=inf` instead of
+  `1.0`. `p=inf` passes the `p >= 1` check, so it was accepted and then
+  silently wrong for every input: each `|d| > 1` raised to `inf` is `inf`, the
+  sum is `inf`, and `inf ** (1 / inf)` is `inf ** 0`, which is `1.0`. The
+  answer did not depend on the data at all.
+- `minkowski_distance` no longer overflows at large `p`. Exponentiating
+  directly gave `inf` from about `p=1000` -- as scipy still does -- when the
+  answer is simply the largest term. The largest term is now factored out
+  first. Results are unchanged wherever the direct formula did not overflow:
+  2800 comparisons across random vectors and `p` in [1, 50] agree with both the
+  previous implementation and scipy to 5.3e-16.
 
 ### Added
 
