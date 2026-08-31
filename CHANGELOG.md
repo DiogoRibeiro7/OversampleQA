@@ -10,6 +10,8 @@ section are maintained manually.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-31
+
 ### Behaviour changes
 
 Four distance metrics now refuse input they used to accept. In every case the
