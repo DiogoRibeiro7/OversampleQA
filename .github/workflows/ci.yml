@@ -188,9 +188,17 @@ jobs:
         poetry check --lock
         poetry install --with dev,docs
     - name: Build docs
+      # `--strict` fails on a broken *internal* link, which is deterministic
+      # and entirely within the repository's control, so it belongs on the
+      # merge path.
+      #
+      # The external link check does not, and used to run here. It fetches
+      # third-party URLs, so a doi.org timeout turned this job red on a pull
+      # request that had not touched a link -- a failure no contributor could
+      # act on, and the surest way to teach everyone that a red build means
+      # nothing. It now runs on a schedule in docs-links.yml, on the same
+      # reasoning performance.yml already states for itself.
       run: poetry run mkdocs build --strict
-    - name: Check documentation links
-      run: poetry run python scripts/check_docs_links.py
 
     # Uploaded from every run, so a pull request proves the artifact is
     # publishable, not merely that the build exits zero. Only the deploy job

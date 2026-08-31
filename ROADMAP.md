@@ -23,9 +23,10 @@ Last revised August 29, 2026, after v0.6.1.
   carry scoped, documented relaxations at their untyped third-party boundaries.
 - Docs build with MkDocs in strict mode and deploy to GitHub Pages from the
   artifact that build produced, so what is published is what passed the gate.
-- Documentation links are gated: MkDocs validates internal pages and anchors,
-  and CI checks stable external targets such as the project docs, GitHub, PyPI
-  and DOI links.
+- Documentation links are gated: MkDocs validates internal pages and anchors on
+  every pull request. Stable external targets -- the project docs, GitHub, PyPI
+  and DOI links -- are checked weekly rather than on the merge path, because
+  their availability is not this repository's to guarantee.
 - `poetry.lock` is tracked, poetry is pinned, `poetry check --lock` gates
   installs, and the docs toolchain lives in the locked `docs` group, so tests
   and docs run against one governed dependency set.
@@ -251,8 +252,11 @@ what the project already guarantees.
   `GridSearchCV` over nested sampler parameters, the validator as a pipeline
   step, and SMOTE, BorderlineSMOTE and RandomOverSampler.
 - **Docs link checking.** *Done.* `mkdocs build --strict` validates internal
-  links and `scripts/check_docs_links.py` checks an allowlist of external hosts;
-  both run in the `docs` job.
+  links in the `docs` job, on the merge path where it belongs: a broken
+  internal link is deterministic and within the repository's control.
+  `scripts/check_docs_links.py` checks an allowlist of external hosts weekly in
+  `docs-links.yml`. It ran on pull requests until a doi.org timeout failed a
+  branch that had not touched a link.
 - **Benchmark scaffold.** *Done.* `scripts/benchmark_core_paths.py` and
   `scripts/profile_performance.py` run weekly, and `perf_baseline.json` is
   committed so the regression check actually compares. Until it was, that check

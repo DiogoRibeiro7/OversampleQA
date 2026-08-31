@@ -1,0 +1,46 @@
+name: Documentation links
+
+# Deliberately NOT a required pull-request check.
+#
+# This fetches third-party URLs, so its result depends on someone else's
+# uptime. It ran on every pull request until a doi.org timeout failed a branch
+# that had not touched a link, and a check that goes red for reasons the author
+# cannot act on is worse than no check: it teaches people to merge through red.
+#
+# The same reasoning performance.yml states for itself. Internal links stay on
+# the merge path, where `mkdocs build --strict` fails on them deterministically.
+#
+# So this runs on a schedule, reports what it finds, and never blocks a merge.
+# A failure here means a link rotted -- worth fixing, not worth stopping anyone.
+on:
+  schedule:
+    # 05:00 UTC on Mondays, an hour after the performance profile.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    name: Check external documentation links
+    runs-on: ubuntu-latest
+    # Never fail the workflow run; the report is the deliverable.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "poetry==2.4.1"
+          poetry check --lock
+          poetry install --with dev,docs
+
+      - name: Check external documentation links
+        run: poetry run python scripts/check_docs_links.py
