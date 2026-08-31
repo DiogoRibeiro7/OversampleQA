@@ -10,7 +10,7 @@ section are maintained manually.
 
 ## [Unreleased]
 
-## [0.7.0] - 2026-08-30
+## [0.7.0] - 2026-08-31
 
 The sklearn-grade foundation milestone: stable public contracts, checks that
 run rather than merely exist, and reproducibility identifiers on every row that
@@ -41,6 +41,15 @@ version, not that it describes the release.
   columns alongside the existing `meta_*` ones.
 - **Run metadata in reports.** Markdown and HTML benchmark reports open with a
   rendered metadata block, so a report read on its own says what produced it.
+- **A shared result schema.** `oversampleqa._schema.IDENTIFIER_COLUMNS` names
+  the identifier columns every result surface carries, and a test holds all
+  four to it: `run_benchmark`, `fold_results`, the statistical summary and
+  `ValidationReport.to_frame`. The surfaces had disagreed on two names --
+  `dataset` against `dataset_name`, `oversampler` against `oversampler_name` --
+  so `frame["dataset"]` worked or raised depending on which produced the frame.
+  The canonical names were added alongside the originals; nothing was renamed
+  or reordered. `RunMetadata` gains a `dataset` field, and
+  `ValidationReport.to_frame` promotes `dataset_hash` out of the `meta_` block.
 - **Public API signature snapshot.** `tests/api_signatures.json` pins the call
   contract of every exported name, so a changed default or a renamed parameter
   fails in review rather than in a user's code.
