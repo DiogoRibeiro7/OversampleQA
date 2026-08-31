@@ -2,7 +2,7 @@
 
 The axiom smoke check draws random vectors, so it will essentially never draw
 an exact zero vector or an exact constant vector -- which is precisely where
-these metrics break. Four defects survived that way, all of the same shape as
+these metrics break. Five defects survived that way, all of the same shape as
 the original hassanat bug: a distance of zero between points that are not
 identical.
 
@@ -10,9 +10,13 @@ identical.
     cosine(const, const)     = -2.22e-16  a negative distance
     correlation(const, x)    = 0.0        constant vector "perfectly correlated"
     braycurtis([-1,0],[1,0]) = 0.0        negatives cancel the denominator
+    jaccard([1,3], [7,0.2])  = 0.0        every non-zero casts to the same bool
 
 `METRIC_DOMAINS` had documented the correlation case as undefined all along.
-The code disagreed with the comment.
+The code disagreed with the comment. Three of the five were a declared domain
+the code did not enforce, which is why `test_no_metric_calls_distinct_points_identical`
+now asserts the property across the whole registry instead of waiting for a
+sixth to be found by hand.
 """
 
 from __future__ import annotations
