@@ -18,6 +18,7 @@ import pytest
 from oversampleqa.caching import ValidationCache, default_cache_dir
 from oversampleqa.distance import _METRICS, distance_matrix
 from oversampleqa.optimized_distance import OptimizedDistanceMatrix
+from oversampleqa.plugin_contract import METRIC_DOMAINS
 
 REPO_SRC = str(Path(__file__).resolve().parents[1] / "src")
 
@@ -127,6 +128,10 @@ def test_batched_and_unbatched_agree(metric):
     rng = np.random.default_rng(5)
     X1 = np.abs(rng.random((24, 4))) + 0.1
     X2 = np.abs(rng.random((17, 4))) + 0.1
+    if METRIC_DOMAINS.get(metric) == "boolean":
+        # jaccard refuses non-binary input: casting it to bool made every
+        # non-zero identical.
+        X1, X2 = (X1 > 0.5).astype(float), (X2 > 0.5).astype(float)
 
     kwargs = {}
     if metric == "mahalanobis":

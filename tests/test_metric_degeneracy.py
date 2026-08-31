@@ -21,7 +21,11 @@ import numpy as np
 import pytest
 
 from oversampleqa.distance import _METRICS, cosine_distance, distance_matrix
-from oversampleqa.extended_distances import braycurtis_distance, correlation_distance
+from oversampleqa.extended_distances import (
+    braycurtis_distance,
+    correlation_distance,
+    jaccard_distance,
+)
 from oversampleqa.plugin_contract import METRIC_DOMAINS
 
 ZERO = np.zeros(3)
@@ -109,6 +113,18 @@ def _in_domain(name: str) -> np.ndarray | None:
     return np.array([1.0, -2.0, 3.0])
 
 
+def _other_in_domain(name: str) -> np.ndarray:
+    """A second, distinct vector inside the same domain.
+
+    These tests used to derive it as ``x + 1.0``, which leaves the boolean
+    domain: ``[1, 0, 1] + 1`` is ``[2, 1, 2]``, not binary. The tests are named
+    "on their domain", so the partner has to stay in it too.
+    """
+    if METRIC_DOMAINS.get(name, "real") == "boolean":
+        return np.array([0.0, 1.0, 1.0])
+    return _in_domain(name) + 1.0
+
+
 @pytest.mark.parametrize("name", sorted(n for n in _METRICS if n != "mahalanobis"))
 def test_identical_points_are_at_distance_zero(name):
     """d(x, x) == 0 exactly, with no floating-point residue."""
@@ -136,7 +152,7 @@ def test_no_metric_returns_a_negative_distance_on_its_domain(name):
     if METRIC_DOMAINS.get(name) == "sample":
         pytest.skip("sample metrics are rejected for pointwise use")
     x = _in_domain(name)
-    y = x + 1.0
+    y = _other_in_domain(name)
     assert _METRICS[name](x, y) >= 0.0
 
 
@@ -145,7 +161,7 @@ def test_metrics_are_symmetric_on_their_domain(name):
     if METRIC_DOMAINS.get(name) == "sample":
         pytest.skip("sample metrics are rejected for pointwise use")
     x = _in_domain(name)
-    y = x + 1.0
+    y = _other_in_domain(name)
     assert _METRICS[name](x, y) == pytest.approx(_METRICS[name](y, x))
 
 
@@ -196,3 +212,63 @@ def test_braycurtis_still_accepts_its_own_domain():
 
     both_zero = braycurtis_distance(np.zeros(3), np.zeros(3))
     assert both_zero == 0.0
+
+
+# --- jaccard, and the invariant all of these share ---
+
+
+def test_jaccard_rejects_non_binary_input():
+    """Casting to bool made every non-zero identical.
+
+    d([1.0, 3.0], [7.0, 0.2]) was 0.0 -- distinct points, distance zero --
+    because both vectors are all-non-zero and so cast to the same booleans.
+    `boolean` is the domain this metric declares.
+    """
+    with pytest.raises(ValueError, match="binary"):
+        jaccard_distance(np.array([1.0, 3.0]), np.array([7.0, 0.2]))
+
+
+def test_jaccard_matrix_path_rejects_non_binary_input():
+    with pytest.raises(ValueError, match="binary"):
+        distance_matrix(np.array([[1.0, 3.0]]), np.array([[7.0, 0.2]]), "jaccard")
+
+
+def test_jaccard_still_accepts_binary_and_boolean_input():
+    counts = jaccard_distance(np.array([1.0, 0.0, 1.0]), np.array([1.0, 1.0, 0.0]))
+    flags = jaccard_distance(
+        np.array([True, False, True]), np.array([True, True, False])
+    )
+    assert counts == flags == pytest.approx(2 / 3)
+
+
+@pytest.mark.parametrize("name", sorted(_METRICS))
+def test_no_metric_calls_distinct_points_identical(name):
+    """The one invariant every defect in this module has violated.
+
+    Five have now been found of exactly this shape: cosine against a zero
+    vector, cosine on two constant vectors, correlation against a constant
+    vector, bray-curtis where negatives cancel the denominator, and jaccard
+    where every non-zero casts to the same boolean.
+
+    Each was found by hand, one at a time, after the fact. This asserts the
+    property directly: on real-valued input a metric either measures a
+    non-zero distance between distinct points, or refuses the input as outside
+    its domain. Returning zero is the one thing it may not do.
+    """
+    metric = _METRICS[name]
+    rng = np.random.default_rng(0)
+    kwargs = {"cov_inv": np.eye(4)} if name == "mahalanobis" else {}
+
+    for _ in range(200):
+        a, b = rng.normal(size=4), rng.normal(size=4)
+        try:
+            distance = metric(a, b, **kwargs)
+        except ValueError:
+            # Refusing input outside the declared domain is the other correct
+            # answer, and is what hellinger, jensen_shannon, bray-curtis and
+            # jaccard do.
+            return
+        assert distance != 0.0, (
+            f"{name} reports distinct points as identical: "
+            f"{a.tolist()} vs {b.tolist()}"
+        )

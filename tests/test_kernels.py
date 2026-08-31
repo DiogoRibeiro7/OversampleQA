@@ -20,12 +20,27 @@ from oversampleqa.optimized_distance import (
     OptimizedDistanceMatrix,
     peak_multiple,
 )
+from oversampleqa.plugin_contract import METRIC_DOMAINS
 
 
 def _inputs(n1: int = 30, n2: int = 22, d: int = 5):
     rng = np.random.default_rng(0)
     # Strictly positive: the probability metrics reject negatives.
     return np.abs(rng.random((n1, d))) + 0.05, np.abs(rng.random((n2, d))) + 0.05
+
+
+def _inputs_for(metric: str):
+    """Inputs inside the metric's declared domain.
+
+    `_inputs` is already strictly positive so the probability metrics accept
+    it. The boolean metrics need the same courtesy: jaccard casts to bool and
+    now refuses anything that is not 0/1, because casting made every non-zero
+    identical.
+    """
+    X1, X2 = _inputs()
+    if METRIC_DOMAINS.get(metric) == "boolean":
+        return (X1 > 0.5).astype(float), (X2 > 0.5).astype(float)
+    return X1, X2
 
 
 def _kwargs_for(metric: str, X1, X2) -> dict:
@@ -42,7 +57,7 @@ def optimizer():
 @pytest.mark.parametrize("metric", sorted(_METRICS))
 def test_kernel_agrees_with_pairwise(metric, optimizer):
     """Every kernel must reproduce the scalar path exactly."""
-    X1, X2 = _inputs()
+    X1, X2 = _inputs_for(metric)
     kwargs = _kwargs_for(metric, X1, X2)
     expected = optimizer._pairwise(X1, X2, _METRICS[metric], **kwargs)
 
