@@ -1,0 +1,3 @@
+# oversampleqa.deprecation
+
+::: oversampleqa.deprecation

@@ -472,12 +472,16 @@ should now track specific user-facing features rather than this catch-up bucket.
   extra would cut install weight substantially, but it breaks anyone calling
   `plot_sample_distribution(method="umap")`, so it belongs in a deliberate minor
   bump rather than a patch.
-- **Docs build output should stay out of git.** The MkDocs site is generated in
-  `site/` and published from CI artifacts. Keep generated docs output ignored so
-  local builds do not create review noise.
-- **API-stability audit.** Before each minor release, compare the committed API
-  snapshot with docs and examples. Any new export either needs documentation or
-  an explicit decision that it is private.
+- **Docs build output stays out of git.** *Done.* `site/` is gitignored and the
+  published site comes from the CI artifact the `docs` job uploads, so a local
+  build cannot create review noise or diverge from what is published.
+- **API-stability audit.** *Partly automated.* Every public module now has an
+  API reference page, and `tests/test_docs_api_coverage.py` fails if a new one
+  does not -- doing that comparison by hand is how it came to be seven modules
+  behind, with `inference` and `fidelity` carrying the most module
+  documentation of any file that rendered none of it. What still needs judgement
+  each release is the other half: whether a new export deserves prose in a
+  guide, or should not have been exported at all.
 - **Dependency policy.** Keep runtime dependencies conservative and documented.
   Any dependency used at import time belongs in the runtime group; docs-only and
   benchmark-only tools should stay out of the core install unless the import

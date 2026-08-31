@@ -88,14 +88,21 @@ nav:
           - Enhanced CLI: api/cli_enhanced.md
           - Clustering: api/clustering.md
           - Config Templates: api/config_templates.md
+          - Deprecation: api/deprecation.md
           - Distance: api/distance.md
+          - Estimator: api/estimator.md
+          - Exceptions: api/exceptions.md
           - Extended Distances: api/extended_distances.md
+          - Fidelity: api/fidelity.md
+          - Inference: api/inference.md
           - Memory Efficient Validator: api/memory_efficient_validator.md
           - Metrics: api/metrics.md
           - Optimized Distance: api/optimized_distance.md
           - Plotting: api/plotting.md
+          - Plugin Contract: api/plugin_contract.md
           - Plugin System: api/plugin_system.md
           - Report: api/report.md
+          - Reports: api/reports.md
           - Surrogate: api/surrogate.md
           - Typed Validator: api/typed_validator.md
           - Types: api/types.md
