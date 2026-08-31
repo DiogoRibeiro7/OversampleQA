@@ -37,8 +37,23 @@ def test_decision_guide_names_operational_outcomes():
 
 
 def test_roadmap_marks_documentation_debt_done():
+    """Asserted by position rather than by sentence.
+
+    This used to pin the exact phrase "the examples refresh and the decision
+    guide are done", which broke when the section was reworded and moved -- and
+    a wording change is not the thing worth failing over. What matters is that
+    the bucket sits under *Delivered* rather than *Open Work*, which is the
+    claim the test is named for.
+    """
     roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
     compact = " ".join(roadmap.split())
 
-    assert "the examples refresh and the decision guide are done" in compact
+    delivered = roadmap.index("## Delivered")
+    open_work = roadmap.index("## Open Work")
+    debt = roadmap.index("— documentation debt")
+    assert delivered < debt < open_work, (
+        "the documentation-debt section should sit under Delivered; it has "
+        "nothing outstanding in it"
+    )
+    assert "decision guide" in compact
     assert "validation error rate, calibrated error rate, two-sample tests" in compact
