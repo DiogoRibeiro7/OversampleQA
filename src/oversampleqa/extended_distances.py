@@ -63,13 +63,27 @@ def mahalanobis_distance(
     ----------
     x1, x2 : np.ndarray
         Input vectors
-    cov_inv : np.ndarray, optional
-        Inverse covariance matrix. If None, uses identity (equivalent to Euclidean)
+    cov_inv : np.ndarray
+        Inverse covariance matrix. Required, and must be symmetric positive
+        semi-definite -- that is what makes the result a distance. It is not
+        validated as such on every call, because an eigenvalue check per pair
+        would cost more than the distance itself; a negative squared distance
+        is caught instead, which is how a non-PSD matrix usually shows up.
+
+        Note the residual case: a matrix that is not PSD can still return 0
+        for two distinct points, and no per-pair check can detect that. If you
+        build ``cov_inv`` by any route other than inverting a sample
+        covariance, check it once with ``np.linalg.eigvalsh``.
 
     Returns
     -------
     float
         Mahalanobis distance
+
+    Raises
+    ------
+    ValueError
+        If ``cov_inv`` is omitted, or if it yields a negative squared distance.
     """
     x1 = np.asarray(x1, dtype=float)
     x2 = np.asarray(x2, dtype=float)
@@ -93,7 +107,31 @@ def mahalanobis_distance(
             "through metric_kwargs."
         )
 
-    return float(np.sqrt(np.dot(diff, np.dot(cov_inv, diff))))
+    squared = float(np.dot(diff, np.dot(cov_inv, diff)))
+    if squared < 0.0:
+        # A genuine inverse covariance is positive semi-definite, so this
+        # quadratic form cannot be negative. When it is, np.sqrt returns nan
+        # with nothing but a bare "invalid value encountered in sqrt" to say
+        # why -- a warning users routinely filter, pointing at a line inside
+        # this library rather than at the matrix they passed.
+        #
+        # A near-singular inverse can produce a tiny negative through rounding
+        # alone, which is noise rather than an error, so that is clamped.
+        # Anything larger means cov_inv is not an inverse covariance.
+        tolerance = 1e-12 * max(1.0, float(np.dot(diff, diff)))
+        if squared < -tolerance:
+            raise ValueError(
+                "mahalanobis requires a positive semi-definite cov_inv: the "
+                f"squared distance came out negative ({squared:.6g}), which "
+                "np.sqrt reports as nan. Passing the covariance itself rather "
+                "than its inverse, or inverting a covariance estimated from "
+                "fewer samples than features, both produce a matrix that is "
+                "not. Estimate it with "
+                "cov_inv=np.linalg.pinv(np.cov(X, rowvar=False))."
+            )
+        squared = 0.0
+
+    return float(np.sqrt(squared))
 
 
 def canberra_distance(x1: NDArray[np.floating], x2: NDArray[np.floating]) -> float:

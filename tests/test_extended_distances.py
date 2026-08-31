@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from oversampleqa import check_metric_axioms
 from oversampleqa.distance import (
     chebyshev_distance,
     distance_matrix,
@@ -11,6 +12,7 @@ from oversampleqa.distance import (
     manhattan_distance,
     minkowski_distance,
 )
+from oversampleqa.extended_distances import mahalanobis_distance
 
 
 def test_minkowski_equivalence():
@@ -93,3 +95,54 @@ def test_mahalanobis_distance_matrix_with_cov():
     # benchmark, where mahalanobis was a default.
     with pytest.raises(ValueError, match="requires cov_inv"):
         distance_matrix(X1, X2, metric="mahalanobis")
+
+
+# --- mahalanobis and a covariance that is not positive semi-definite ---
+
+
+def test_mahalanobis_rejects_a_non_psd_cov_inv():
+    """A negative squared distance used to become nan.
+
+    `np.sqrt` returned nan with nothing but "invalid value encountered in
+    sqrt" -- a warning users routinely filter, naming a line inside this
+    library rather than the matrix they passed.
+    """
+    not_psd = np.array([[1.0, 0.0], [0.0, -2.0]])
+
+    with pytest.raises(ValueError, match="positive semi-definite"):
+        mahalanobis_distance(
+            np.array([0.0, 0.0]), np.array([1.0, 1.0]), cov_inv=not_psd
+        )
+
+
+def test_mahalanobis_tolerates_rounding_noise_from_a_near_singular_inverse():
+    """A tiny negative is floating point, not a broken matrix.
+
+    Raising on it would reject the ill-conditioned covariances that real,
+    correlated data produces.
+    """
+    rng = np.random.default_rng(0)
+    sample = rng.normal(size=(200, 4))
+    sample[:, 1] = sample[:, 0] + 1e-9 * rng.normal(size=200)
+    cov_inv = np.linalg.pinv(np.cov(sample, rowvar=False))
+
+    distances = [
+        mahalanobis_distance(sample[i], sample[j], cov_inv=cov_inv)
+        for i in range(40)
+        for j in range(i + 1, 40)
+    ]
+
+    assert np.all(np.isfinite(distances))
+    assert mahalanobis_distance(sample[0], sample[0], cov_inv=cov_inv) == 0.0
+
+
+def test_mahalanobis_satisfies_the_axioms_with_a_real_covariance():
+    """Not with an identity inverse, under which it is merely Euclidean."""
+    sample = np.random.default_rng(0).normal(size=(200, 4))
+    cov_inv = np.linalg.pinv(np.cov(sample, rowvar=False))
+
+    report = check_metric_axioms(
+        mahalanobis_distance, "mahalanobis", domain="real", cov_inv=cov_inv
+    )
+
+    assert report.ok, report.failures
