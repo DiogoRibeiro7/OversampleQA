@@ -202,10 +202,19 @@ def braycurtis_distance(
     if x1.shape != x2.shape:
         raise ValueError("Input vectors must have the same shape")
 
+    if np.any(x1 < 0) or np.any(x2 < 0):
+        raise ValueError("Bray-Curtis distance requires non-negative inputs")
+
     numerator = np.sum(np.abs(x1 - x2))
     denominator = np.sum(np.abs(x1 + x2))
 
     if denominator == 0:
+        # Sound only because the inputs are non-negative: the sum of absolute
+        # values is then zero exactly when both vectors are all-zero, and the
+        # distance between them really is zero. Allow a negative through and
+        # the terms cancel instead -- d([-1, 0], [1, 0]) came out as 0.0, two
+        # distinct points at distance zero, which is the identity-of-
+        # indiscernibles violation check_metric_axioms exists to catch.
         return 0.0
 
     ratio: float = numerator / denominator

@@ -2,13 +2,14 @@
 
 The axiom smoke check draws random vectors, so it will essentially never draw
 an exact zero vector or an exact constant vector -- which is precisely where
-these metrics break. Three defects survived that way, all of the same shape as
+these metrics break. Four defects survived that way, all of the same shape as
 the original hassanat bug: a distance of zero between points that are not
 identical.
 
-    cosine(0, x)           = 0.0        zero vector "identical" to everything
-    cosine(const, const)   = -2.22e-16  a negative distance
-    correlation(const, x)  = 0.0        constant vector "perfectly correlated"
+    cosine(0, x)             = 0.0        zero vector "identical" to everything
+    cosine(const, const)     = -2.22e-16  a negative distance
+    correlation(const, x)    = 0.0        constant vector "perfectly correlated"
+    braycurtis([-1,0],[1,0]) = 0.0        negatives cancel the denominator
 
 `METRIC_DOMAINS` had documented the correlation case as undefined all along.
 The code disagreed with the comment.
@@ -19,8 +20,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from oversampleqa.distance import _METRICS, cosine_distance
-from oversampleqa.extended_distances import correlation_distance
+from oversampleqa.distance import _METRICS, cosine_distance, distance_matrix
+from oversampleqa.extended_distances import braycurtis_distance, correlation_distance
 from oversampleqa.plugin_contract import METRIC_DOMAINS
 
 ZERO = np.zeros(3)
@@ -146,3 +147,52 @@ def test_metrics_are_symmetric_on_their_domain(name):
     x = _in_domain(name)
     y = x + 1.0
     assert _METRICS[name](x, y) == pytest.approx(_METRICS[name](y, x))
+
+
+# --- bray-curtis and its declared domain ---
+
+
+def test_braycurtis_rejects_negative_input():
+    """It is declared `non_negative`; its siblings enforce that, it did not.
+
+    The zero-denominator guard returns 0.0, which is right when the inputs are
+    non-negative -- the absolute sums vanish only when both vectors are all
+    zero. With a negative present the terms cancel instead, and two distinct
+    points come back at distance zero.
+    """
+    with pytest.raises(ValueError, match="non-negative"):
+        braycurtis_distance(np.array([-1.0, 0.0]), np.array([1.0, 0.0]))
+
+
+def test_braycurtis_rejected_the_identity_violation_it_used_to_return():
+    """d([-1, 0], [1, 0]) was 0.0: distinct points, distance zero.
+
+    The same failure as the original hassanat implementation, which is what
+    `check_metric_axioms` was written for.
+    """
+    x1, x2 = np.array([-1.0, 0.0]), np.array([1.0, 0.0])
+    assert not np.array_equal(x1, x2)
+
+    with pytest.raises(ValueError):
+        braycurtis_distance(x1, x2)
+
+
+def test_braycurtis_matrix_path_rejects_negatives_too():
+    """Two implementations, so two guards.
+
+    The vectorised kernel is a separate code path; a check in the scalar
+    function is not a check in this one.
+    """
+    with pytest.raises(ValueError, match="non-negative"):
+        distance_matrix(
+            np.array([[-1.0, 0.0]]), np.array([[1.0, 0.0]]), "braycurtis"
+        )
+
+
+def test_braycurtis_still_accepts_its_own_domain():
+    """Enforcement must not reject the input the metric is for."""
+    d = braycurtis_distance(np.array([1.0, 2.0, 3.0]), np.array([2.0, 1.0, 4.0]))
+    assert 0.0 <= d <= 1.0
+
+    both_zero = braycurtis_distance(np.zeros(3), np.zeros(3))
+    assert both_zero == 0.0

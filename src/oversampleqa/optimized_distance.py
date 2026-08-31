@@ -625,9 +625,15 @@ class OptimizedDistanceMatrix:
         Returns:
             Distance matrix.
         """
+        # Checked here as well as in the scalar implementation: these are two
+        # separate code paths, and a guard in one is not a guard in the other.
+        if np.any(X1 < 0) or np.any(X2 < 0):
+            raise ValueError("Bray-Curtis distance requires non-negative inputs")
+
         num = np.abs(X1[:, None, :] - X2[None, :, :]).sum(axis=2)
         denom = np.abs(X1[:, None, :] + X2[None, :, :]).sum(axis=2)
         with np.errstate(divide="ignore", invalid="ignore"):
+            # denom == 0 means both rows are all-zero, given non-negativity.
             res = np.where(denom == 0, 0.0, num / denom)
         return res
 

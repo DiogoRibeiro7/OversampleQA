@@ -12,6 +12,19 @@ section are maintained manually.
 
 ### Fixed
 
+- `braycurtis` enforces the non-negative domain it declares. It is registered
+  under `non_negative` in `METRIC_DOMAINS`, and `hellinger` and
+  `jensen_shannon` in that same domain already raised on negative input, but
+  Bray-Curtis accepted it. Its zero-denominator guard returns `0.0`, which is
+  correct when the values are non-negative -- the absolute sums vanish only
+  when both vectors are all zero -- but with a negative present the terms
+  cancel instead, and `d([-1, 0], [1, 0])` came back as `0.0`: two distinct
+  points at distance zero. That is the identity-of-indiscernibles violation
+  `check_metric_axioms` exists to catch, and the fourth of that shape found in
+  this registry. Standardised features are negative, so ordinary preprocessing
+  reached it. Both the scalar function and the vectorised matrix kernel are
+  guarded, being separate code paths.
+
 - `mahalanobis_distance` raises instead of returning `nan` when `cov_inv` is
   not positive semi-definite. The squared distance then comes out negative and
   `np.sqrt` reported it as `nan`, accompanied only by a bare "invalid value
