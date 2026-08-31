@@ -6,11 +6,11 @@ Drive validation through the Pydantic-backed ``ValidationConfig`` instead of
 loose keyword arguments.
 """
 
-from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE
+from sklearn.datasets import make_classification
 
-from oversampleqa.types import ValidationConfig
 from oversampleqa.typed_validator import TypedValidator
+from oversampleqa.types import ValidationConfig
 
 
 def main() -> None:

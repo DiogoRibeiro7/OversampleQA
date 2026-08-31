@@ -38,6 +38,20 @@ class LorentzianDistance:
 
     name = "lorentzian"
 
+    #: The input this metric is defined on, read by entry-point discovery.
+    #:
+    #: ``"real"`` is the default and could be omitted; it is written out because
+    #: this file is meant to be copied, and the knob is easier to find than to
+    #: guess. The alternatives are ``"non_negative"``, ``"boolean"`` and
+    #: ``"sample"``.
+    #:
+    #: It decides what input the axiom check uses. Get it wrong and a correct
+    #: metric is checked where it is not defined: the host's own ``hellinger``
+    #: raises on negative input, so declaring it ``"real"`` would see it
+    #: rejected as violating axioms it satisfies. Lorentzian is defined on all
+    #: of R^n, so ``"real"`` is right here.
+    domain = "real"
+
     def __call__(
         self,
         x1: NDArray[np.floating],

@@ -57,7 +57,7 @@ class MedianRatioValidator:
         if len(minority) < 2:
             return float("nan")
 
-        X_resampled, y_resampled = oversampler.fit_resample(X, y)
+        X_resampled, _ = oversampler.fit_resample(X, y)
         X_resampled = np.asarray(X_resampled, dtype=float)
         synthetic = X_resampled[len(X) :]
         if len(synthetic) == 0:

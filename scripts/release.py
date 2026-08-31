@@ -61,7 +61,7 @@ def ensure_release_ready(*, skip_tests: bool, skip_clean_check: bool) -> None:
         shutil.rmtree(dist)
 
     run_command(["poetry", "check", "--lock"])
-    run_command(["poetry", "run", "ruff", "check", "src", "tests", "scripts"])
+    run_command(["poetry", "run", "ruff", "check", "src", "tests", "scripts", "examples"])
     run_command(["poetry", "run", "mypy", "src"])
     if not skip_tests:
         run_command(["poetry", "run", "pytest"])

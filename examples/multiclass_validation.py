@@ -6,8 +6,8 @@ Validate oversampling on a multiclass problem and read the resulting
 confusion-style error matrix across classes.
 """
 
-from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE
+from sklearn.datasets import make_classification
 
 from oversampleqa.validator import validate_multiclass_oversampling
 

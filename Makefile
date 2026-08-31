@@ -38,7 +38,7 @@ coverage:
 	poetry run pytest tests/ --cov=oversampleqa --cov-report=html
 
 lint:
-	poetry run ruff check src/ tests/ scripts/
+	poetry run ruff check src/ tests/ scripts/ examples/
 
 typecheck:
 	poetry run mypy src/oversampleqa
