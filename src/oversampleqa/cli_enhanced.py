@@ -2025,22 +2025,6 @@ def doctor() -> None:
     )
 
 
-def _optional_import(module: str) -> bool:
-    """Return True when a module can be imported.
-
-    Args:
-        module: Module name to import.
-
-    Returns:
-        ``True`` if import succeeds, otherwise ``False``.
-    """
-    try:
-        __import__(module)
-        return True
-    except Exception:
-        return False
-
-
 def main() -> None:
     """Entry point for the enhanced CLI.
 

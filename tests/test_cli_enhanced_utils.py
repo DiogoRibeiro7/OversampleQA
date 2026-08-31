@@ -672,3 +672,26 @@ def test_doctor_flags_an_unsupported_python(monkeypatch):
     result = CliRunner().invoke(cli, ["doctor"])
 
     assert "needs 3.10+" in result.output or "not supported" in result.output
+
+
+def test_dependency_version_reports_a_missing_module_as_absent():
+    """The real function, not a stand-in: its error paths are the point."""
+    assert cli_enhanced._dependency_version("no_such_module_xyz", "no-such-dist") is None
+
+
+def test_dependency_version_handles_an_importable_module_with_no_distribution():
+    """Importable but not installed as a distribution.
+
+    A vendored module, or one on PYTHONPATH from a source tree. It is present,
+    so reporting it missing would be wrong, but there is no version to give.
+    """
+    assert cli_enhanced._dependency_version("json", "not-a-real-distribution") == "unknown"
+
+
+def test_doctor_reports_a_healthy_environment():
+    """The happy path, which the failure-path tests did not reach."""
+    result = CliRunner().invoke(cli, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "All required components are present" in result.output
+    assert "OversampleQA" in result.output
