@@ -2,18 +2,20 @@ import os
 import sys
 from pathlib import Path
 
-import numpy as np
-from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE
+from sklearn.datasets import make_classification
 
 sys.path.insert(0, os.path.abspath("src"))
 
-from oversampleqa.plotting import (  # noqa: E402
+from oversampleqa.plotting import (
     plot_class_balance,
     plot_distance_histogram,
     plot_error_heatmap,
 )
-from oversampleqa.validator import validate_oversampling, validate_multiclass_oversampling  # noqa: E402
+from oversampleqa.validator import (
+    validate_multiclass_oversampling,
+    validate_oversampling,
+)
 
 
 def main() -> None:
@@ -45,7 +47,7 @@ def main() -> None:
 
     # Class balance example
     oversampler = SMOTE(random_state=0)
-    X_res, y_res = oversampler.fit_resample(X, y)
+    _, y_res = oversampler.fit_resample(X, y)
     plot_class_balance(
         labels_before=y,
         labels_after=y_res,

@@ -43,7 +43,9 @@ jobs:
         poetry check --lock
         poetry install --with dev
     - name: Lint
-      run: poetry run ruff check src tests
+      # `scripts` included: it was unchecked, and had accumulated nine
+      # lint errors nobody could see because the gate never looked there.
+      run: poetry run ruff check src tests scripts
     - name: Type check
       run: poetry run mypy src
 

@@ -36,9 +36,7 @@ def _iter_targets(root: Path):
     for path in root.rglob("*"):
         if any(part in SKIP for part in path.parts):
             continue
-        if path.is_dir() and path.name in NESTED_DIRECTORIES:
-            yield path
-        elif path.is_file() and any(path.match(p) for p in FILE_PATTERNS):
+        if (path.is_dir() and path.name in NESTED_DIRECTORIES) or (path.is_file() and any(path.match(p) for p in FILE_PATTERNS)):
             yield path
 
 

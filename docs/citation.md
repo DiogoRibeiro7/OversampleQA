@@ -82,7 +82,16 @@ No GitHub environment is configured in `publish.yml`. Leave the
 environment field empty in PyPI's trusted-publisher settings unless you
 deliberately add a GitHub environment later.
 
-1.  Update `version` and `date-released` in `CITATION.cff`, the version
+1.  Branch. `main` is protected and takes changes only through a pull
+    request, so the version bump cannot be committed to it directly:
+
+        git switch -c release/X.Y.Z
+
+    `scripts/release.py` accepts `main` or any `release/` branch. It used
+    to insist on `main`, which made this checklist impossible to follow as
+    written.
+
+2.  Update `version` and `date-released` in `CITATION.cff`, the version
     in `pyproject.toml`, `[tool.commitizen]`,
     `src/oversampleqa/__init__.py`, and `.zenodo.json`, and promote the
     *Unreleased* changelog section. Commit.
@@ -90,27 +99,40 @@ deliberately add a GitHub environment later.
     All five versions are compared on every commit, so a missed one turns
     CI red immediately rather than at release time.
 
-2.  Run the local release checks:
+    Check that the promoted section actually describes the release. CI
+    requires a changelog entry from any pull request touching `src/`, but
+    that gate arrived after 0.7.0, whose notes had to be reconstructed from
+    pull request descriptions because nine of the ten source commits since
+    0.6.1 had shipped without one.
+
+3.  Run the local release checks:
 
         python scripts/release.py
 
-3.  Tag the release and push the tag:
+    These are the same gates `publish.yml` runs, including the wheel smoke
+    test, so a local pass predicts the publishing gate rather than only
+    proving the artefacts build.
 
+4.  Open a pull request, let CI pass, and merge it.
+
+5.  Tag the merge commit on `main` and push the tag:
+
+        git switch main && git pull --ff-only
         git tag -s vX.Y.Z -m "vX.Y.Z"
         git push origin vX.Y.Z
 
-4.  Publish a GitHub release for that tag. The PyPI workflow and the
+6.  Publish a GitHub release for that tag. The PyPI workflow and the
     Zenodo webhook both fire on release publication, so pushing a tag
     alone publishes nothing.
 
-5.  Confirm the PyPI workflow uploaded both the source distribution and
+7.  Confirm the PyPI workflow uploaded both the source distribution and
     wheel.
 
-6.  Zenodo creates the record and mints a fresh version DOI within a few
+8.  Zenodo creates the record and mints a fresh version DOI within a few
     minutes. The concept DOI stays the same. Confirm the metadata came
     from `.zenodo.json` by opening the new record.
 
-7.  Add the new version DOI to the `identifiers` block in
+9.  Add the new version DOI to the `identifiers` block in
     `CITATION.cff`. The README badge and BibTeX entry use the concept
     DOI and need no change.
 

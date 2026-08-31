@@ -30,7 +30,7 @@ jobs:
 
       - name: Quality gates
         run: |
-          poetry run ruff check src tests
+          poetry run ruff check src tests scripts
           poetry run mypy src
           poetry run pytest
 

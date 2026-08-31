@@ -12,11 +12,15 @@ import argparse
 import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
+
+#: Branches this may run from. `main` is protected and requires a pull
+#: request, so the version bump necessarily lands on a branch first -- and
+#: this check used to refuse the very branch the documented process creates,
+#: making the checklist impossible to follow as written.
+RELEASE_BRANCH_PREFIX = "release/"
 
 
 def run_command(args: list[str], *, env: dict[str, str] | None = None) -> None:
@@ -43,8 +47,11 @@ def output(args: list[str]) -> str:
 def ensure_release_ready(*, skip_tests: bool, skip_clean_check: bool) -> None:
     """Run the local checks expected before publishing a GitHub release."""
     branch = output(["git", "branch", "--show-current"])
-    if branch != "main":
-        raise SystemExit("Release preparation must run on main.")
+    if branch != "main" and not branch.startswith(RELEASE_BRANCH_PREFIX):
+        raise SystemExit(
+            f"Release preparation must run on main or a "
+            f"{RELEASE_BRANCH_PREFIX}* branch; this is {branch or 'a detached HEAD'!r}."
+        )
 
     if not skip_clean_check and output(["git", "status", "--porcelain"]):
         raise SystemExit("Working directory must be clean.")
@@ -54,13 +61,29 @@ def ensure_release_ready(*, skip_tests: bool, skip_clean_check: bool) -> None:
         shutil.rmtree(dist)
 
     run_command(["poetry", "check", "--lock"])
-    run_command(["poetry", "run", "ruff", "check", "src", "tests"])
+    run_command(["poetry", "run", "ruff", "check", "src", "tests", "scripts"])
     run_command(["poetry", "run", "mypy", "src"])
     if not skip_tests:
         run_command(["poetry", "run", "pytest"])
     run_command(["poetry", "build"])
     distributions = sorted(str(path.relative_to(ROOT)) for path in dist.iterdir())
     run_command(["python", "-m", "twine", "check", *distributions])
+
+    # The same wheel check publish.yml runs. Without it a local pass says the
+    # artefacts build, not that they will survive the publishing gate -- and a
+    # wheel can be broken in ways the source tree never shows: missing package
+    # data, an undeclared runtime dependency, a console script that only works
+    # from an editable install.
+    wheels = sorted(dist.glob("*.whl"))
+    if not wheels:
+        raise SystemExit("poetry build produced no wheel to smoke test.")
+    run_command(
+        [
+            "python",
+            str(Path("scripts") / "smoke_installed_package.py"),
+            str(wheels[0].relative_to(ROOT)),
+        ]
+    )
 
     print(
         "Release artefacts are ready in dist/. Publish a GitHub release to "
