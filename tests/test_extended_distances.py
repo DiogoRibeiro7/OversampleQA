@@ -22,6 +22,59 @@ def test_minkowski_equivalence():
     assert np.isclose(minkowski_distance(x1, x2, p=2), euclidean_distance(x1, x2))
 
 
+def test_minkowski_at_infinite_p_is_the_chebyshev_distance():
+    """`p=inf` returned 1.0 for every input, whatever the data.
+
+    The limit as p grows is the Chebyshev distance, but the general formula
+    cannot produce it: every |d| > 1 raised to inf is inf, so the sum is inf,
+    and inf ** (1 / inf) is inf ** 0 -- which is 1.0.
+    """
+    x1 = np.array([0.0, 0.0, 0.0])
+    x2 = np.array([1.0, 2.0, 3.0])
+
+    assert minkowski_distance(x1, x2, p=np.inf) == chebyshev_distance(x1, x2) == 3.0
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_minkowski_approaches_chebyshev_as_p_grows(seed):
+    """The fix must agree with the limit it is meant to be, not just at inf."""
+    rng = np.random.default_rng(seed)
+    x1, x2 = rng.normal(size=5), rng.normal(size=5)
+
+    assert np.isclose(
+        minkowski_distance(x1, x2, p=200.0),
+        chebyshev_distance(x1, x2),
+        rtol=1e-6,
+    )
+
+
+def test_minkowski_does_not_overflow_at_large_p():
+    """`diff ** p` overflowed to inf at p=1000, as it does in scipy.
+
+    The answer there is simply the largest term, so scaling before
+    exponentiating gives it rather than an infinity.
+    """
+    x1 = np.array([0.0, 0.0, 0.0])
+    x2 = np.array([1.0, 2.0, 3.0])
+
+    assert minkowski_distance(x1, x2, p=1000.0) == 3.0
+
+
+@pytest.mark.parametrize("p", [1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 50.0])
+def test_minkowski_is_unchanged_where_it_was_already_correct(p):
+    """Scaling must not move results that never overflowed."""
+    rng = np.random.default_rng(0)
+    for _ in range(20):
+        x1, x2 = rng.normal(size=4) * 10, rng.normal(size=4) * 10
+        direct = float(np.sum(np.abs(x1 - x2) ** p) ** (1 / p))
+        assert np.isclose(minkowski_distance(x1, x2, p=p), direct, rtol=1e-12)
+
+
+def test_minkowski_still_rejects_p_below_one():
+    with pytest.raises(ValueError, match="p must be >= 1"):
+        minkowski_distance(np.array([0.0]), np.array([1.0]), p=0.5)
+
+
 def test_chebyshev_distance():
     x1 = np.array([1.0, 4.0, 2.0])
     x2 = np.array([2.0, 1.0, 3.0])
