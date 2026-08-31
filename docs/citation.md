@@ -24,7 +24,7 @@ fields across the two files on each commit.
   author  = {Ribeiro, Diogo},
   title   = {{OversampleQA: a diagnostic toolkit to validate, audit,
              and benchmark oversampling methods}},
-  version = {0.7.0},
+  version = {0.8.0},
   year    = {2026},
   doi     = {10.5281/zenodo.21940361},
   url     = {https://doi.org/10.5281/zenodo.21940361}
