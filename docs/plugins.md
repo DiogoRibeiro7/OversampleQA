@@ -59,6 +59,29 @@ callable `validate`.
 non-negativity and finiteness, checked on random input in the metric's
 declared domain.
 
+**Declaring a domain.**  
+If your metric is not defined on all of ℝⁿ, say so with a `domain`
+attribute on the object you export:
+
+```python
+class HellingerLike:
+    domain = "non_negative"   # real | non_negative | boolean | sample
+
+    def __call__(self, x1, x2, **kwargs):
+        ...
+```
+
+An entry point carries a callable and nothing else, so an attribute is the
+only channel available. Without one the metric is checked on real-valued
+input, and a metric that is correct on non-negative input alone will raise
+there and be rejected as violating axioms it in fact satisfies. The
+built-in `hellinger` and `jaccard` are two such metrics; a plugin version
+of either could not be discovered until it could say so.
+
+A misspelled domain is refused rather than treated as `real`, because
+checking a metric where it is not defined is the failure this mechanism
+exists to prevent.
+
 The axiom check is not hypothetical. The built-in `hassanat` metric
 shipped for this project's entire history scoring `[-5]` and `[5]` as
 distance zero, because it compared absolute values. It was not a metric,

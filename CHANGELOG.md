@@ -10,6 +10,17 @@ section are maintained manually.
 
 ## [Unreleased]
 
+### Added
+
+- Plugin metrics can declare a `domain` attribute, and entry-point discovery
+  reads it. Discovery registered every metric without one, so the axiom check
+  ran on real-valued input: a metric correct only on non-negative or binary
+  input raised there and was rejected as violating axioms it satisfies. The
+  package ships two such metrics itself, `hellinger` and `jaccard`, so a
+  plugin version of either could not be discovered at all -- and entry points
+  are the documented way for a third party to ship one. A misspelled domain is
+  refused rather than silently treated as `real`.
+
 ### Fixed
 
 - `jaccard` enforces the binary domain it declares. It reaches set semantics by
