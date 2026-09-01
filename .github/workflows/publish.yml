@@ -44,7 +44,7 @@ jobs:
         run: python scripts/smoke_installed_package.py dist/*.whl
 
       - name: Upload distribution artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
