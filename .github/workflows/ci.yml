@@ -30,7 +30,7 @@ jobs:
       with:
         python-version: "3.12"
     - name: Cache the Poetry environment
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           .poetry-cache
@@ -89,7 +89,7 @@ jobs:
     # Saving here, before the tests, keeps the cached environment clean.
     - name: Restore the Poetry environment
       id: poetry-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: |
           .poetry-cache
@@ -111,7 +111,7 @@ jobs:
     - name: Save the Poetry environment
       # Same key as the restore above; Actions has no anchors to share it.
       if: steps.poetry-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: |
           .poetry-cache
@@ -175,7 +175,7 @@ jobs:
       # Keyed separately from the other jobs: this one installs the docs group
       # too, so sharing their key would restore a virtualenv missing half of
       # what this job needs.
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           .poetry-cache
