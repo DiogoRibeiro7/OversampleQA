@@ -204,7 +204,7 @@ jobs:
     # publishable, not merely that the build exits zero. Only the deploy job
     # below is restricted to main.
     - name: Upload pages artifact
-      uses: actions/upload-pages-artifact@v4
+      uses: actions/upload-pages-artifact@v5
       with:
         path: site
 
