@@ -1,0 +1,7 @@
+Tool: built-in image generation
+
+Use case: logo-brand.
+Asset type: square project logo for OversampleQA.
+Project purpose: A question-answering project focused on handling imbalanced datasets through advanced oversampling techniques.
+Design direction: A vibrant woven-pixel mosaic: a sparse teal cluster expands into a balanced coral-and-teal speech-bubble silhouette, while its central negative space makes a clear question mark. Geometric tessellation, a few large repeating cells, raspberry background with pale peach highlights. Joyful op-art rhythm, flat colors and exact edges, no glossy beads, no gradients.
+Composition: one finished square image, visually distinctive and readable at 160 pixels, with enough margin for README display. Produce the actual artwork, not a mockup sheet or brand presentation. No watermark. Do not use a navy-and-gold metallic badge aesthetic.
